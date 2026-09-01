@@ -1,0 +1,1 @@
+console.log("Forex backtester running");
