@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "import": "node src/import-history.js"
   },
   "keywords": [],
   "author": "",
@@ -13,5 +14,8 @@
   "type": "module",
   "dependencies": {
     "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.128.0"
   }
 }
