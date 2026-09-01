@@ -115,3 +115,31 @@ export async function countCandles({
 
   return result[0].results[0].count;
 }
+
+export async function insertCandleBatch({
+  instrument,
+  granularity,
+  candles,
+}) {
+  if (candles.length === 0) {
+    return 0;
+  }
+
+  const statements = candles.map((candle) =>
+    createInsertStatement(
+      instrument,
+      granularity,
+      candle
+    )
+  );
+
+  const results = await queryD1Batch(statements);
+
+  let inserted = 0;
+
+  for (const result of results) {
+    inserted += result.meta?.changes ?? 0;
+  }
+
+  return inserted;
+}
