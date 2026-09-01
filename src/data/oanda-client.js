@@ -9,7 +9,7 @@ export async function getCandles({
   count,
   from,
   to,
-  price = "BA",
+  price = "MBA",
 }) {
   const accountId = process.env.OANDA_ACCOUNT_ID;
   const token = process.env.OANDA_API_TOKEN;
