@@ -7,6 +7,8 @@ export async function getCandles({
   instrument,
   granularity,
   count,
+  from,
+  to,
   price = "BA",
 }) {
   const accountId = process.env.OANDA_ACCOUNT_ID;
@@ -33,8 +35,19 @@ export async function getCandles({
   );
 
   url.searchParams.set("granularity", granularity);
-  url.searchParams.set("count", count);
   url.searchParams.set("price", price);
+
+  if (count) {
+    url.searchParams.set("count", count);
+  }
+
+  if (from) {
+    url.searchParams.set("from", from);
+  }
+
+  if (to) {
+    url.searchParams.set("to", to);
+  }
 
   const response = await fetch(url, {
     headers: {
