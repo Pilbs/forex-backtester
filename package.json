@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
     "import": "node src/import-history.js",
-     "read-test": "node src/test-candle-reader.js"
+     "read-test": "node src/test-candle-reader.js",
+     "backtest-test": "node src/test-backtest-runner.js",
+     "loss-test": "node src/test-loss-trade.js",
+     "multi-trade-test": "node src/test-multiple-trades.js"
   },
   "keywords": [],
   "author": "",
