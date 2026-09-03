@@ -10,7 +10,12 @@
      "read-test": "node src/test-candle-reader.js",
      "backtest-test": "node src/test-backtest-runner.js",
      "loss-test": "node src/test-loss-trade.js",
-     "multi-trade-test": "node src/test-multiple-trades.js"
+     "multi-trade-test": "node src/test-multiple-trades.js",
+     "context-test": "node src/test-strategy-context.js",
+     "reset-test": "node src/test-strategy-reset.js",
+     "multi-candle-test": "node src/test-multi-candle-strategy.js",
+     "real-strategy-test": "node src/test-real-db-strategy.js",
+     "repeat-test": "node src/test-repeatability.js"
   },
   "keywords": [],
   "author": "",

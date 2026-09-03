@@ -1,204 +1,209 @@
 import { validateStrategy } from "../strategies/strategy-interface.js";
+import { createStrategyContext } from "./strategy-context.js";
 
 const PIP_SIZE = 0.0001;
 
 function calculatePnlPips({
-  side,
-  entryPrice,
-  exitPrice,
+    side,
+    entryPrice,
+    exitPrice,
 }) {
-  const priceDifference =
-    side === "LONG"
-      ? exitPrice - entryPrice
-      : entryPrice - exitPrice;
+    const priceDifference =
+        side === "LONG"
+            ? exitPrice - entryPrice
+            : entryPrice - exitPrice;
 
-  return Number(
-    (priceDifference / PIP_SIZE).toFixed(1)
-  );
+    return Number(
+        (priceDifference / PIP_SIZE).toFixed(1)
+    );
 }
 
 export function runBacktest({
-  candles,
-  strategy,
+    candles,
+    strategy,
 }) {
-  if (!Array.isArray(candles)) {
-    throw new Error("candles must be an array");
-  }
-
-  if (candles.length === 0) {
-    throw new Error("No candles supplied to backtest");
-  }
-
-  validateStrategy(strategy);
-
-  let previousTime = null;
-  let processedCandles = 0;
-
-  let pendingEntry = null;
-  let openPosition = null;
-
-  const signals = [];
-  const trades = [];
-
-  for (let index = 0; index < candles.length; index++) {
-    const candle = candles[index];
-
-    if (!Number.isFinite(candle.time)) {
-      throw new Error("Candle has invalid time");
+    if (!Array.isArray(candles)) {
+        throw new Error("candles must be an array");
     }
 
-    if (
-      previousTime !== null &&
-      candle.time <= previousTime
-    ) {
-      throw new Error(
-        `Candles are not chronological at ${new Date(
-          candle.time
-        ).toISOString()}`
-      );
+    if (candles.length === 0) {
+        throw new Error("No candles supplied to backtest");
     }
 
-    // Execute pending entry at this candle's open.
-    if (pendingEntry && !openPosition) {
-      const entryPrice =
-        pendingEntry.side === "LONG"
-          ? candle.ask.open
-          : candle.bid.open;
-
-      const direction =
-        pendingEntry.side === "LONG"
-          ? 1
-          : -1;
-
-      openPosition = {
-        side: pendingEntry.side,
-
-        signalTime: pendingEntry.signalTime,
-        entryTime: candle.time,
-        entryPrice,
-
-        stopLoss:
-          entryPrice -
-          direction *
-            pendingEntry.stopLossPips *
-            PIP_SIZE,
-
-        takeProfit:
-          entryPrice +
-          direction *
-            pendingEntry.takeProfitPips *
-            PIP_SIZE,
-      };
-
-      pendingEntry = null;
+    validateStrategy(strategy);
+    if (strategy.reset) {
+        strategy.reset();
     }
 
-    // Check SL / TP.
-    if (openPosition) {
-      let exitReason = null;
-      let exitPrice = null;
+    let previousTime = null;
+    let processedCandles = 0;
 
-      if (openPosition.side === "LONG") {
-        const stopHit =
-          candle.bid.low <= openPosition.stopLoss;
+    let pendingEntry = null;
+    let openPosition = null;
 
-        const takeProfitHit =
-          candle.bid.high >= openPosition.takeProfit;
+    const signals = [];
+    const trades = [];
 
-        if (stopHit) {
-          exitReason = "STOP_LOSS";
-          exitPrice = openPosition.stopLoss;
-        } else if (takeProfitHit) {
-          exitReason = "TAKE_PROFIT";
-          exitPrice = openPosition.takeProfit;
+    for (let index = 0; index < candles.length; index++) {
+        const candle = candles[index];
+
+        if (!Number.isFinite(candle.time)) {
+            throw new Error("Candle has invalid time");
         }
-      }
 
-      if (openPosition.side === "SHORT") {
-        const stopHit =
-          candle.ask.high >= openPosition.stopLoss;
-
-        const takeProfitHit =
-          candle.ask.low <= openPosition.takeProfit;
-
-        if (stopHit) {
-          exitReason = "STOP_LOSS";
-          exitPrice = openPosition.stopLoss;
-        } else if (takeProfitHit) {
-          exitReason = "TAKE_PROFIT";
-          exitPrice = openPosition.takeProfit;
+        if (
+            previousTime !== null &&
+            candle.time <= previousTime
+        ) {
+            throw new Error(
+                `Candles are not chronological at ${new Date(
+                    candle.time
+                ).toISOString()}`
+            );
         }
-      }
 
-      if (exitReason) {
-        const pnlPips = calculatePnlPips({
-          side: openPosition.side,
-          entryPrice: openPosition.entryPrice,
-          exitPrice,
+        // Execute pending entry at this candle's open.
+        if (pendingEntry && !openPosition) {
+            const entryPrice =
+                pendingEntry.side === "LONG"
+                    ? candle.ask.open
+                    : candle.bid.open;
+
+            const direction =
+                pendingEntry.side === "LONG"
+                    ? 1
+                    : -1;
+
+            openPosition = {
+                side: pendingEntry.side,
+
+                signalTime: pendingEntry.signalTime,
+                entryTime: candle.time,
+                entryPrice,
+
+                stopLoss:
+                    entryPrice -
+                    direction *
+                    pendingEntry.stopLossPips *
+                    PIP_SIZE,
+
+                takeProfit:
+                    entryPrice +
+                    direction *
+                    pendingEntry.takeProfitPips *
+                    PIP_SIZE,
+            };
+
+            pendingEntry = null;
+        }
+
+        // Check SL / TP.
+        if (openPosition) {
+            let exitReason = null;
+            let exitPrice = null;
+
+            if (openPosition.side === "LONG") {
+                const stopHit =
+                    candle.bid.low <= openPosition.stopLoss;
+
+                const takeProfitHit =
+                    candle.bid.high >= openPosition.takeProfit;
+
+                if (stopHit) {
+                    exitReason = "STOP_LOSS";
+                    exitPrice = openPosition.stopLoss;
+                } else if (takeProfitHit) {
+                    exitReason = "TAKE_PROFIT";
+                    exitPrice = openPosition.takeProfit;
+                }
+            }
+
+            if (openPosition.side === "SHORT") {
+                const stopHit =
+                    candle.ask.high >= openPosition.stopLoss;
+
+                const takeProfitHit =
+                    candle.ask.low <= openPosition.takeProfit;
+
+                if (stopHit) {
+                    exitReason = "STOP_LOSS";
+                    exitPrice = openPosition.stopLoss;
+                } else if (takeProfitHit) {
+                    exitReason = "TAKE_PROFIT";
+                    exitPrice = openPosition.takeProfit;
+                }
+            }
+
+            if (exitReason) {
+                const pnlPips = calculatePnlPips({
+                    side: openPosition.side,
+                    entryPrice: openPosition.entryPrice,
+                    exitPrice,
+                });
+
+                trades.push({
+                    ...openPosition,
+
+                    exitTime: candle.time,
+                    exitPrice,
+                    exitReason,
+
+                    pnlPips,
+
+                    result:
+                        pnlPips > 0
+                            ? "WIN"
+                            : pnlPips < 0
+                                ? "LOSS"
+                                : "BREAKEVEN",
+                });
+
+                openPosition = null;
+            }
+        }
+
+        const context = createStrategyContext({
+            candles,
+            index,
         });
 
-        trades.push({
-          ...openPosition,
+        const signal = strategy.onCandle(context);
 
-          exitTime: candle.time,
-          exitPrice,
-          exitReason,
+        if (signal) {
+            signals.push({
+                time: candle.time,
+                index,
+                ...signal,
+            });
 
-          pnlPips,
+            if (
+                signal.action === "ENTER" &&
+                !openPosition &&
+                !pendingEntry
+            ) {
+                pendingEntry = {
+                    side: signal.side,
+                    signalTime: candle.time,
 
-          result:
-            pnlPips > 0
-              ? "WIN"
-              : pnlPips < 0
-                ? "LOSS"
-                : "BREAKEVEN",
-        });
+                    stopLossPips: signal.stopLossPips,
+                    takeProfitPips: signal.takeProfitPips,
+                };
+            }
+        }
 
-        openPosition = null;
-      }
+        previousTime = candle.time;
+        processedCandles++;
     }
 
-    // Ask strategy what it wants to do.
-    const signal = strategy.onCandle({
-      candle,
-      index,
-    });
+    return {
+        processedCandles,
 
-    if (signal) {
-      signals.push({
-        time: candle.time,
-        index,
-        ...signal,
-      });
+        firstCandleTime: candles[0].time,
+        lastCandleTime: candles[candles.length - 1].time,
 
-      if (
-        signal.action === "ENTER" &&
-        !openPosition &&
-        !pendingEntry
-      ) {
-        pendingEntry = {
-          side: signal.side,
-          signalTime: candle.time,
+        signals,
+        trades,
 
-          stopLossPips: signal.stopLossPips,
-          takeProfitPips: signal.takeProfitPips,
-        };
-      }
-    }
-
-    previousTime = candle.time;
-    processedCandles++;
-  }
-
-  return {
-    processedCandles,
-
-    firstCandleTime: candles[0].time,
-    lastCandleTime: candles[candles.length - 1].time,
-
-    signals,
-    trades,
-
-    openPosition,
-  };
+        openPosition,
+    };
 }
