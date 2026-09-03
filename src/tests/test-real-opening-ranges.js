@@ -1,8 +1,8 @@
 import "dotenv/config";
 
-import { getCandles } from "./data/candle-reader.js";
-import { createDailyOpeningRange } from "./strategies/daily-opening-range.js";
-import { getUtcDateKey } from "./time/utc-time.js";
+import { getCandles } from "../data/candle-reader.js";
+import { createDailyOpeningRange } from "../strategies/orb/daily-opening-range.js";
+import { getUtcDateKey } from "../time/utc-time.js";
 
 async function main() {
   console.log("Loading real EUR/USD candles from D1...");

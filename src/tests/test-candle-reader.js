@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { getCandles } from "./data/candle-reader.js";
+import { getCandles } from "../data/candle-reader.js";
 
 async function main() {
   const candles = await getCandles({

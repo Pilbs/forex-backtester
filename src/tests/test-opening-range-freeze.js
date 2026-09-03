@@ -1,4 +1,4 @@
-import { createOpeningRange } from "./strategies/opening-range.js";
+import { createOpeningRange } from "../strategies/orb/opening-range.js";
 
 function candle(time, high, low) {
   return {

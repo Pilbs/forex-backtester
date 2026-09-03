@@ -1,6 +1,6 @@
-import { runBacktest } from "./backtest/backtest-runner.js";
-import { summarizeTrades } from "./backtest/backtest-summary.js";
-import { multiTradeStrategy } from "./strategies/multi-trade-strategy.js";
+import { runBacktest } from "../backtest/backtest-runner.js";
+import { summarizeTrades } from "../backtest/backtest-summary.js";
+import { multiTradeStrategy } from "../strategies/multi-trade-strategy.js";
 
 function candle({
   time,

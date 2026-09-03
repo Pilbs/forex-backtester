@@ -1,4 +1,4 @@
-import { createStrategyContext } from "./backtest/strategy-context.js";
+import { createStrategyContext } from "../backtest/strategy-context.js";
 
 const candles = [
   {

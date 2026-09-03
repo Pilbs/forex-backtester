@@ -1,4 +1,4 @@
-import { validateStrategy } from "../strategies/strategy-interface.js";
+import { validateStrategy } from "../strategies/tests/strategy-interface.js";
 import { createStrategyContext } from "./strategy-context.js";
 
 const PIP_SIZE = 0.0001;

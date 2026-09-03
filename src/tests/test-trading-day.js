@@ -1,4 +1,4 @@
-import { isNewTradingDay } from "./time/trading-day.js";
+import { isNewTradingDay } from "../time/trading-day.js";
 
 const firstCandle = Date.parse(
   "2026-08-27T08:00:00Z"

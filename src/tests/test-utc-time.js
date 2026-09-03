@@ -3,7 +3,7 @@ import {
   getUtcHour,
   getUtcMinute,
   getUtcMinutesSinceMidnight,
-} from "./time/utc-time.js";
+} from "../time/utc-time.js";
 
 const time = Date.parse(
   "2026-08-27T08:15:00Z"

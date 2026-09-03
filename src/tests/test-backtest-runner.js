@@ -1,9 +1,9 @@
 import "dotenv/config";
 
-import { getCandles } from "./data/candle-reader.js";
-import { runBacktest } from "./backtest/backtest-runner.js";
-import { summarizeTrades } from "./backtest/backtest-summary.js";
-import { dumbTestStrategy } from "./strategies/dumb-test-strategy.js";
+import { getCandles } from "../data/candle-reader.js";
+import { runBacktest } from "../backtest/backtest-runner.js";
+import { summarizeTrades } from "../backtest/backtest-summary.js";
+import { dumbTestStrategy } from "../strategies/tests/dumb-test-strategy.js";
 
 async function main() {
   const candles = await getCandles({

@@ -1,4 +1,4 @@
-import { createDailyOpeningRange } from "./strategies/daily-opening-range.js";
+import { createDailyOpeningRange } from "../strategies/orb/daily-opening-range.js";
 
 function candle(time, high, low) {
   return {

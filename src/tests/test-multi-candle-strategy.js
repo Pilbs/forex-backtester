@@ -1,5 +1,5 @@
-import { runBacktest } from "./backtest/backtest-runner.js";
-import { threeUpStrategy } from "./strategies/three-up-strategy.js";
+import { runBacktest } from "../backtest/backtest-runner.js";
+import { threeUpStrategy } from "../strategies/three-up-strategy.js";
 
 function makeCandle({
   time,

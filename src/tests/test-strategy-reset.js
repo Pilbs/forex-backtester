@@ -1,4 +1,4 @@
-import { runBacktest } from "./backtest/backtest-runner.js";
+import { runBacktest } from "../backtest/backtest-runner.js";
 
 const candles = [
   {

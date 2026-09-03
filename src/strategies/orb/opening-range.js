@@ -1,4 +1,4 @@
-import { getSessionPhase } from "../time/session-window.js";
+import { getSessionPhase } from "../../time/session-window.js";
 
 export function createOpeningRange({
   startHour,
