@@ -1,14 +1,22 @@
-import { getUtcDateKey } from "../../time/utc-time.js";
-import { createOpeningRange } from "./opening-range.js";
+import {
+  getZonedDateKey,
+} from "../../time/zoned-time.js";
+
+import {
+  createOpeningRange,
+} from "./opening-range.js";
+
 export function createDailyOpeningRange({
   startHour,
   startMinute,
   durationMinutes,
+  timeZone = "UTC",
 }) {
   const openingRange = createOpeningRange({
     startHour,
     startMinute,
     durationMinutes,
+    timeZone,
   });
 
   let currentDateKey = null;
@@ -20,10 +28,18 @@ export function createDailyOpeningRange({
 
   function onCandle(candle) {
     const candleDateKey =
-      getUtcDateKey(candle.time);
+      getZonedDateKey(
+        candle.time,
+        timeZone
+      );
 
-    if (currentDateKey !== candleDateKey) {
-      currentDateKey = candleDateKey;
+    if (
+      currentDateKey !==
+      candleDateKey
+    ) {
+      currentDateKey =
+        candleDateKey;
+
       openingRange.reset();
     }
 

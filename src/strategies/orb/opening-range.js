@@ -1,9 +1,12 @@
-import { getSessionPhase } from "../../time/session-window.js";
+import {
+  getSessionPhase,
+} from "../../time/session-window.js";
 
 export function createOpeningRange({
   startHour,
   startMinute,
   durationMinutes,
+  timeZone = "UTC",
 }) {
   let high = null;
   let low = null;
@@ -18,7 +21,6 @@ export function createOpeningRange({
   }
 
   function onCandle(candle) {
-    // Once complete, nothing can change the range.
     if (complete) {
       return;
     }
@@ -28,6 +30,7 @@ export function createOpeningRange({
       startHour,
       startMinute,
       durationMinutes,
+      timeZone,
     });
 
     if (phase === "BEFORE") {
@@ -35,16 +38,24 @@ export function createOpeningRange({
     }
 
     if (phase === "AFTER") {
-      complete = true;
+      if (candleCount > 0) {
+        complete = true;
+      }
+
       return;
     }
 
-    // IN_SESSION
-    if (high === null || candle.mid.high > high) {
+    if (
+      high === null ||
+      candle.mid.high > high
+    ) {
       high = candle.mid.high;
     }
 
-    if (low === null || candle.mid.low < low) {
+    if (
+      low === null ||
+      candle.mid.low < low
+    ) {
       low = candle.mid.low;
     }
 

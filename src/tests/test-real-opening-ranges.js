@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { getCandles } from "../data/candle-reader.js";
 import { createDailyOpeningRange } from "../strategies/orb/daily-opening-range.js";
-import { getUtcDateKey } from "../time/utc-time.js";
+import { getZonedDateKey } from "../time/zoned-time.js";
 
 async function main() {
   console.log("Loading real EUR/USD candles from D1...");
@@ -15,17 +15,21 @@ async function main() {
   });
 
   console.log(`Loaded ${candles.length} candles`);
-
+  const timeZone = "America/New_York";
   const dailyRange = createDailyOpeningRange({
-    startHour: 12,
+    startHour: 8,
     startMinute: 15,
     durationMinutes: 60,
+    timeZone,
   });
 
   const ranges = [];
 
   for (const candle of candles) {
-    const candleDate = getUtcDateKey(candle.time);
+    const candleDate = getZonedDateKey(
+      candle.time,
+      timeZone
+    );
     const currentState = dailyRange.getState();
 
     // We are about to move into a new day.

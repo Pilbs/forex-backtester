@@ -3,7 +3,7 @@ import "dotenv/config";
 import { getCandles } from "../data/candle-reader.js";
 import { runBacktest } from "../backtest/backtest-runner.js";
 import { summarizeTrades } from "../backtest/backtest-summary.js";
-import { threeUpStrategy } from "../strategies/three-up-strategy.js";
+import { threeUpStrategy } from "../strategies/tests/three-up-strategy.js";
 
 async function main() {
   console.log("Loading real EUR/USD candles from D1...");

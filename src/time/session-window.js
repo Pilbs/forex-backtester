@@ -1,10 +1,13 @@
-import { getUtcMinutesSinceMidnight } from "./utc-time.js";
+import {
+  getZonedMinutesSinceMidnight,
+} from "./zoned-time.js";
 
 export function getSessionPhase({
   time,
   startHour,
   startMinute,
   durationMinutes,
+  timeZone = "UTC",
 }) {
   const startMinutes =
     startHour * 60 + startMinute;
@@ -19,7 +22,10 @@ export function getSessionPhase({
   }
 
   const candleMinutes =
-    getUtcMinutesSinceMidnight(time);
+    getZonedMinutesSinceMidnight(
+      time,
+      timeZone
+    );
 
   if (candleMinutes < startMinutes) {
     return "BEFORE";
