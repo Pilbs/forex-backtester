@@ -17,4 +17,13 @@ export function validateStrategy(strategy) {
       "strategy.reset must be a function"
     );
   }
+
+  if (
+    strategy.name !== undefined &&
+    typeof strategy.name !== "string"
+  ) {
+    throw new Error(
+      "strategy.name must be a string"
+    );
+  }
 }

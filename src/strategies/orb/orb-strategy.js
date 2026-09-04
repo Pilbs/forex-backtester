@@ -77,6 +77,8 @@ export function createOrbStrategy({
   }
 
   return {
+    name: "ORB",
+
     reset,
     onCandle,
   };
