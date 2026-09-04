@@ -89,7 +89,10 @@ export async function insertCandles({
       )
     );
 
-    const results = await queryD1Batch(statements);
+    const results = await queryD1Batch(
+      instrument,
+      statements
+    )
 
     for (const result of results) {
       inserted += result.meta?.changes ?? 0;
@@ -104,6 +107,7 @@ export async function countCandles({
   granularity,
 }) {
   const result = await queryD1(
+    instrument,
     `
       SELECT COUNT(*) AS count
       FROM candles
@@ -133,7 +137,10 @@ export async function insertCandleBatch({
     )
   );
 
-  const results = await queryD1Batch(statements);
+  const results = await queryD1Batch(
+    instrument,
+    statements
+  )
 
   let inserted = 0;
 

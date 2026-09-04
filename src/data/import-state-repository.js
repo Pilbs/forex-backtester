@@ -6,6 +6,7 @@ export async function getImportProgress({
   source = "oanda",
 }) {
   const result = await queryD1(
+    instrument,
     `
       SELECT next_time
       FROM import_progress
@@ -26,6 +27,7 @@ export async function setImportProgress({
   source = "oanda",
 }) {
   await queryD1(
+    instrument,
     `
       INSERT INTO import_progress (
         instrument,
@@ -51,46 +53,5 @@ export async function setImportProgress({
   );
 }
 
-export async function getTodayImportUsage() {
-  const today = new Date().toISOString().slice(0, 10);
 
-  const result = await queryD1(
-    `
-      SELECT rows_inserted
-      FROM import_usage
-      WHERE usage_date = ?
-    `,
-    [today]
-  );
 
-  return result[0]?.results?.[0]?.rows_inserted ?? 0;
-}
-
-export async function addTodayImportUsage(rows) {
-  if (rows <= 0) {
-    return;
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  await queryD1(
-    `
-      INSERT INTO import_usage (
-        usage_date,
-        rows_inserted,
-        updated_at
-      )
-      VALUES (?, ?, ?)
-
-      ON CONFLICT(usage_date)
-      DO UPDATE SET
-        rows_inserted = rows_inserted + excluded.rows_inserted,
-        updated_at = excluded.updated_at
-    `,
-    [
-      today,
-      rows,
-      Date.now(),
-    ]
-  );
-}

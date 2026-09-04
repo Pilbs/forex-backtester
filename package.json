@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js",
     "import-history": "node src/import-history.js",
     "read-test": "node src/tests/test-candle-reader.js",
     "backtest-test": "node src/tests/test-backtest-runner.js",
@@ -25,8 +24,7 @@
     "real-range-test": "node src/tests/test-real-opening-ranges.js",
     "time-zone-test": "node src/tests/test-time-zone.js",
     "real-orb-breakout-test": "node src/tests/test-real-orb-breakouts.js",
-    "real-orb-strategy-test": "node src/tests/test-real-orb-strategy.js",
-    "m5-test": "node src/tests/test-real-m5-aggregation.js"
+    "real-orb-strategy-test": "node src/tests/test-real-orb-strategy.js"
   },
   "keywords": [],
   "author": "",

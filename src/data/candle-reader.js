@@ -89,6 +89,7 @@ export async function getCandles({
 
   while (cursor < toMs) {
     const result = await queryD1(
+      instrument,
       `
         SELECT
           time,
