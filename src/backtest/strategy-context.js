@@ -1,6 +1,8 @@
 export function createStrategyContext({
   candles,
   index,
+  instrument,
+  timeframe,
 }) {
   const candle = candles[index];
 
@@ -44,6 +46,10 @@ export function createStrategyContext({
   return {
     candle,
     index,
+
+    instrument,
+    timeframe,
+
     getCandle,
     getRecentCandles,
   };

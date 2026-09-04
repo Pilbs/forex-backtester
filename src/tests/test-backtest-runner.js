@@ -16,6 +16,9 @@ async function main() {
   const result = runBacktest({
     candles,
     strategy: dumbTestStrategy,
+    pipSize: 0.0001,
+    instrument: "EUR_USD",
+    timeframe: "M1",
   });
 
   console.log("");

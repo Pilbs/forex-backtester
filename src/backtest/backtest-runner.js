@@ -1,12 +1,11 @@
 import { validateStrategy } from "../strategies/strategy-interface.js";
 import { createStrategyContext } from "./strategy-context.js";
 
-const PIP_SIZE = 0.0001;
-
 function calculatePnlPips({
     side,
     entryPrice,
     exitPrice,
+    pipSize,
 }) {
     const priceDifference =
         side === "LONG"
@@ -14,13 +13,16 @@ function calculatePnlPips({
             : entryPrice - exitPrice;
 
     return Number(
-        (priceDifference / PIP_SIZE).toFixed(1)
+        (priceDifference / pipSize).toFixed(1)
     );
 }
 
 export function runBacktest({
     candles,
     strategy,
+    pipSize,
+    instrument,
+    timeframe,
 }) {
     if (!Array.isArray(candles)) {
         throw new Error("candles must be an array");
@@ -33,6 +35,15 @@ export function runBacktest({
     validateStrategy(strategy);
     if (strategy.reset) {
         strategy.reset();
+    }
+
+    if (
+        !Number.isFinite(pipSize) ||
+        pipSize <= 0
+    ) {
+        throw new Error(
+            "pipSize must be a positive number"
+        );
     }
 
     let previousTime = null;
@@ -85,13 +96,13 @@ export function runBacktest({
                     entryPrice -
                     direction *
                     pendingEntry.stopLossPips *
-                    PIP_SIZE,
+                    pipSize,
 
                 takeProfit:
                     entryPrice +
                     direction *
                     pendingEntry.takeProfitPips *
-                    PIP_SIZE,
+                    pipSize,
             };
 
             pendingEntry = null;
@@ -135,11 +146,14 @@ export function runBacktest({
             }
 
             if (exitReason) {
-                const pnlPips = calculatePnlPips({
-                    side: openPosition.side,
-                    entryPrice: openPosition.entryPrice,
-                    exitPrice,
-                });
+                const pnlPips =
+                    calculatePnlPips({
+                        side: openPosition.side,
+                        entryPrice:
+                            openPosition.entryPrice,
+                        exitPrice,
+                        pipSize,
+                    });
 
                 trades.push({
                     ...openPosition,
@@ -165,6 +179,8 @@ export function runBacktest({
         const context = createStrategyContext({
             candles,
             index,
+            instrument,
+            timeframe,
         });
 
         const signal = strategy.onCandle(context);
