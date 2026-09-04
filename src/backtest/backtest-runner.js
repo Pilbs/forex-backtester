@@ -1,5 +1,18 @@
-import { validateStrategy } from "../strategies/strategy-interface.js";
-import { createStrategyContext } from "./strategy-context.js";
+import {
+    validateStrategy,
+} from "../strategies/strategy-interface.js";
+
+import {
+    validateTradeIntent,
+} from "../strategies/trade-intent.js";
+
+import {
+    createStrategyContext,
+} from "./strategy-context.js";
+
+import {
+    getTimeframeDurationMs,
+} from "../market/timeframe.js";
 
 function calculatePnlPips({
     side,
@@ -13,29 +26,118 @@ function calculatePnlPips({
             : entryPrice - exitPrice;
 
     return Number(
-        (priceDifference / pipSize).toFixed(1)
+        (
+            priceDifference /
+            pipSize
+        ).toFixed(1)
     );
 }
 
-export function runBacktest({
-    candles,
-    strategy,
+function resolveLevel({
+    level,
+    side,
+    entryPrice,
     pipSize,
-    instrument,
-    timeframe,
+    purpose,
 }) {
+    if (level.type === "PRICE") {
+        return level.value;
+    }
+
+    const direction =
+        side === "LONG"
+            ? 1
+            : -1;
+
+    const distance =
+        level.value * pipSize;
+
+    if (purpose === "STOP_LOSS") {
+        return (
+            entryPrice -
+            direction * distance
+        );
+    }
+
+    if (purpose === "TAKE_PROFIT") {
+        return (
+            entryPrice +
+            direction * distance
+        );
+    }
+
+    throw new Error(
+        `Unknown level purpose: ${purpose}`
+    );
+}
+
+function validateCandles(
+    candles,
+    name
+) {
     if (!Array.isArray(candles)) {
-        throw new Error("candles must be an array");
+        throw new Error(
+            `${name} must be an array`
+        );
     }
 
     if (candles.length === 0) {
-        throw new Error("No candles supplied to backtest");
+        throw new Error(
+            `No ${name} supplied to backtest`
+        );
     }
 
-    validateStrategy(strategy);
-    if (strategy.reset) {
-        strategy.reset();
+    let previousTime = null;
+
+    for (const candle of candles) {
+        if (
+            !Number.isFinite(
+                candle.time
+            )
+        ) {
+            throw new Error(
+                `${name} contains an invalid time`
+            );
+        }
+
+        if (
+            previousTime !== null &&
+            candle.time <= previousTime
+        ) {
+            throw new Error(
+                `${name} are not chronological at ` +
+                new Date(
+                    candle.time
+                ).toISOString()
+            );
+        }
+
+        previousTime =
+            candle.time;
     }
+}
+
+export function runBacktest({
+    strategyCandles,
+    executionCandles,
+
+    strategy,
+
+    pipSize,
+
+    instrument,
+    strategyTimeframe,
+    executionTimeframe,
+}) {
+    validateCandles(
+        strategyCandles,
+        "strategyCandles"
+    );
+
+    validateCandles(
+        executionCandles,
+        "executionCandles"
+    );
 
     if (
         !Number.isFinite(pipSize) ||
@@ -46,8 +148,18 @@ export function runBacktest({
         );
     }
 
-    let previousTime = null;
-    let processedCandles = 0;
+    validateStrategy(strategy);
+
+    if (strategy.reset) {
+        strategy.reset();
+    }
+
+    const strategyDurationMs =
+        getTimeframeDurationMs(
+            strategyTimeframe
+        );
+
+    let strategyIndex = 0;
 
     let pendingEntry = null;
     let openPosition = null;
@@ -55,110 +167,281 @@ export function runBacktest({
     const signals = [];
     const trades = [];
 
-    for (let index = 0; index < candles.length; index++) {
-        const candle = candles[index];
+    for (
+        let executionIndex = 0;
+        executionIndex <
+        executionCandles.length;
+        executionIndex++
+    ) {
+        const executionCandle =
+            executionCandles[
+            executionIndex
+            ];
 
-        if (!Number.isFinite(candle.time)) {
-            throw new Error("Candle has invalid time");
-        }
-
-        if (
-            previousTime !== null &&
-            candle.time <= previousTime
+        /*
+          Make completed strategy candles
+          available to the strategy.
+    
+          Example:
+    
+          M5 candle starts 09:15
+          M5 candle completes 09:20
+    
+          It therefore becomes visible when
+          execution time reaches 09:20.
+        */
+        while (
+            strategyIndex <
+            strategyCandles.length
         ) {
-            throw new Error(
-                `Candles are not chronological at ${new Date(
-                    candle.time
-                ).toISOString()}`
-            );
+            const strategyCandle =
+                strategyCandles[
+                strategyIndex
+                ];
+
+            const strategyCloseTime =
+                strategyCandle.time +
+                strategyDurationMs;
+
+            if (
+                strategyCloseTime >
+                executionCandle.time
+            ) {
+                break;
+            }
+
+            const context =
+                createStrategyContext({
+                    candles:
+                        strategyCandles,
+
+                    index:
+                        strategyIndex,
+
+                    instrument,
+
+                    timeframe:
+                        strategyTimeframe,
+                });
+
+            const signal =
+                strategy.onCandle(
+                    context
+                );
+
+            if (signal) {
+                validateTradeIntent(signal);
+                signals.push({
+                    /*
+                      time = source strategy
+                      candle's start time.
+          
+                      decisionTime = when that
+                      candle became complete.
+                    */
+                    time:
+                        strategyCandle.time,
+
+                    decisionTime:
+                        strategyCloseTime,
+
+                    index:
+                        strategyIndex,
+
+                    ...signal,
+                });
+
+                if (
+                    signal.action ===
+                    "ENTER" &&
+                    !openPosition &&
+                    !pendingEntry
+                ) {
+                    pendingEntry = {
+                        side:
+                            signal.side,
+
+                        signalTime:
+                            strategyCandle.time,
+
+                        decisionTime:
+                            strategyCloseTime,
+
+                        stopLoss:
+                            signal.stopLoss,
+
+                        takeProfit:
+                            signal.takeProfit,
+                    };
+                }
+            }
+
+            strategyIndex++;
         }
 
-        // Execute pending entry at this candle's open.
-        if (pendingEntry && !openPosition) {
+        /*
+          Any signal available at this
+          execution candle can enter at
+          this candle's open.
+        */
+        if (
+            pendingEntry &&
+            !openPosition
+        ) {
             const entryPrice =
-                pendingEntry.side === "LONG"
-                    ? candle.ask.open
-                    : candle.bid.open;
-
-            const direction =
-                pendingEntry.side === "LONG"
-                    ? 1
-                    : -1;
+                pendingEntry.side ===
+                    "LONG"
+                    ? executionCandle
+                        .ask.open
+                    : executionCandle
+                        .bid.open;
 
             openPosition = {
-                side: pendingEntry.side,
+                side:
+                    pendingEntry.side,
 
-                signalTime: pendingEntry.signalTime,
-                entryTime: candle.time,
+                signalTime:
+                    pendingEntry.signalTime,
+
+                decisionTime:
+                    pendingEntry.decisionTime,
+
+                entryTime:
+                    executionCandle.time,
+
                 entryPrice,
 
                 stopLoss:
-                    entryPrice -
-                    direction *
-                    pendingEntry.stopLossPips *
-                    pipSize,
+                    resolveLevel({
+                        level:
+                            pendingEntry.stopLoss,
+
+                        side:
+                            pendingEntry.side,
+
+                        entryPrice,
+                        pipSize,
+
+                        purpose:
+                            "STOP_LOSS",
+                    }),
 
                 takeProfit:
-                    entryPrice +
-                    direction *
-                    pendingEntry.takeProfitPips *
-                    pipSize,
+                    resolveLevel({
+                        level:
+                            pendingEntry.takeProfit,
+
+                        side:
+                            pendingEntry.side,
+
+                        entryPrice,
+                        pipSize,
+
+                        purpose:
+                            "TAKE_PROFIT",
+                    }),
             };
 
             pendingEntry = null;
         }
 
-        // Check SL / TP.
+        /*
+          SL / TP are now checked against
+          the execution timeframe only.
+        */
         if (openPosition) {
             let exitReason = null;
             let exitPrice = null;
 
-            if (openPosition.side === "LONG") {
+            if (
+                openPosition.side ===
+                "LONG"
+            ) {
                 const stopHit =
-                    candle.bid.low <= openPosition.stopLoss;
+                    executionCandle
+                        .bid.low <=
+                    openPosition.stopLoss;
 
                 const takeProfitHit =
-                    candle.bid.high >= openPosition.takeProfit;
+                    executionCandle
+                        .bid.high >=
+                    openPosition.takeProfit;
 
+                /*
+                  Conservative behaviour:
+                  if both occurred within the
+                  same execution candle, assume
+                  stop happened first.
+                */
                 if (stopHit) {
-                    exitReason = "STOP_LOSS";
-                    exitPrice = openPosition.stopLoss;
-                } else if (takeProfitHit) {
-                    exitReason = "TAKE_PROFIT";
-                    exitPrice = openPosition.takeProfit;
+                    exitReason =
+                        "STOP_LOSS";
+
+                    exitPrice =
+                        openPosition.stopLoss;
+                } else if (
+                    takeProfitHit
+                ) {
+                    exitReason =
+                        "TAKE_PROFIT";
+
+                    exitPrice =
+                        openPosition.takeProfit;
                 }
             }
 
-            if (openPosition.side === "SHORT") {
+            if (
+                openPosition.side ===
+                "SHORT"
+            ) {
                 const stopHit =
-                    candle.ask.high >= openPosition.stopLoss;
+                    executionCandle
+                        .ask.high >=
+                    openPosition.stopLoss;
 
                 const takeProfitHit =
-                    candle.ask.low <= openPosition.takeProfit;
+                    executionCandle
+                        .ask.low <=
+                    openPosition.takeProfit;
 
                 if (stopHit) {
-                    exitReason = "STOP_LOSS";
-                    exitPrice = openPosition.stopLoss;
-                } else if (takeProfitHit) {
-                    exitReason = "TAKE_PROFIT";
-                    exitPrice = openPosition.takeProfit;
+                    exitReason =
+                        "STOP_LOSS";
+
+                    exitPrice =
+                        openPosition.stopLoss;
+                } else if (
+                    takeProfitHit
+                ) {
+                    exitReason =
+                        "TAKE_PROFIT";
+
+                    exitPrice =
+                        openPosition.takeProfit;
                 }
             }
 
             if (exitReason) {
                 const pnlPips =
                     calculatePnlPips({
-                        side: openPosition.side,
+                        side:
+                            openPosition.side,
+
                         entryPrice:
-                            openPosition.entryPrice,
+                            openPosition
+                                .entryPrice,
+
                         exitPrice,
+
                         pipSize,
                     });
 
                 trades.push({
                     ...openPosition,
 
-                    exitTime: candle.time,
+                    exitTime:
+                        executionCandle.time,
+
                     exitPrice,
                     exitReason,
 
@@ -175,51 +458,19 @@ export function runBacktest({
                 openPosition = null;
             }
         }
-
-        const context = createStrategyContext({
-            candles,
-            index,
-            instrument,
-            timeframe,
-        });
-
-        const signal = strategy.onCandle(context);
-
-        if (signal) {
-            signals.push({
-                time: candle.time,
-                index,
-                ...signal,
-            });
-
-            if (
-                signal.action === "ENTER" &&
-                !openPosition &&
-                !pendingEntry
-            ) {
-                pendingEntry = {
-                    side: signal.side,
-                    signalTime: candle.time,
-
-                    stopLossPips: signal.stopLossPips,
-                    takeProfitPips: signal.takeProfitPips,
-                };
-            }
-        }
-
-        previousTime = candle.time;
-        processedCandles++;
     }
 
     return {
-        processedCandles,
+        processedStrategyCandles:
+            strategyIndex,
 
-        firstCandleTime: candles[0].time,
-        lastCandleTime: candles[candles.length - 1].time,
+        processedExecutionCandles:
+            executionCandles.length,
 
         signals,
         trades,
 
         openPosition,
+        pendingEntry,
     };
 }

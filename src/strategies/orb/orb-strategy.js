@@ -61,8 +61,15 @@ export function createOrbStrategy({
           ? "LONG"
           : "SHORT",
 
-      stopLossPips,
-      takeProfitPips,
+      stopLoss: {
+        type: "PIPS",
+        value: stopLossPips,
+      },
+
+      takeProfit: {
+        type: "PIPS",
+        value: takeProfitPips,
+      },
 
       metadata: {
         strategy: "ORB",

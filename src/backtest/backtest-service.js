@@ -49,22 +49,27 @@ export async function runBacktestJob({
         );
     }
 
-    /*
-      Multi-timeframe execution is the next
-      capability we will add.
-  
-      For now we explicitly prevent the engine
-      pretending it supports something that
-      it doesn't yet support.
-    */
-    if (
-        executionTimeframe !==
-        strategyTimeframe
-    ) {
-        throw new Error(
-            "Separate strategy and execution timeframes are not supported yet"
-        );
-    }
+    const strategyCandles =
+        await getCandles({
+            instrument,
+            granularity:
+                strategyTimeframe,
+            from,
+            to,
+        });
+
+    const executionCandles =
+        executionTimeframe ===
+            strategyTimeframe
+            ? strategyCandles
+            : await getCandles({
+                instrument,
+                granularity:
+                    executionTimeframe,
+                from,
+                to,
+            });
+
 
     const candles =
         await getCandles({
@@ -82,15 +87,18 @@ export async function runBacktestJob({
 
     const result =
         runBacktest({
-            candles,
+            strategyCandles,
+            executionCandles,
+
             strategy,
 
             pipSize:
                 instrumentMetadata.pipSize,
 
             instrument,
-            timeframe:
-                strategyTimeframe,
+
+            strategyTimeframe,
+            executionTimeframe,
         });
 
     const summary =
@@ -117,15 +125,28 @@ export async function runBacktestJob({
 
 
         data: {
-            candleCount:
-                candles.length,
+            strategyCandleCount:
+                strategyCandles.length,
 
-            firstCandleTime:
-                candles[0]?.time ?? null,
+            executionCandleCount:
+                executionCandles.length,
 
-            lastCandleTime:
-                candles[
-                    candles.length - 1
+            firstStrategyCandleTime:
+                strategyCandles[0]
+                    ?.time ?? null,
+
+            lastStrategyCandleTime:
+                strategyCandles[
+                    strategyCandles.length - 1
+                ]?.time ?? null,
+
+            firstExecutionCandleTime:
+                executionCandles[0]
+                    ?.time ?? null,
+
+            lastExecutionCandleTime:
+                executionCandles[
+                    executionCandles.length - 1
                 ]?.time ?? null,
         },
 

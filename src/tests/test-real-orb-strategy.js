@@ -61,7 +61,15 @@ async function main() {
 
       candles:
         result.data
-          .candleCount,
+          .strategyCandleCount,
+
+      strategyCandles:
+        result.data
+          .strategyCandleCount,
+
+      executionCandles:
+        result.data
+          .executionCandleCount,
 
       trades:
         result.summary
