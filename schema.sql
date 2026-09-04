@@ -28,3 +28,19 @@ CREATE TABLE IF NOT EXISTS candles (
         time
     )
 ) WITHOUT ROWID;
+
+
+CREATE TABLE IF NOT EXISTS import_progress (
+    instrument TEXT NOT NULL,
+    granularity TEXT NOT NULL,
+    source TEXT NOT NULL,
+
+    next_time INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+
+    PRIMARY KEY (
+        instrument,
+        granularity,
+        source
+    )
+) WITHOUT ROWID;

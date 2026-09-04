@@ -1,39 +1,18 @@
 {
   "name": "forex-backtester",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "import-history": "node src/import-history.js",
-    "read-test": "node src/tests/test-candle-reader.js",
-    "backtest-test": "node src/tests/test-backtest-runner.js",
-    "loss-test": "node src/tests/test-loss-trade.js",
-    "multi-trade-test": "node src/tests/test-multiple-trades.js",
-    "context-test": "node src/tests/test-strategy-context.js",
-    "reset-test": "node src/tests/test-strategy-reset.js",
-    "multi-candle-test": "node src/tests/test-multi-candle-strategy.js",
-    "real-strategy-test": "node src/tests/test-real-db-strategy.js",
-    "repeat-test": "node src/tests/test-repeatability.js",
-    "utc-time-test": "node src/tests/test-utc-time.js",
-    "trading-day-test": "node src/tests/test-trading-day.js",
-    "session-test": "node src/tests/test-session-window.js",
-    "opening-range-test": "node src/tests/test-opening-range.js",
-    "opening-range-freeze-test": "node src/tests/test-opening-range-freeze.js",
-    "daily-range-test": "node src/tests/test-daily-opening-range.js",
-    "real-range-test": "node src/tests/test-real-opening-ranges.js",
-    "time-zone-test": "node src/tests/test-time-zone.js",
-    "real-orb-breakout-test": "node src/tests/test-real-orb-breakouts.js",
-    "real-orb-strategy-test": "node src/tests/test-real-orb-strategy.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Forex strategy backtesting and research engine",
   "type": "module",
+  "scripts": {
+    "import-history": "node src/import-history.js",
+
+    "test": "node src/tests/test-strategy-context.js && node src/tests/test-session-window.js && node src/tests/test-time-zone.js && node src/tests/test-opening-range.js && node src/tests/test-opening-range-freeze.js && node src/tests/test-daily-opening-range.js && node src/tests/test-execution-timeframe.js",
+
+    "test:data": "node src/tests/test-candle-reader.js",
+    "test:orb": "node src/tests/test-real-orb-strategy.js"
+  },
+  "license": "ISC",
   "dependencies": {
     "dotenv": "^17.4.2"
-  },
-  "devDependencies": {
-    "wrangler": "^4.128.0"
   }
 }

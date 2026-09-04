@@ -71,15 +71,6 @@ export async function runBacktestJob({
             });
 
 
-    const candles =
-        await getCandles({
-            instrument,
-            granularity:
-                strategyTimeframe,
-            from,
-            to,
-        });
-
     const instrumentMetadata =
         getInstrumentMetadata(
             instrument

@@ -59,10 +59,6 @@ async function main() {
         result.config
           .executionTimeframe,
 
-      candles:
-        result.data
-          .strategyCandleCount,
-
       strategyCandles:
         result.data
           .strategyCandleCount,
