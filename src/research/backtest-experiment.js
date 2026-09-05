@@ -255,7 +255,7 @@ export async function runBacktestExperiment({
 
     return {
         ...sweepResult,
-        schemaVersion: 4,
+        schemaVersion: 5,
 
         experiment: {
             ...sweepResult.experiment,

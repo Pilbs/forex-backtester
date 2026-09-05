@@ -38,6 +38,17 @@ function createDetailCounts(backtestResult) {
     };
 }
 
+function createReasonCounts(items, propertyName) {
+    const counts = {};
+
+    for (const item of items ?? []) {
+        const reason = item?.[propertyName] ?? "UNKNOWN";
+        counts[reason] = (counts[reason] ?? 0) + 1;
+    }
+
+    return counts;
+}
+
 export async function runParameterSweep({
     strategyDefinition,
     baseStrategyConfig = {},
@@ -110,6 +121,10 @@ export async function runParameterSweep({
                 monthlySummary: summarizeTradesByMonth(trades),
 
                 detailCounts: createDetailCounts(backtestResult),
+                rejectionReasons: createReasonCounts(
+                    backtestResult.rejectedOrders,
+                    "reason"
+                ),
                 dataset: backtestResult.data ?? null,
                 backtestConfig: backtestResult.config ?? null,
 

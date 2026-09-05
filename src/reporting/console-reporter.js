@@ -2,6 +2,18 @@ function formatValue(value) {
     return value === null || value === undefined ? "-" : value;
 }
 
+function formatReasonCounts(reasonCounts) {
+    const entries = Object.entries(reasonCounts ?? {});
+
+    if (entries.length === 0) {
+        return "-";
+    }
+
+    return entries
+        .map(([reason, count]) => `${reason}:${count}`)
+        .join(", ");
+}
+
 function getSortValue(run, sortBy, sortDirection) {
     const value = run.summary?.[sortBy];
 
@@ -120,6 +132,7 @@ export function printParameterSweepResult(result, {
             maxDrawdownPct: formatValue(run.summary.maxDrawdownPercent),
             expectancyPips: run.summary.expectancyPips,
             rejectedOrders: run.summary.rejectedOrderCount ?? 0,
+            rejectionReasons: formatReasonCounts(run.rejectionReasons),
             riskEvents: run.summary.riskEventCount ?? 0,
             halted: run.summary.halted ?? false,
             elapsedMs: run.elapsedMs,

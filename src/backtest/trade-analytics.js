@@ -2,6 +2,22 @@ function round(value, decimals = 2) {
     return Number(value.toFixed(decimals));
 }
 
+function getKnownExitPnlValues(trade) {
+    const values = [];
+
+    for (const fill of trade.exitFills ?? []) {
+        if (Number.isFinite(fill.pnlPips)) {
+            values.push(fill.pnlPips);
+        }
+    }
+
+    if (Number.isFinite(trade.pnlPips)) {
+        values.push(trade.pnlPips);
+    }
+
+    return values;
+}
+
 function calculateExcursions(trade, pipSize) {
     if (
         !Number.isFinite(trade.entryPrice) ||
@@ -14,35 +30,45 @@ function calculateExcursions(trade, pipSize) {
         };
     }
 
+    let pathMfePips;
+    let pathMaePips;
+
     if (trade.side === "LONG") {
+        pathMfePips = Math.max(
+            0,
+            (trade.highestPrice - trade.entryPrice) / pipSize
+        );
+        pathMaePips = Math.max(
+            0,
+            (trade.entryPrice - trade.lowestPrice) / pipSize
+        );
+    } else if (trade.side === "SHORT") {
+        pathMfePips = Math.max(
+            0,
+            (trade.entryPrice - trade.lowestPrice) / pipSize
+        );
+        pathMaePips = Math.max(
+            0,
+            (trade.highestPrice - trade.entryPrice) / pipSize
+        );
+    } else {
         return {
-            mfePips: round(
-                Math.max(0, (trade.highestPrice - trade.entryPrice) / pipSize),
-                2
-            ),
-            maePips: round(
-                Math.max(0, (trade.entryPrice - trade.lowestPrice) / pipSize),
-                2
-            ),
+            mfePips: null,
+            maePips: null,
         };
     }
 
-    if (trade.side === "SHORT") {
-        return {
-            mfePips: round(
-                Math.max(0, (trade.entryPrice - trade.lowestPrice) / pipSize),
-                2
-            ),
-            maePips: round(
-                Math.max(0, (trade.highestPrice - trade.entryPrice) / pipSize),
-                2
-            ),
-        };
-    }
+    const knownExitPnlValues = getKnownExitPnlValues(trade);
+    const exitMfePips = knownExitPnlValues.length === 0
+        ? 0
+        : Math.max(0, ...knownExitPnlValues);
+    const exitMaePips = knownExitPnlValues.length === 0
+        ? 0
+        : Math.max(0, ...knownExitPnlValues.map((value) => -value));
 
     return {
-        mfePips: null,
-        maePips: null,
+        mfePips: round(Math.max(pathMfePips, exitMfePips), 2),
+        maePips: round(Math.max(pathMaePips, exitMaePips), 2),
     };
 }
 
@@ -84,7 +110,11 @@ export function enrichTradeAnalytics(trade, pipSize) {
 
         excursionPriceBasis: mfePips === null
             ? null
-            : "MID_OHLC",
+            : "MID_OHLC_PLUS_EXECUTION_EXITS",
+
+        excursionMethod: mfePips === null
+            ? null
+            : "CAUSAL_CONSERVATIVE",
     };
 }
 

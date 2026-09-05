@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+
 import { runParameterSweep } from "../research/parameter-sweep.js";
 
 let strategyInstances = 0;
@@ -53,6 +55,7 @@ const result = await runParameterSweep({
         });
 
         const pnlPips = strategyConfig.takeProfitPips - strategyConfig.stopLossPips;
+
         return {
             config: {
                 instrument: "TEST",
@@ -63,7 +66,19 @@ const result = await runParameterSweep({
             summary: {
                 totalTrades: 1,
                 totalPnlPips: pnlPips,
+                rejectedOrderCount: 3,
             },
+            rejectedOrders: [
+                {
+                    reason: "MAX_OPEN_TRADES",
+                },
+                {
+                    reason: "MAX_OPEN_TRADES",
+                },
+                {
+                    reason: "INSUFFICIENT_MARGIN",
+                },
+            ],
             trades: [{
                 side: "LONG",
                 entryTime: Date.parse("2025-01-01T00:00:00Z"),
@@ -77,7 +92,10 @@ if (result.runs.length !== 4 || result.totals.completedRuns !== 4) {
     throw new Error("Sweep did not execute all four parameter combinations");
 }
 
-if (strategyInstances !== 4 || new Set(receivedConfigs.map((config) => config.instanceNumber)).size !== 4) {
+if (
+    strategyInstances !== 4 ||
+    new Set(receivedConfigs.map((config) => config.instanceNumber)).size !== 4
+) {
     throw new Error("Each run did not receive a fresh strategy instance");
 }
 
@@ -87,6 +105,13 @@ if (result.runs.some((run) => Object.hasOwn(run, "trades"))) {
 
 if (result.runs.some((run) => run.yearlySummary.length !== 1)) {
     throw new Error("Yearly summaries were not captured");
+}
+
+for (const run of result.runs) {
+    assert.deepEqual(run.rejectionReasons, {
+        MAX_OPEN_TRADES: 2,
+        INSUFFICIENT_MARGIN: 1,
+    });
 }
 
 JSON.stringify(result);

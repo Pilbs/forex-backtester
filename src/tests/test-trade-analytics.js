@@ -20,7 +20,14 @@ assert.equal(longTrade.holdingMinutes, 45);
 assert.equal(longTrade.mfePips, 25);
 assert.equal(longTrade.maePips, 10);
 assert.equal(longTrade.wasEverProfitable, true);
-assert.equal(longTrade.excursionPriceBasis, "MID_OHLC");
+assert.equal(
+    longTrade.excursionPriceBasis,
+    "MID_OHLC_PLUS_EXECUTION_EXITS"
+);
+assert.equal(
+    longTrade.excursionMethod,
+    "CAUSAL_CONSERVATIVE"
+);
 
 const shortTrade = enrichTradeAnalytics({
     side: "SHORT",
@@ -36,6 +43,22 @@ const shortTrade = enrichTradeAnalytics({
 assert.equal(shortTrade.holdingMinutes, 30);
 assert.equal(shortTrade.mfePips, 20);
 assert.equal(shortTrade.maePips, 15);
+
+const knownExitTrade = enrichTradeAnalytics({
+    side: "LONG",
+    entryTime: 0,
+    exitTime: 60000,
+    entryPrice: 1.1000,
+    highestPrice: 1.1000,
+    lowestPrice: 1.1000,
+    pnlPips: 10,
+    exitFills: [{
+        pnlPips: 10,
+    }],
+}, 0.0001);
+
+assert.equal(knownExitTrade.mfePips, 10);
+assert.equal(knownExitTrade.maePips, 0);
 
 const trades = enrichTradesAnalytics([
     {

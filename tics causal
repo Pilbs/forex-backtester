@@ -1,0 +1,23 @@
+warning: in the working copy of 'docs/human-backtesting-v1.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/backtest/backtest-runner.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/backtest/trade-analytics.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/experiments/orb-smoke-sweep.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/reporting/console-reporter.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/research/backtest-experiment.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/research/parameter-sweep.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/tests/test-backtest-experiment.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/tests/test-parameter-sweep.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/tests/test-trade-analytics.js', LF will be replaced by CRLF the next time Git touches it
+ docs/human-backtesting-v1.md          |  7 [32m+++[m[31m-[m
+ package.json                          |  2 [32m+[m[31m-[m
+ src/backtest/backtest-runner.js       | 28 [32m+++++++++[m[31m----[m
+ src/backtest/trade-analytics.js       | 76 [32m++++++++++++++++++++++++[m[31m-----------[m
+ src/experiments/orb-smoke-sweep.js    | 22 [32m++[m[31m--------[m
+ src/reporting/console-reporter.js     | 13 [32m++++++[m
+ src/research/backtest-experiment.js   |  2 [32m+[m[31m-[m
+ src/research/parameter-sweep.js       | 15 [32m+++++++[m
+ src/tests/test-backtest-experiment.js |  1 [32m+[m
+ src/tests/test-parameter-sweep.js     | 27 [32m++++++++++++[m[31m-[m
+ src/tests/test-trade-analytics.js     | 25 [32m+++++++++++[m[31m-[m
+ 11 files changed, 165 insertions(+), 53 deletions(-)

@@ -535,8 +535,10 @@ export function runBacktest({
         delete completedTrade.remainingUnits;
         delete completedTrade.realizedPnlAccount;
         delete completedTrade.exitCommissionAccount;
+        delete completedTrade.unrealizedPips;
         delete completedTrade.riskEligibleExecutionIndex;
         delete completedTrade.entryExecutionIndex;
+        delete completedTrade.entryFillTiming;
 
         trades.push(completedTrade);
     }
@@ -725,8 +727,8 @@ export function runBacktest({
             remainingUnits: units,
             stopLoss,
             takeProfit,
-            highestPrice: candle.mid.open,
-            lowestPrice: candle.mid.open,
+            highestPrice: entryPrice,
+            lowestPrice: entryPrice,
             barsHeld: 0,
             unrealizedPips: 0,
             metadata: order.metadata,
@@ -735,6 +737,7 @@ export function runBacktest({
             realizedPnlAccount: 0,
             exitFills: [],
             entryExecutionIndex: executionIndex,
+            entryFillTiming: fillTiming,
             riskEligibleExecutionIndex: fillTiming === "INTRABAR"
                 ? executionIndex + 1
                 : executionIndex,
@@ -1155,13 +1158,23 @@ export function runBacktest({
         removeFinishedPendingOrders();
     }
 
-    function updateOpenTradeMarketState(candle, executionIndex) {
+    function advanceOpenTradeBarCount(executionIndex) {
         for (const trade of openTrades) {
-            trade.highestPrice = Math.max(trade.highestPrice, candle.mid.high);
-            trade.lowestPrice = Math.min(trade.lowestPrice, candle.mid.low);
-
             if (executionIndex >= trade.entryExecutionIndex) {
                 trade.barsHeld++;
+            }
+        }
+    }
+
+    function updateOpenTradeMarketState(candle, executionIndex) {
+        for (const trade of openTrades) {
+            const canUseFullCandleExtrema =
+                executionIndex > trade.entryExecutionIndex ||
+                trade.entryFillTiming !== "INTRABAR";
+
+            if (canUseFullCandleExtrema) {
+                trade.highestPrice = Math.max(trade.highestPrice, candle.mid.high);
+                trade.lowestPrice = Math.min(trade.lowestPrice, candle.mid.low);
             }
 
             const markPrice = trade.side === "LONG" ? candle.bid.close : candle.ask.close;
@@ -1374,8 +1387,9 @@ export function runBacktest({
         }
 
         processPendingOrders(executionCandle, executionIndex);
-        updateOpenTradeMarketState(executionCandle, executionIndex);
+        advanceOpenTradeBarCount(executionIndex);
         evaluateProtectiveExits(executionCandle, executionIndex);
+        updateOpenTradeMarketState(executionCandle, executionIndex);
         enforceAccountRisk(executionCandle);
 
         if (captureEquityCurve) {

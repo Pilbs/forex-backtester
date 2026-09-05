@@ -93,6 +93,8 @@ Current rules:
 - If stop and target are both touched in the same execution candle, `sameCandleConflict` decides which is assumed first.
 - The default is `STOP_FIRST`.
 - An entry filled intrabar does not allow its protective stop/target to use that same candle's entire OHLC range. Protection becomes eligible on the next execution candle.
+- Trade MFE/MAE does not use the full entry candle for an intrabar entry because part of that candle may have happened before the fill.
+- A trade that exits intrabar does not use the full exit candle for MFE/MAE because part of that candle may have happened after the exit.
 - A stop-limit order activated intrabar is not also filled from the unknowable earlier/later movement of that same candle. Its limit becomes fill-eligible on a later execution candle.
 - Pending orders still open at the end of the test are cancelled.
 - Open trades can optionally be closed at the final execution candle.
@@ -116,7 +118,7 @@ MFE is maximum favourable excursion.
 
 MAE is maximum adverse excursion.
 
-The current excursion calculation uses the recorded MID OHLC extrema against the actual execution entry price. It is therefore a bar-data research approximation, not tick-perfect excursion measurement.
+Excursion diagnostics are deliberately causal and conservative. They use MID OHLC extrema only from candle ranges that are fully knowable while the trade is open, plus known execution exit P&L points. Intrabar entry candles and post-exit movement are not allowed to leak into MFE/MAE. The result is still a bar-data research approximation rather than tick-perfect excursion measurement.
 
 This is still useful for generic research questions such as:
 
@@ -172,7 +174,10 @@ abort signals
 fresh strategy instance per run
 optional trade detail
 optional full run detail
+aggregated rejection reasons per run
 ```
+
+The compact experiment result always retains rejection-reason counts even when full order details are disabled.
 
 The research engine knows only technical limits. It contains no customer-plan, billing or pricing logic.
 

@@ -1,22 +1,9 @@
 import "dotenv/config";
 
-import {
-    printBacktestExperimentPlan,
-    printBacktestExperimentResult,
-} from "../reporting/console-reporter.js";
-
-import {
-    writeExperimentResult,
-} from "../reporting/json-result-writer.js";
-
-import {
-    planBacktestExperiment,
-    runBacktestExperiment,
-} from "../research/backtest-experiment.js";
-
-import {
-    orbDefinition,
-} from "../strategies/orb/orb-definition.js";
+import {    printBacktestExperimentPlan,    printBacktestExperimentResult,} from "../reporting/console-reporter.js";
+import {    writeExperimentResult,} from "../reporting/json-result-writer.js";
+import {    planBacktestExperiment,    runBacktestExperiment,} from "../research/backtest-experiment.js";
+import {    orbDefinition,} from "../strategies/orb/orb-definition.js";
 
 const EXPERIMENT_ID = "human-v1-orb-smoke";
 
@@ -37,7 +24,6 @@ async function main() {
             currency: "USD",
             leverage: 30,
             positionMode: "HEDGING",
-
             defaultSizing: {
                 type: "RISK_PERCENT",
                 value: 1,
