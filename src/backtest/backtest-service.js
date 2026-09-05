@@ -1,7 +1,7 @@
 import { getCandles } from "../data/candle-reader.js";
 import { getInstrumentMetadata } from "../market/instrument-metadata.js";
 import { runBacktest } from "./backtest-runner.js";
-import { summarizeTrades } from "./backtest-summary.js";
+import { summarizeBacktestResult } from "./backtest-summary.js";
 
 function validateBacktestRequest({
     instrument,
@@ -32,12 +32,14 @@ export async function loadBacktestDataset({
     });
 
     const instrumentMetadata = getInstrumentMetadata(instrument);
+
     const strategyCandles = await getCandles({
         instrument,
         granularity: strategyTimeframe,
         from,
         to,
     });
+
     const executionCandles = executionTimeframe === strategyTimeframe
         ? strategyCandles
         : await getCandles({
@@ -58,6 +60,7 @@ export async function loadBacktestDataset({
             from,
             to,
         },
+
         data: {
             strategyCandleCount: strategyCandles.length,
             executionCandleCount: executionCandles.length,
@@ -66,6 +69,7 @@ export async function loadBacktestDataset({
             firstExecutionCandleTime: executionCandles[0]?.time ?? null,
             lastExecutionCandleTime: executionCandles.at(-1)?.time ?? null,
         },
+
         strategyCandles,
         executionCandles,
     };
@@ -97,7 +101,7 @@ export function runBacktestWithDataset({
         to,
     } = dataset.config ?? {};
 
-    const result = runBacktest({
+    const engineResult = runBacktest({
         strategyCandles: dataset.strategyCandles,
         executionCandles: dataset.executionCandles,
         strategy,
@@ -110,7 +114,7 @@ export function runBacktestWithDataset({
         captureEquityCurve,
     });
 
-    return {
+    const result = {
         config: {
             instrument,
             strategy: strategy.name ?? null,
@@ -121,23 +125,28 @@ export function runBacktestWithDataset({
             quoteCurrency,
             from,
             to,
-            account: result.accountConfig,
-            execution: result.executionPolicy,
+            account: engineResult.accountConfig,
+            execution: engineResult.executionPolicy,
         },
+
         data: dataset.data,
-        summary: summarizeTrades(result.trades),
-        account: result.account,
-        signals: result.signals,
-        orders: result.orders,
-        fills: result.fills,
-        rejectedOrders: result.rejectedOrders,
-        trades: result.trades,
-        openTrades: result.openTrades,
-        pendingOrders: result.pendingOrders,
-        riskEvents: result.riskEvents,
-        equityCurve: result.equityCurve,
-        processedStrategyCandles: result.processedStrategyCandles,
-        processedExecutionCandles: result.processedExecutionCandles,
+        account: engineResult.account,
+        signals: engineResult.signals,
+        orders: engineResult.orders,
+        fills: engineResult.fills,
+        rejectedOrders: engineResult.rejectedOrders,
+        trades: engineResult.trades,
+        openTrades: engineResult.openTrades,
+        pendingOrders: engineResult.pendingOrders,
+        riskEvents: engineResult.riskEvents,
+        equityCurve: engineResult.equityCurve,
+        processedStrategyCandles: engineResult.processedStrategyCandles,
+        processedExecutionCandles: engineResult.processedExecutionCandles,
+    };
+
+    return {
+        ...result,
+        summary: summarizeBacktestResult(result),
     };
 }
 

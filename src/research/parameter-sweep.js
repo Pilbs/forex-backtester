@@ -1,6 +1,15 @@
-import { summarizeTradesByYear } from "../backtest/backtest-summary.js";
-import { createStrategyFromDefinition } from "../strategies/strategy-definition.js";
-import { planParameterSweep } from "./experiment-planner.js";
+import {
+    summarizeTradesByMonth,
+    summarizeTradesByYear,
+} from "../backtest/backtest-summary.js";
+
+import {
+    createStrategyFromDefinition,
+} from "../strategies/strategy-definition.js";
+
+import {
+    planParameterSweep,
+} from "./experiment-planner.js";
 
 function createId(prefix) {
     if (globalThis.crypto?.randomUUID) {
@@ -17,6 +26,18 @@ function serializeError(error) {
     };
 }
 
+function createDetailCounts(backtestResult) {
+    return {
+        signals: backtestResult.signals?.length ?? 0,
+        orders: backtestResult.orders?.length ?? 0,
+        fills: backtestResult.fills?.length ?? 0,
+        rejectedOrders: backtestResult.rejectedOrders?.length ?? 0,
+        riskEvents: backtestResult.riskEvents?.length ?? 0,
+        openTradesAtEnd: backtestResult.openTrades?.length ?? 0,
+        pendingOrdersAtEnd: backtestResult.pendingOrders?.length ?? 0,
+    };
+}
+
 export async function runParameterSweep({
     strategyDefinition,
     baseStrategyConfig = {},
@@ -25,6 +46,7 @@ export async function runParameterSweep({
     overrideLimits = false,
     executeRun,
     includeTrades = false,
+    includeRunDetails = false,
     stopOnError = false,
     experimentId = createId("experiment"),
     onProgress,
@@ -74,21 +96,40 @@ export async function runParameterSweep({
                 parameterValues: configuration.parameterValues,
             });
 
+            const trades = backtestResult.trades ?? [];
+
             const run = {
                 runId,
                 runNumber: configuration.runNumber,
                 status: "COMPLETED",
                 parameterValues: configuration.parameterValues,
                 strategyConfig,
+
                 summary: backtestResult.summary,
-                yearlySummary: summarizeTradesByYear(backtestResult.trades),
+                yearlySummary: summarizeTradesByYear(trades),
+                monthlySummary: summarizeTradesByMonth(trades),
+
+                detailCounts: createDetailCounts(backtestResult),
                 dataset: backtestResult.data ?? null,
                 backtestConfig: backtestResult.config ?? null,
+
                 elapsedMs: Math.round(performance.now() - runStarted),
             };
 
             if (includeTrades) {
-                run.trades = backtestResult.trades;
+                run.trades = trades;
+            }
+
+            if (includeRunDetails) {
+                run.account = backtestResult.account ?? null;
+                run.signals = backtestResult.signals ?? [];
+                run.orders = backtestResult.orders ?? [];
+                run.fills = backtestResult.fills ?? [];
+                run.rejectedOrders = backtestResult.rejectedOrders ?? [];
+                run.openTrades = backtestResult.openTrades ?? [];
+                run.pendingOrders = backtestResult.pendingOrders ?? [];
+                run.riskEvents = backtestResult.riskEvents ?? [];
+                run.equityCurve = backtestResult.equityCurve ?? [];
             }
 
             runs.push(run);
@@ -121,26 +162,33 @@ export async function runParameterSweep({
     const completedAt = new Date().toISOString();
 
     return {
-        schemaVersion: 1,
+        schemaVersion: 2,
+
         experiment: {
             id: experimentId,
+            type: "PARAMETER_SWEEP",
             strategy: plan.strategy,
             startedAt,
             completedAt,
             elapsedMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
+
             baseStrategyConfig: plan.baseStrategyConfig,
             parameterGrid: plan.parameterGrid,
+
             requestedCombinations: plan.requestedCombinations,
             validCombinations: plan.validCombinations,
             invalidCombinations: plan.invalidCombinations,
+
             policy: plan.policy,
             overrideLimits: plan.overrideLimits,
             warning: plan.warning,
         },
+
         totals: {
             completedRuns: runs.filter((run) => run.status === "COMPLETED").length,
             failedRuns: runs.filter((run) => run.status === "FAILED").length,
         },
+
         runs,
     };
 }

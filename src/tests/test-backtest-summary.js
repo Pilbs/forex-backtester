@@ -1,5 +1,7 @@
 import {
+    summarizeBacktestResult,
     summarizeTrades,
+    summarizeTradesByMonth,
     summarizeTradesByYear,
 } from "../backtest/backtest-summary.js";
 
@@ -8,21 +10,29 @@ const trades = [
         side: "LONG",
         entryTime: Date.parse("2024-01-02T10:00:00Z"),
         pnlPips: 10,
+        pnlAccount: 100,
+        result: "WIN",
     },
     {
         side: "SHORT",
         entryTime: Date.parse("2024-02-02T10:00:00Z"),
         pnlPips: -5,
+        pnlAccount: -50,
+        result: "LOSS",
     },
     {
         side: "LONG",
         entryTime: Date.parse("2025-01-02T10:00:00Z"),
         pnlPips: 20,
+        pnlAccount: 200,
+        result: "WIN",
     },
     {
         side: "SHORT",
         entryTime: Date.parse("2025-02-02T10:00:00Z"),
         pnlPips: -10,
+        pnlAccount: -100,
+        result: "LOSS",
     },
 ];
 
@@ -33,17 +43,68 @@ if (summary.totalTrades !== 4) {
 }
 
 if (summary.totalPnlPips !== 15 || summary.profitFactor !== 2) {
-    throw new Error("PnL or profit factor is incorrect");
+    throw new Error("Pip PnL or profit factor is incorrect");
+}
+
+if (summary.totalPnlAccount !== 150 || summary.profitFactorAccount !== 2) {
+    throw new Error("Account PnL or profit factor is incorrect");
 }
 
 if (summary.maxDrawdownPips !== 10 || summary.expectancyPips !== 3.75) {
-    throw new Error("Drawdown or expectancy is incorrect");
+    throw new Error("Pip drawdown or expectancy is incorrect");
+}
+
+if (summary.closedTradeMaxDrawdownAccount !== 100 || summary.expectancyAccount !== 37.5) {
+    throw new Error("Account drawdown or expectancy is incorrect");
 }
 
 const yearly = summarizeTradesByYear(trades);
 
 if (yearly.length !== 2 || yearly[0].year !== 2024 || yearly[1].year !== 2025) {
     throw new Error("Yearly summary is incorrect");
+}
+
+const monthly = summarizeTradesByMonth(trades);
+
+if (monthly.length !== 4 || monthly[0].month !== "2024-01") {
+    throw new Error("Monthly summary is incorrect");
+}
+
+const backtestSummary = summarizeBacktestResult({
+    trades,
+    openTrades: [],
+    pendingOrders: [],
+    rejectedOrders: [{ reason: "TEST" }],
+    riskEvents: [{ type: "TEST" }],
+
+    account: {
+        currency: "USD",
+        initialCapital: 10000,
+        balance: 10150,
+        equity: 10150,
+        realizedPnl: 150,
+        unrealizedPnl: 0,
+        totalCommission: 10,
+        maxDrawdownAccount: 120,
+        maxDrawdownPercent: 1.2,
+        halted: false,
+        haltReason: null,
+        position: {
+            openTradeCount: 0,
+        },
+    },
+});
+
+if (backtestSummary.netPnlAccount !== 150 || backtestSummary.returnPercent !== 1.5) {
+    throw new Error("Backtest account return is incorrect");
+}
+
+if (
+    backtestSummary.maxDrawdownPercent !== 1.2 ||
+    backtestSummary.rejectedOrderCount !== 1 ||
+    backtestSummary.riskEventCount !== 1
+) {
+    throw new Error("Backtest account/risk summary is incorrect");
 }
 
 console.log("Backtest summary test passed.");
