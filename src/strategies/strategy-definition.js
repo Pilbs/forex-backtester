@@ -61,32 +61,30 @@ export function validateStrategyDefinition(strategyDefinition) {
         throw new Error("strategyDefinition.parameters must be an object");
     }
 
-    for (const [name, parameterDefinition] of Object.entries(strategyDefinition.parameters)) {
-        if (!isPlainObject(parameterDefinition)) {
+    for (const [name, definition] of Object.entries(strategyDefinition.parameters)) {
+        if (!isPlainObject(definition)) {
             throw new Error(`Parameter definition for ${name} must be an object`);
         }
 
-        if (!PARAMETER_TYPES.has(parameterDefinition.type)) {
-            throw new Error(
-                `Parameter ${name}.type must be number, integer, string or boolean`
-            );
+        if (!PARAMETER_TYPES.has(definition.type)) {
+            throw new Error(`Parameter ${name}.type must be number, integer, string or boolean`);
         }
 
-        if (parameterDefinition.options !== undefined) {
-            if (!Array.isArray(parameterDefinition.options) || parameterDefinition.options.length === 0) {
+        if (definition.options !== undefined) {
+            if (!Array.isArray(definition.options) || definition.options.length === 0) {
                 throw new Error(`Parameter ${name}.options must be a non-empty array`);
             }
 
-            for (const option of parameterDefinition.options) {
+            for (const option of definition.options) {
                 validateParameterValue(name, option, {
-                    ...parameterDefinition,
+                    ...definition,
                     options: undefined,
                 });
             }
         }
 
-        if (parameterDefinition.default !== undefined) {
-            validateParameterValue(name, parameterDefinition.default, parameterDefinition);
+        if (definition.default !== undefined) {
+            validateParameterValue(name, definition.default, definition);
         }
     }
 
@@ -121,19 +119,20 @@ export function resolveStrategyConfig({
 
     const resolvedConfig = {};
 
-    for (const [name, parameterDefinition] of Object.entries(parameterDefinitions)) {
+    for (const [name, definition] of Object.entries(parameterDefinitions)) {
         const supplied = Object.hasOwn(strategyConfig, name);
-        const hasDefault = Object.hasOwn(parameterDefinition, "default");
+        const hasDefault = Object.hasOwn(definition, "default");
 
         if (!supplied && !hasDefault) {
-            if (parameterDefinition.required) {
+            if (definition.required) {
                 throw new Error(`${name} is required`);
             }
             continue;
         }
 
-        const value = supplied ? strategyConfig[name] : parameterDefinition.default;
-        validateParameterValue(name, value, parameterDefinition);
+        const value = supplied ? strategyConfig[name] : definition.default;
+
+        validateParameterValue(name, value, definition);
         resolvedConfig[name] = value;
     }
 
@@ -162,6 +161,7 @@ export function createStrategyFromDefinition({
     });
 
     const strategy = strategyDefinition.createStrategy(resolvedConfig);
+
     validateStrategy(strategy);
 
     return {
