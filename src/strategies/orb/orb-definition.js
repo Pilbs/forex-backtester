@@ -1,6 +1,6 @@
 import { createOrbStrategy } from "./orb-strategy.js";
 
-export const orbStrategyDefinition = {
+export const orbDefinition = {
     id: "orb",
     name: "Opening Range Breakout",
     version: 1,

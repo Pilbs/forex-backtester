@@ -16,14 +16,15 @@ function validateOptionalPositive(value, name, { allowZero = false } = {}) {
     }
 }
 
-export function resolveAccountConfig(input = {}) {
+export function resolveAccountConfig(input = {}, { defaultCurrency = "USD" } = {}) {
     if (!input || typeof input !== "object" || Array.isArray(input)) {
         throw new Error("accountConfig must be an object");
     }
 
     const config = {
         initialCapital: 10000,
-        currency: "USD",
+        currency: defaultCurrency,
+        quoteToAccountRate: null,
         leverage: 30,
         positionMode: "HEDGING",
 
@@ -69,6 +70,8 @@ export function resolveAccountConfig(input = {}) {
         throw new Error("currency must be a three-letter uppercase currency code");
     }
 
+    validateOptionalPositive(config.quoteToAccountRate, "quoteToAccountRate");
+
     if (!Number.isFinite(config.leverage) || config.leverage <= 0) {
         throw new Error("leverage must be a positive number");
     }
@@ -82,19 +85,16 @@ export function resolveAccountConfig(input = {}) {
     }
 
     validateEntrySize(config.defaultSizing, "defaultSizing");
-
     validateOptionalPositive(config.marginCallLevelPercent, "marginCallLevelPercent");
     validateOptionalPositive(config.risk.maxOpenTrades, "risk.maxOpenTrades");
     validateOptionalPositive(config.risk.maxTradesPerSide, "risk.maxTradesPerSide");
     validateOptionalPositive(config.risk.maxPositionUnits, "risk.maxPositionUnits");
     validateOptionalPositive(config.risk.maxGrossExposure, "risk.maxGrossExposure");
-
     validateOptionalPositive(
         config.risk.maxMarginUsagePercent,
         "risk.maxMarginUsagePercent",
         { allowZero: true }
     );
-
     validateOptionalPositive(config.risk.maxDrawdownPercent, "risk.maxDrawdownPercent");
     validateOptionalPositive(config.risk.maxDailyLossPercent, "risk.maxDailyLossPercent");
 
@@ -105,4 +105,22 @@ export function resolveAccountConfig(input = {}) {
     }
 
     return config;
+}
+
+export function resolveQuoteToAccountRate({
+    accountConfig,
+    instrumentMetadata,
+}) {
+    if (accountConfig.currency === instrumentMetadata.quoteCurrency) {
+        return 1;
+    }
+
+    if (Number.isFinite(accountConfig.quoteToAccountRate) && accountConfig.quoteToAccountRate > 0) {
+        return accountConfig.quoteToAccountRate;
+    }
+
+    throw new Error(
+        `quoteToAccountRate is required when account currency ${accountConfig.currency} ` +
+        `differs from instrument quote currency ${instrumentMetadata.quoteCurrency}`
+    );
 }

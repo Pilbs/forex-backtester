@@ -10,21 +10,10 @@ function validateBacktestRequest({
     from,
     to,
 }) {
-    if (!instrument) {
-        throw new Error("instrument is required");
-    }
-
-    if (!strategyTimeframe) {
-        throw new Error("strategyTimeframe is required");
-    }
-
-    if (!executionTimeframe) {
-        throw new Error("executionTimeframe is required");
-    }
-
-    if (!from || !to) {
-        throw new Error("from and to are required");
-    }
+    if (!instrument) throw new Error("instrument is required");
+    if (!strategyTimeframe) throw new Error("strategyTimeframe is required");
+    if (!executionTimeframe) throw new Error("executionTimeframe is required");
+    if (!from || !to) throw new Error("from and to are required");
 }
 
 export async function loadBacktestDataset({
@@ -64,6 +53,8 @@ export async function loadBacktestDataset({
             strategyTimeframe,
             executionTimeframe,
             pipSize: instrumentMetadata.pipSize,
+            baseCurrency: instrumentMetadata.baseCurrency,
+            quoteCurrency: instrumentMetadata.quoteCurrency,
             from,
             to,
         },
@@ -83,6 +74,9 @@ export async function loadBacktestDataset({
 export function runBacktestWithDataset({
     dataset,
     strategy,
+    accountConfig = {},
+    executionPolicy = {},
+    captureEquityCurve = false,
 }) {
     if (!dataset || typeof dataset !== "object") {
         throw new Error("dataset is required");
@@ -97,6 +91,8 @@ export function runBacktestWithDataset({
         strategyTimeframe,
         executionTimeframe,
         pipSize,
+        baseCurrency,
+        quoteCurrency,
         from,
         to,
     } = dataset.config ?? {};
@@ -109,6 +105,9 @@ export function runBacktestWithDataset({
         instrument,
         strategyTimeframe,
         executionTimeframe,
+        accountConfig,
+        executionPolicy,
+        captureEquityCurve,
     });
 
     return {
@@ -118,15 +117,25 @@ export function runBacktestWithDataset({
             strategyTimeframe,
             executionTimeframe,
             pipSize,
+            baseCurrency,
+            quoteCurrency,
             from,
             to,
+            account: result.accountConfig,
+            execution: result.executionPolicy,
         },
         data: dataset.data,
         summary: summarizeTrades(result.trades),
+        account: result.account,
         signals: result.signals,
+        orders: result.orders,
+        fills: result.fills,
+        rejectedOrders: result.rejectedOrders,
         trades: result.trades,
-        openPosition: result.openPosition,
-        pendingEntry: result.pendingEntry,
+        openTrades: result.openTrades,
+        pendingOrders: result.pendingOrders,
+        riskEvents: result.riskEvents,
+        equityCurve: result.equityCurve,
         processedStrategyCandles: result.processedStrategyCandles,
         processedExecutionCandles: result.processedExecutionCandles,
     };
@@ -139,6 +148,9 @@ export async function runBacktestJob({
     from,
     to,
     strategy,
+    accountConfig = {},
+    executionPolicy = {},
+    captureEquityCurve = false,
 }) {
     if (!strategy) {
         throw new Error("strategy is required");
@@ -155,5 +167,8 @@ export async function runBacktestJob({
     return runBacktestWithDataset({
         dataset,
         strategy,
+        accountConfig,
+        executionPolicy,
+        captureEquityCurve,
     });
 }
