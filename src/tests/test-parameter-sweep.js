@@ -1,84 +1,93 @@
-import "dotenv/config";
-import {  runBacktestJob,} from "../backtest/backtest-service.js";
-import {  createOrbStrategy,} from "../strategies/orb/orb-strategy.js";
-import {  runParameterSweep,} from "../research/parameter-sweep.js";
+import { runParameterSweep } from "../research/parameter-sweep.js";
 
-async function main() {
-  const baseStrategyConfig = {
-    startHour: 8,
-    startMinute: 15,
-    durationMinutes: 60,
-    timeZone: "America/New_York",
-    stopLossPips: 10,
-    takeProfitPips: 20,
-  };
+let strategyInstances = 0;
+const receivedConfigs = [];
 
-  const sweepResults =
-    await runParameterSweep({
-      strategyFactory: createOrbStrategy,
-      baseStrategyConfig,
-      parameterName:
-        "takeProfitPips",
-      values: [
-        10,
-        15,
-        20,
-        25,
-        30,
-      ],
+const definition = {
+    id: "sweep-test",
+    name: "Sweep Test",
+    version: 1,
+    parameters: {
+        stopLossPips: {
+            type: "number",
+            default: 10,
+            min: 1,
+        },
+        takeProfitPips: {
+            type: "number",
+            default: 20,
+            min: 1,
+        },
+    },
+    createStrategy(config) {
+        strategyInstances++;
+        return {
+            name: "Sweep Test",
+            instanceNumber: strategyInstances,
+            config,
+            onCandle() {
+                return null;
+            },
+        };
+    },
+};
 
-      executeRun: async ({strategy,}) =>
-        runBacktestJob({
-          instrument:
-            "EUR_USD",
+const result = await runParameterSweep({
+    strategyDefinition: definition,
+    baseStrategyConfig: {
+        stopLossPips: 10,
+        takeProfitPips: 20,
+    },
+    parameterGrid: {
+        stopLossPips: [5, 10],
+        takeProfitPips: [10, 20],
+    },
+    policy: {
+        warningRunCount: 10,
+        maximumRunCount: 20,
+    },
+    executeRun: async ({ strategy, strategyConfig }) => {
+        receivedConfigs.push({
+            instanceNumber: strategy.instanceNumber,
+            ...strategyConfig,
+        });
 
-          strategyTimeframe:
-            "M5",
+        const pnlPips = strategyConfig.takeProfitPips - strategyConfig.stopLossPips;
+        return {
+            config: {
+                instrument: "TEST",
+            },
+            data: {
+                candleCount: 10,
+            },
+            summary: {
+                totalTrades: 1,
+                totalPnlPips: pnlPips,
+            },
+            trades: [{
+                side: "LONG",
+                entryTime: Date.parse("2025-01-01T00:00:00Z"),
+                pnlPips,
+            }],
+        };
+    },
+});
 
-          executionTimeframe:
-            "M5",
-
-          from:
-            "2026-08-01T00:00:00Z",
-
-          to:
-            "2026-09-01T00:00:00Z",
-
-          strategy,
-        }),
-    });
-
-  console.table(
-    sweepResults.map(
-      ({
-        parameterValue,
-        result,
-      }) => ({
-        takeProfitPips:
-          parameterValue,
-
-        trades:
-          result.summary
-            .totalTrades,
-
-        wins:
-          result.summary.wins,
-
-        losses:
-          result.summary.losses,
-
-        winRate:
-          result.summary.winRate,
-
-        pnlPips:
-          result.summary
-            .totalPnlPips,
-      })
-    )
-  );
+if (result.runs.length !== 4 || result.totals.completedRuns !== 4) {
+    throw new Error("Sweep did not execute all four parameter combinations");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (strategyInstances !== 4 || new Set(receivedConfigs.map((config) => config.instanceNumber)).size !== 4) {
+    throw new Error("Each run did not receive a fresh strategy instance");
+}
+
+if (result.runs.some((run) => Object.hasOwn(run, "trades"))) {
+    throw new Error("Trades should not be included by default");
+}
+
+if (result.runs.some((run) => run.yearlySummary.length !== 1)) {
+    throw new Error("Yearly summaries were not captured");
+}
+
+JSON.stringify(result);
+console.log("Parameter sweep test passed.");
