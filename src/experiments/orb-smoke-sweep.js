@@ -20,13 +20,13 @@ async function main() {
         },
 
         accountConfig: {
-            initialCapital: 10000,
+            initialCapital: 500,
             currency: "USD",
             leverage: 30,
             positionMode: "HEDGING",
             defaultSizing: {
-                type: "RISK_PERCENT",
-                value: 1,
+                type: "CASH",
+                value: 300,
             },
 
             risk: {

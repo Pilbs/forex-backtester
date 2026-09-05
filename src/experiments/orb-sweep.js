@@ -26,19 +26,19 @@ async function main() {
             instrument: "EUR_USD",
             strategyTimeframe: "M5",
             executionTimeframe: "M1",
-            from: "2022-01-01T00:00:00Z",
+            from: "2023-01-01T00:00:00Z",
             to: "2026-09-01T00:00:00Z",
         },
 
         accountConfig: {
-            initialCapital: 10000,
+            initialCapital: 500,
             currency: "USD",
             leverage: 30,
             positionMode: "HEDGING",
 
             defaultSizing: {
-                type: "RISK_PERCENT",
-                value: 1,
+                type: "CASH",
+                value: 300,
             },
 
             risk: {
