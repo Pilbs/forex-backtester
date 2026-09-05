@@ -224,6 +224,8 @@ const result = await runBacktestExperiment({
     executionPolicy,
     parameterGrid,
     policy,
+
+    experimentId: "deterministic-experiment-test",
     includeTrades: true,
 
     datasetLoader: async () => {
@@ -233,6 +235,7 @@ const result = await runBacktestExperiment({
 });
 
 assert.equal(datasetLoadCount, 1);
+assert.equal(result.experiment.id, "deterministic-experiment-test");
 assert.equal(result.experiment.type, "BACKTEST_PARAMETER_SWEEP");
 assert.equal(result.experiment.dataset.strategyCandleCount, 2);
 assert.equal(result.experiment.accountConfig.initialCapital, 10000);

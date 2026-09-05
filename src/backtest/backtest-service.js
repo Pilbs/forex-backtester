@@ -2,6 +2,7 @@ import { getCandles } from "../data/candle-reader.js";
 import { getInstrumentMetadata } from "../market/instrument-metadata.js";
 import { runBacktest } from "./backtest-runner.js";
 import { summarizeBacktestResult } from "./backtest-summary.js";
+import { enrichTradesAnalytics } from "./trade-analytics.js";
 
 function validateBacktestRequest({
     instrument,
@@ -114,6 +115,11 @@ export function runBacktestWithDataset({
         captureEquityCurve,
     });
 
+    const trades = enrichTradesAnalytics(
+        engineResult.trades,
+        pipSize
+    );
+
     const result = {
         config: {
             instrument,
@@ -135,7 +141,7 @@ export function runBacktestWithDataset({
         orders: engineResult.orders,
         fills: engineResult.fills,
         rejectedOrders: engineResult.rejectedOrders,
-        trades: engineResult.trades,
+        trades,
         openTrades: engineResult.openTrades,
         pendingOrders: engineResult.pendingOrders,
         riskEvents: engineResult.riskEvents,

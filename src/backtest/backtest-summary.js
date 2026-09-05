@@ -44,6 +44,19 @@ function calculateProfitFactor(grossProfit, grossLoss) {
     return grossLoss === 0 ? null : round(grossProfit / grossLoss);
 }
 
+function averageFinite(values, decimals = 2) {
+    const finiteValues = values.filter(Number.isFinite);
+
+    if (finiteValues.length === 0) {
+        return null;
+    }
+
+    return round(
+        finiteValues.reduce((total, value) => total + value, 0) / finiteValues.length,
+        decimals
+    );
+}
+
 export function summarizeTrades(trades) {
     if (!Array.isArray(trades)) {
         throw new Error("trades must be an array");
@@ -80,6 +93,10 @@ export function summarizeTrades(trades) {
         .map((trade) => trade.pnlPips)
         .filter(Number.isFinite);
     const accountPnlValues = accountTrades.map((trade) => trade.pnlAccount);
+
+    const losingTradesWithPositiveExcursion = losingTrades.filter(
+        (trade) => Number.isFinite(trade.mfePips) && trade.mfePips > 0
+    );
 
     return {
         totalTrades,
@@ -144,6 +161,29 @@ export function summarizeTrades(trades) {
         largestLossAccount: accountTrades.length === 0
             ? null
             : round(Math.min(0, ...accountPnlValues)),
+
+        averageHoldingMinutes: averageFinite(
+            trades.map((trade) => trade.holdingMinutes)
+        ),
+        averageMfePips: averageFinite(
+            trades.map((trade) => trade.mfePips)
+        ),
+        averageMaePips: averageFinite(
+            trades.map((trade) => trade.maePips)
+        ),
+        averageLosingTradeMfePips: averageFinite(
+            losingTrades.map((trade) => trade.mfePips)
+        ),
+        losingTradesWithPositiveExcursion:
+            losingTradesWithPositiveExcursion.length,
+        losingTradesWithPositiveExcursionPercent: losingTrades.length === 0
+            ? 0
+            : round(
+                losingTradesWithPositiveExcursion.length /
+                losingTrades.length *
+                100,
+                1
+            ),
     };
 }
 

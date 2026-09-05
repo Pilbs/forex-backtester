@@ -176,6 +176,8 @@ export async function runBacktestExperiment({
     policy = {},
     overrideLimits = false,
 
+    experimentId,
+
     includeTrades = false,
     includeRunDetails = false,
     captureEquityCurve = false,
@@ -195,6 +197,13 @@ export async function runBacktestExperiment({
         throw new Error("runWithDataset must be a function");
     }
 
+    if (
+        experimentId !== undefined &&
+        (typeof experimentId !== "string" || !experimentId.trim())
+    ) {
+        throw new Error("experimentId must be a non-empty string");
+    }
+
     const plan = planBacktestExperiment({
         strategyDefinition,
         baseStrategyConfig,
@@ -208,6 +217,10 @@ export async function runBacktestExperiment({
 
     if (!plan.allowed) {
         throw new Error(plan.rejectionReason);
+    }
+
+    if (abortSignal?.aborted) {
+        throw new Error("Backtest experiment was cancelled");
     }
 
     const datasetLoadStarted = performance.now();
@@ -224,6 +237,7 @@ export async function runBacktestExperiment({
         parameterGrid: plan.parameterGrid,
         policy: plan.research.policy,
         overrideLimits: plan.research.overrideLimits,
+        experimentId,
         includeTrades,
         includeRunDetails,
         stopOnError,
@@ -241,7 +255,7 @@ export async function runBacktestExperiment({
 
     return {
         ...sweepResult,
-        schemaVersion: 3,
+        schemaVersion: 4,
 
         experiment: {
             ...sweepResult.experiment,

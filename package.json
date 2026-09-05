@@ -6,11 +6,12 @@
     "scripts": {
         "import-history": "node src/import-history.js",
         "test": "npm run test:core && npm run test:research && npm run test:indicators",
-        "test:core": "node src/tests/test-strategy-context.js && node src/tests/test-session-window.js && node src/tests/test-time-zone.js && node src/tests/test-opening-range.js && node src/tests/test-opening-range-freeze.js && node src/tests/test-daily-opening-range.js && node src/tests/test-execution-timeframe.js && node src/tests/test-human-backtesting-foundation.js && node src/tests/test-human-execution-engine.js",
+        "test:core": "node src/tests/test-strategy-context.js && node src/tests/test-session-window.js && node src/tests/test-time-zone.js && node src/tests/test-opening-range.js && node src/tests/test-opening-range-freeze.js && node src/tests/test-daily-opening-range.js && node src/tests/test-execution-timeframe.js && node src/tests/test-human-backtesting-foundation.js && node src/tests/test-human-execution-engine.js && node src/tests/test-execution-hardening.js && node src/tests/test-trade-analytics.js",
         "test:research": "node src/tests/test-strategy-definition.js && node src/tests/test-parameter-grid.js && node src/tests/test-experiment-planner.js && node src/tests/test-backtest-summary.js && node src/tests/test-parameter-sweep.js && node src/tests/test-backtest-experiment.js",
         "test:indicators": "node src/tests/test-indicators.js && node src/tests/test-indicator-strategy.js",
         "test:data": "node src/tests/test-candle-reader.js",
         "test:orb": "node src/tests/test-real-orb-strategy.js",
+        "research:orb:smoke": "node src/experiments/orb-smoke-sweep.js",
         "research:orb": "node src/experiments/orb-sweep.js"
     },
     "license": "ISC",

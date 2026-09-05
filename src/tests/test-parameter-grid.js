@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+
 import {
     countParameterCombinations,
     generateParameterCombinations,
@@ -12,13 +14,8 @@ const parameterGrid = {
 const count = countParameterCombinations(parameterGrid);
 const combinations = generateParameterCombinations(parameterGrid);
 
-if (count !== 12) {
-    throw new Error(`Expected 12 combinations, received ${count}`);
-}
-
-if (combinations.length !== 12) {
-    throw new Error(`Expected 12 generated combinations, received ${combinations.length}`);
-}
+assert.equal(count, 12);
+assert.equal(combinations.length, 12);
 
 const expected = combinations.some((config) =>
     config.stopLossPips === 15 &&
@@ -26,8 +23,25 @@ const expected = combinations.some((config) =>
     config.enabled === false
 );
 
-if (!expected) {
-    throw new Error("Expected parameter combination was not generated");
-}
+assert.equal(expected, true);
+
+assert.throws(
+    () => countParameterCombinations({
+        stopLossPips: [5, 10, 10],
+    }),
+    /duplicate sweep value/
+);
+
+assert.throws(
+    () => generateParameterCombinations({
+        enabled: [true, true],
+    }),
+    /duplicate sweep value/
+);
+
+assert.deepEqual(
+    generateParameterCombinations({}),
+    [{}]
+);
 
 console.log("Parameter grid test passed.");

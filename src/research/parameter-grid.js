@@ -4,17 +4,42 @@ function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-export function validateParameterGrid({
-    strategyDefinition,
-    parameterGrid = {},
-}) {
-    validateStrategyDefinition(strategyDefinition);
-
+function validateGridShape(parameterGrid) {
     if (!isPlainObject(parameterGrid)) {
         throw new Error("parameterGrid must be an object");
     }
 
     for (const [parameterName, values] of Object.entries(parameterGrid)) {
+        if (!Array.isArray(values) || values.length === 0) {
+            throw new Error(`${parameterName} must contain at least one value`);
+        }
+
+        for (let index = 0; index < values.length; index++) {
+            const duplicateIndex = values.findIndex(
+                (value, candidateIndex) =>
+                    candidateIndex < index &&
+                    Object.is(value, values[index])
+            );
+
+            if (duplicateIndex >= 0) {
+                throw new Error(
+                    `${parameterName} contains duplicate sweep value: ${String(values[index])}`
+                );
+            }
+        }
+    }
+
+    return parameterGrid;
+}
+
+export function validateParameterGrid({
+    strategyDefinition,
+    parameterGrid = {},
+}) {
+    validateStrategyDefinition(strategyDefinition);
+    validateGridShape(parameterGrid);
+
+    for (const parameterName of Object.keys(parameterGrid)) {
         const parameterDefinition = strategyDefinition.parameters[parameterName];
 
         if (!parameterDefinition) {
@@ -24,32 +49,23 @@ export function validateParameterGrid({
         if (parameterDefinition.sweepable === false) {
             throw new Error(`Parameter ${parameterName} is not sweepable`);
         }
-
-        if (!Array.isArray(values) || values.length === 0) {
-            throw new Error(`${parameterName} must contain at least one value`);
-        }
     }
 
     return parameterGrid;
 }
 
 export function countParameterCombinations(parameterGrid = {}) {
-    if (!isPlainObject(parameterGrid)) {
-        throw new Error("parameterGrid must be an object");
-    }
+    validateGridShape(parameterGrid);
 
     const entries = Object.entries(parameterGrid);
+
     if (entries.length === 0) {
         return 1;
     }
 
     let total = 1;
 
-    for (const [parameterName, values] of entries) {
-        if (!Array.isArray(values) || values.length === 0) {
-            throw new Error(`${parameterName} must contain at least one value`);
-        }
-
+    for (const [, values] of entries) {
         total *= values.length;
 
         if (!Number.isSafeInteger(total)) {
@@ -61,11 +77,10 @@ export function countParameterCombinations(parameterGrid = {}) {
 }
 
 export function generateParameterCombinations(parameterGrid = {}) {
-    if (!isPlainObject(parameterGrid)) {
-        throw new Error("parameterGrid must be an object");
-    }
+    validateGridShape(parameterGrid);
 
     const entries = Object.entries(parameterGrid);
+
     if (entries.length === 0) {
         return [{}];
     }
@@ -80,10 +95,6 @@ export function generateParameterCombinations(parameterGrid = {}) {
 
         const [parameterName, values] = entries[index];
 
-        if (!Array.isArray(values) || values.length === 0) {
-            throw new Error(`${parameterName} must contain at least one value`);
-        }
-
         for (const value of values) {
             current[parameterName] = value;
             build(index + 1, current);
@@ -93,5 +104,6 @@ export function generateParameterCombinations(parameterGrid = {}) {
     }
 
     build(0, {});
+
     return combinations;
 }
