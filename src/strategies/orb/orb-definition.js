@@ -4,6 +4,7 @@ export const orbDefinition = {
     id: "orb",
     name: "Opening Range Breakout",
     version: 2,
+    description: "Builds a daily opening range and enters on a qualifying breakout.",
 
     createStrategy: createOrbStrategy,
 
@@ -11,6 +12,7 @@ export const orbDefinition = {
         startHour: {
             type: "integer",
             label: "Start hour",
+            description: "Opening range start hour in the configured time zone.",
             default: 8,
             min: 0,
             max: 23,
@@ -19,6 +21,7 @@ export const orbDefinition = {
         startMinute: {
             type: "integer",
             label: "Start minute",
+            description: "Opening range start minute in the configured time zone.",
             default: 15,
             min: 0,
             max: 59,
@@ -27,6 +30,7 @@ export const orbDefinition = {
         durationMinutes: {
             type: "integer",
             label: "Opening range duration",
+            description: "Number of minutes used to build the opening range.",
             default: 60,
             min: 1,
         },
@@ -34,12 +38,15 @@ export const orbDefinition = {
         timeZone: {
             type: "string",
             label: "Time zone",
+            description: "IANA time zone used for the daily opening range.",
             default: "America/New_York",
+            sweepable: false,
         },
 
         stopLossPips: {
             type: "number",
             label: "Stop loss pips",
+            description: "Protective stop distance from entry in pips.",
             required: true,
             min: 0.1,
         },
@@ -47,6 +54,7 @@ export const orbDefinition = {
         takeProfitPips: {
             type: "number",
             label: "Take profit pips",
+            description: "Take-profit distance from entry in pips.",
             required: true,
             min: 0.1,
         },
@@ -54,6 +62,7 @@ export const orbDefinition = {
         entryMode: {
             type: "string",
             label: "Entry mode",
+            description: "Rule used to qualify the daily opening-range breakout.",
             default: "FIRST_BREAKOUT",
             options: ["FIRST_BREAKOUT", "ATR_WEIGHTED"],
         },
@@ -61,6 +70,7 @@ export const orbDefinition = {
         breakoutSource: {
             type: "string",
             label: "Breakout source",
+            description: "Whether ATR-weighted breakout distance uses candle close or wick.",
             default: "CLOSE",
             options: ["CLOSE", "WICK"],
         },
@@ -68,6 +78,7 @@ export const orbDefinition = {
         retestSource: {
             type: "string",
             label: "Retest source",
+            description: "Whether an ATR-weighted retest is confirmed by candle close or wick.",
             default: "WICK",
             options: ["CLOSE", "WICK"],
         },
@@ -75,6 +86,7 @@ export const orbDefinition = {
         atrLength: {
             type: "integer",
             label: "ATR length",
+            description: "Number of strategy candles used by the ATR calculation.",
             default: 14,
             min: 1,
         },
@@ -82,6 +94,7 @@ export const orbDefinition = {
         candidateBreakoutAtr: {
             type: "number",
             label: "Candidate breakout ATR",
+            description: "ATR multiple required to create a breakout candidate.",
             default: 0.5,
             min: 0.01,
         },
@@ -89,6 +102,7 @@ export const orbDefinition = {
         strongBreakoutAtr: {
             type: "number",
             label: "Strong breakout ATR",
+            description: "ATR multiple required for an immediate strong-breakout entry.",
             default: 1,
             min: 0.01,
         },
