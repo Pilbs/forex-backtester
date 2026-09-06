@@ -12,16 +12,17 @@
             <div>
                 <p class="eyebrow">Research Platform V1</p>
                 <h1>Forex Backtester</h1>
-                <p class="subtitle">Configure and validate research experiments from the browser.</p>
+                <p class="subtitle">Configure, validate and run controlled cloud research experiments.</p>
             </div>
             <div class="status-card">
                 <span class="status-dot"></span>
-                Cloud planning mode
+                Cloud commissioning mode
             </div>
         </header>
 
         <div class="notice">
-            This deployment plans experiments only. Cloud backtest execution is intentionally disabled until hard execution and spend guardrails are added.
+            Cloud execution is enabled behind hard server-side commissioning limits: ORB, EUR_USD, M5/M5,
+            maximum 31 days and maximum 4 runs. Requests outside this envelope are rejected before D1 is read.
         </div>
 
         <form id="research-form">
@@ -95,10 +96,10 @@
                 <h2>Experiment limits</h2>
                 <div class="grid grid-2">
                     <label>Warning run count
-                        <input id="warning-runs" type="number" value="25" min="1" step="1">
+                        <input id="warning-runs" type="number" value="4" min="1" step="1">
                     </label>
                     <label>Maximum run count
-                        <input id="maximum-runs" type="number" value="100" min="1" step="1">
+                        <input id="maximum-runs" type="number" value="4" min="1" step="1">
                     </label>
                 </div>
             </section>
@@ -115,14 +116,28 @@
             <h3>Estimated cloud workload</h3>
             <div id="usage-cards" class="summary-cards"></div>
             <p class="estimate-note" id="estimate-note"></p>
+            <div class="actions">
+                <button id="run-button" type="button" hidden>Run cloud experiment</button>
+                <span id="execution-status"></span>
+            </div>
             <details>
                 <summary>Generated research configuration</summary>
                 <pre id="config-output"></pre>
             </details>
         </section>
 
+        <section id="execution-panel" class="panel result-panel" hidden>
+            <h2>Cloud execution result</h2>
+            <div id="execution-cards" class="summary-cards"></div>
+            <h3>Run results</h3>
+            <div class="table-wrap">
+                <table id="execution-table"></table>
+            </div>
+            <p class="estimate-note" id="execution-note"></p>
+        </section>
+
         <section id="error-panel" class="panel error-panel" hidden>
-            <h2>Could not plan experiment</h2>
+            <h2>Request failed</h2>
             <pre id="error-output"></pre>
         </section>
     </main>

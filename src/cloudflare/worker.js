@@ -1,6 +1,12 @@
-import { planResearch } from "../research/run-research.js";
+import { planResearch, runResearch } from "../research/run-research.js";
 import { listStrategyMetadata } from "../strategies/strategy-registry.js";
+import {
+    createCloudflareDatasetLoader,
+    createD1UsageTracker,
+} from "./d1-dataset-loader.js";
+import { assessResearchExecution } from "./research-execution-gate.js";
 import { estimateResearchUsage } from "./research-usage-estimate.js";
+
 
 function jsonResponse(body, status = 200) {
     return new Response(JSON.stringify(body, null, 2), {
@@ -36,6 +42,103 @@ function summarizePlan(plan) {
     };
 }
 
+function summarizeResearchResult(result) {
+    return {
+        schemaVersion: result.schemaVersion,
+        experiment: {
+            id: result.experiment.id,
+            strategy: result.experiment.strategy,
+            backtest: result.experiment.backtest,
+            parameterGrid: result.experiment.parameterGrid,
+            requestedCombinations: result.experiment.requestedCombinations,
+            validCombinations: result.experiment.validCombinations,
+            invalidCombinations: result.experiment.invalidCombinations,
+            dataset: result.experiment.dataset,
+            datasetLoadElapsedMs: result.experiment.datasetLoadElapsedMs,
+            elapsedMs: result.experiment.elapsedMs,
+        },
+        totals: result.totals,
+        runs: result.runs.map((run) => ({
+            runNumber: run.runNumber,
+            status: run.status,
+            parameterValues: run.parameterValues,
+            strategyConfig: run.strategyConfig,
+            summary: run.summary ?? null,
+            rejectionReasons: run.rejectionReasons ?? {},
+            elapsedMs: run.elapsedMs,
+            error: run.error ?? null,
+        })),
+    };
+}
+
+function planExecution(config) {
+    const plan = planResearch(config);
+    const usageEstimate = estimateResearchUsage(config, plan);
+    const executionGate = assessResearchExecution(config, plan, usageEstimate);
+
+    return {
+        plan,
+        usageEstimate,
+        executionGate,
+    };
+}
+
+async function executeResearch(config, env) {
+    const { plan, usageEstimate, executionGate } = planExecution(config);
+
+    if (!executionGate.allowed) {
+        return jsonResponse({
+            error: "Execution blocked by cloud commissioning limits",
+            plan: summarizePlan(plan),
+            usageEstimate,
+            executionGate,
+        }, 422);
+    }
+
+    if (!env.FOREX_DB?.prepare) {
+        return jsonResponse({
+            error: "FOREX_DB D1 binding is unavailable",
+        }, 503);
+    }
+
+    const usageTracker = createD1UsageTracker();
+    const started = performance.now();
+
+    try {
+        const result = await runResearch(config, {
+            includeTrades: false,
+            includeRunDetails: false,
+            captureEquityCurve: false,
+            stopOnError: false,
+            datasetLoader: createCloudflareDatasetLoader({
+                db: env.FOREX_DB,
+                usageTracker,
+            }),
+        });
+
+        return jsonResponse({
+            status: "COMPLETED",
+            execution: {
+                mode: "COMMISSIONING",
+                wallTimeMs: Math.round(performance.now() - started),
+                d1: usageTracker,
+            },
+            usageEstimate,
+            executionGate,
+            result: summarizeResearchResult(result),
+        });
+    } catch (error) {
+        return jsonResponse({
+            error: error?.message ?? String(error),
+            execution: {
+                mode: "COMMISSIONING",
+                wallTimeMs: Math.round(performance.now() - started),
+                d1: usageTracker,
+            },
+        }, 500);
+    }
+}
+
 export async function handleRequest(request, env = {}) {
     const url = new URL(request.url);
 
@@ -44,7 +147,9 @@ export async function handleRequest(request, env = {}) {
             return jsonResponse({
                 ok: true,
                 service: "forex-backtester-research",
-                executionEnabled: false,
+                executionEnabled: true,
+                executionMode: "COMMISSIONING",
+                d1Bound: Boolean(env.FOREX_DB?.prepare),
             });
         }
 
@@ -56,13 +161,18 @@ export async function handleRequest(request, env = {}) {
 
         if (request.method === "POST" && url.pathname === "/api/plan") {
             const config = await readJson(request);
-            const plan = planResearch(config);
-            const usageEstimate = estimateResearchUsage(config, plan);
+            const { plan, usageEstimate, executionGate } = planExecution(config);
 
             return jsonResponse({
                 plan: summarizePlan(plan),
                 usageEstimate,
+                executionGate,
             });
+        }
+
+        if (request.method === "POST" && url.pathname === "/api/experiments") {
+            const config = await readJson(request);
+            return executeResearch(config, env);
         }
 
         if (url.pathname.startsWith("/api/")) {

@@ -2,10 +2,14 @@ const strategySelect = document.querySelector("#strategy");
 const parameterContainer = document.querySelector("#strategy-parameters");
 const form = document.querySelector("#research-form");
 const resultPanel = document.querySelector("#result-panel");
+const executionPanel = document.querySelector("#execution-panel");
 const errorPanel = document.querySelector("#error-panel");
 const requestStatus = document.querySelector("#request-status");
+const executionStatus = document.querySelector("#execution-status");
+const runButton = document.querySelector("#run-button");
 
 let strategies = [];
+let plannedConfig = null;
 
 function toIso(localDateTime) {
     if (!localDateTime) {
@@ -195,28 +199,104 @@ function summaryCard(label, value) {
     return `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`;
 }
 
+function formatMetric(value, digits = 2) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+        return "-";
+    }
+
+    return Number(value).toFixed(digits);
+}
+
 function renderResult(config, response) {
-    const { plan, usageEstimate } = response;
+    const { plan, usageEstimate, executionGate } = response;
 
     document.querySelector("#summary-cards").innerHTML = [
         summaryCard("Strategy", plan.strategy.name),
         summaryCard("Requested runs", plan.research.requestedCombinations),
         summaryCard("Valid runs", plan.research.validCombinations),
-        summaryCard("Allowed", plan.allowed ? "Yes" : "No"),
+        summaryCard("Plan allowed", plan.allowed ? "Yes" : "No"),
     ].join("");
 
     document.querySelector("#usage-cards").innerHTML = [
         summaryCard("Date range", `${usageEstimate.dateRangeDays} days`),
         summaryCard("Estimated dataset rows", usageEstimate.estimatedDatasetRows.toLocaleString()),
         summaryCard("Estimated candle evaluations", usageEstimate.estimatedCandleEvaluations.toLocaleString()),
-        summaryCard("Execution enabled", "No"),
+        summaryCard("Cloud execution", executionGate.allowed ? "Allowed" : "Blocked"),
     ].join("");
 
-    document.querySelector("#estimate-note").textContent = usageEstimate.note;
+    const gateNote = executionGate.allowed
+        ? "Within commissioning limits. Running will read D1 and execute the real backtesting engine in Cloudflare."
+        : `Blocked: ${executionGate.reasons.join("; ")}`;
+
+    document.querySelector("#estimate-note").textContent = `${usageEstimate.note} ${gateNote}`;
     document.querySelector("#config-output").textContent = JSON.stringify(config, null, 2);
 
+    plannedConfig = executionGate.allowed ? config : null;
+    runButton.hidden = !executionGate.allowed;
+    runButton.disabled = false;
+    executionStatus.textContent = "";
+    executionPanel.hidden = true;
     errorPanel.hidden = true;
     resultPanel.hidden = false;
+}
+
+function renderExecution(response) {
+    const { execution, result } = response;
+    const d1 = execution.d1;
+
+    document.querySelector("#execution-cards").innerHTML = [
+        summaryCard("Completed runs", result.totals.completedRuns),
+        summaryCard("Failed runs", result.totals.failedRuns),
+        summaryCard("Actual D1 rows read", d1.rowsRead.toLocaleString()),
+        summaryCard("Wall time", `${execution.wallTimeMs.toLocaleString()} ms`),
+        summaryCard("D1 queries", d1.queryCount),
+        summaryCard("D1 duration", `${formatMetric(d1.d1DurationMs, 1)} ms`),
+        summaryCard("Dataset candles", result.experiment.dataset?.strategyCandleCount ?? "-"),
+        summaryCard("Execution mode", execution.mode),
+    ].join("");
+
+    const parameterNames = Object.keys(result.experiment.parameterGrid ?? {});
+    const runs = [...result.runs].sort((a, b) =>
+        Number(b.summary?.returnPercent ?? Number.NEGATIVE_INFINITY) -
+        Number(a.summary?.returnPercent ?? Number.NEGATIVE_INFINITY)
+    );
+
+    const headings = [
+        "Run",
+        ...parameterNames,
+        "Trades",
+        "Win %",
+        "PnL pips",
+        "Return %",
+        "PF",
+        "DD %",
+        "Status",
+    ];
+
+    const rows = runs.map((run) => [
+        run.runNumber,
+        ...parameterNames.map((name) => run.strategyConfig?.[name] ?? "-"),
+        run.summary?.totalTrades ?? "-",
+        formatMetric(run.summary?.winRate),
+        formatMetric(run.summary?.totalPnlPips, 1),
+        formatMetric(run.summary?.returnPercent),
+        formatMetric(run.summary?.profitFactor),
+        formatMetric(run.summary?.maxDrawdownPercent),
+        run.status,
+    ]);
+
+    const table = document.querySelector("#execution-table");
+    table.innerHTML = `
+        <thead><tr>${headings.map((heading) => `<th>${heading}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((row) =>
+            `<tr>${row.map((value) => `<td>${value}</td>`).join("")}</tr>`
+        ).join("")}</tbody>
+    `;
+
+    document.querySelector("#execution-note").textContent =
+        "D1 rows read are actual Cloudflare query metadata. Worker CPU time is measured separately in Cloudflare Worker logs/metrics.";
+
+    executionPanel.hidden = false;
 }
 
 async function loadStrategies() {
@@ -248,7 +328,9 @@ form.addEventListener("submit", async (event) => {
     event.preventDefault();
     requestStatus.textContent = "Planning...";
     resultPanel.hidden = true;
+    executionPanel.hidden = true;
     errorPanel.hidden = true;
+    plannedConfig = null;
 
     try {
         const config = buildConfig();
@@ -271,6 +353,44 @@ form.addEventListener("submit", async (event) => {
         document.querySelector("#error-output").textContent = error.message;
         errorPanel.hidden = false;
         requestStatus.textContent = "Planning failed";
+    }
+});
+
+runButton.addEventListener("click", async () => {
+    if (!plannedConfig) {
+        return;
+    }
+
+    runButton.disabled = true;
+    executionStatus.textContent = "Running real cloud backtest...";
+    executionPanel.hidden = true;
+    errorPanel.hidden = true;
+
+    try {
+        const response = await fetch("/api/experiments", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+            },
+            body: JSON.stringify(plannedConfig),
+        });
+        const body = await response.json();
+
+        if (!response.ok) {
+            const details = body.executionGate?.reasons?.length
+                ? `: ${body.executionGate.reasons.join("; ")}`
+                : "";
+            throw new Error(`${body.error ?? "Cloud execution failed"}${details}`);
+        }
+
+        renderExecution(body);
+        executionStatus.textContent = "Experiment complete";
+    } catch (error) {
+        document.querySelector("#error-output").textContent = error.message;
+        errorPanel.hidden = false;
+        executionStatus.textContent = "Execution failed";
+    } finally {
+        runButton.disabled = false;
     }
 });
 

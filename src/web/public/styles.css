@@ -179,11 +179,17 @@ button {
     cursor: pointer;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     opacity: 0.92;
 }
 
-#request-status {
+button:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+#request-status,
+#execution-status {
     color: #687287;
 }
 
@@ -227,6 +233,34 @@ pre {
     padding: 16px;
     border-radius: 10px;
     font-size: 12px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th,
+td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e9f0;
+    text-align: right;
+    white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+    text-align: left;
+}
+
+th {
+    color: #5f697c;
+    background: #f8f9fc;
 }
 
 .error-panel {
