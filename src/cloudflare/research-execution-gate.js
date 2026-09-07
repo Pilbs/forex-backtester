@@ -3,10 +3,10 @@ export const COMMISSIONING_LIMITS = Object.freeze({
     instrument: "EUR_USD",
     strategyTimeframe: "M5",
     executionTimeframe: "M5",
-    maximumDateRangeDays: 31,
-    maximumRuns: 4,
-    maximumDatasetRows: 10000,
-    maximumCandleEvaluations: 40000,
+    maximumDateRangeDays: 365,
+    maximumRuns: 6,
+    maximumDatasetRows: 100000,
+    maximumCandleEvaluations: 400000,
 });
 
 export function assessResearchExecution(config, plan, usageEstimate) {

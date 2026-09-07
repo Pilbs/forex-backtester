@@ -1,8 +1,8 @@
 import { getInstrumentMetadata } from "../market/instrument-metadata.js";
 
 const PAGE_SIZE = 5000;
-const MAX_PAGES = 3;
-const MAX_DATASET_ROWS = 10000;
+const MAX_PAGES = 20;
+const MAX_DATASET_ROWS = 100000;
 
 function toEpochMs(value, name) {
     if (value instanceof Date) {
