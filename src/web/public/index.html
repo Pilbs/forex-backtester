@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Forex Research Platform</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
     <main class="page-shell">
         <header class="hero">
@@ -21,8 +23,8 @@
         </header>
 
         <div class="notice">
-            Cloud execution is enabled behind hard server-side commissioning limits: ORB, EUR_USD, M5/M5,
-            maximum 31 days and maximum 4 runs. Requests outside this envelope are rejected before D1 is read.
+            Cloud execution is enabled. Server-side safety limits are enforced before historical data is loaded and the
+            experiment is executed.
         </div>
 
         <form id="research-form">
@@ -90,19 +92,7 @@
                     </div>
                 </div>
                 <div id="strategy-parameters" class="parameter-list"></div>
-            </section>
-
-            <section class="panel">
-                <h2>Experiment limits</h2>
-                <div class="grid grid-2">
-                    <label>Warning run count
-                        <input id="warning-runs" type="number" value="4" min="1" step="1">
-                    </label>
-                    <label>Maximum run count
-                        <input id="maximum-runs" type="number" value="4" min="1" step="1">
-                    </label>
-                </div>
-            </section>
+            </section>            
 
             <div class="actions">
                 <button id="plan-button" type="submit">Validate experiment plan</button>
@@ -144,4 +134,5 @@
 
     <script type="module" src="/app.js"></script>
 </body>
+
 </html>

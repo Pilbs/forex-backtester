@@ -11,6 +11,37 @@ const runButton = document.querySelector("#run-button");
 let strategies = [];
 let plannedConfig = null;
 
+let executionTimer = null;
+let executionStartedAt = null;
+
+function formatElapsed(ms) {
+    return `${(ms / 1000).toFixed(1)} s`;
+}
+
+function startExecutionTimer() {
+    executionStartedAt = performance.now();
+    executionStatus.textContent = "Running... 0.0 s";
+
+    executionTimer = window.setInterval(() => {
+        const elapsed = performance.now() - executionStartedAt;
+        executionStatus.textContent = `Running... ${formatElapsed(elapsed)}`;
+    }, 100);
+}
+
+function stopExecutionTimer(message) {
+    if (executionTimer !== null) {
+        window.clearInterval(executionTimer);
+        executionTimer = null;
+    }
+
+    const elapsed = executionStartedAt === null
+        ? 0
+        : performance.now() - executionStartedAt;
+
+    executionStartedAt = null;
+    executionStatus.textContent = `${message} ${formatElapsed(elapsed)}`;
+}
+
 function toIso(localDateTime) {
     if (!localDateTime) {
         return "";
@@ -187,11 +218,7 @@ function buildConfig() {
             closeOpenTradesAtEnd: true,
         },
         strategyConfig,
-        parameterGrid,
-        policy: {
-            warningRunCount: Number(document.querySelector("#warning-runs").value),
-            maximumRunCount: Number(document.querySelector("#maximum-runs").value),
-        },
+        parameterGrid,       
     };
 }
 
@@ -362,7 +389,7 @@ runButton.addEventListener("click", async () => {
     }
 
     runButton.disabled = true;
-    executionStatus.textContent = "Running real cloud backtest...";
+    startExecutionTimer();
     executionPanel.hidden = true;
     errorPanel.hidden = true;
 
@@ -384,11 +411,11 @@ runButton.addEventListener("click", async () => {
         }
 
         renderExecution(body);
-        executionStatus.textContent = "Experiment complete";
+        stopExecutionTimer("Experiment complete in");
     } catch (error) {
         document.querySelector("#error-output").textContent = error.message;
         errorPanel.hidden = false;
-        executionStatus.textContent = "Execution failed";
+        stopExecutionTimer("Execution failed after");
     } finally {
         runButton.disabled = false;
     }
