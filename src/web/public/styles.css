@@ -280,3 +280,333 @@ th {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* === TERMINAL THEME PATCH === */
+.theme-switch {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+    margin-left: auto;
+}
+
+.theme-switch-label {
+    color: #687287;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.theme-switch-buttons {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid #d7deea;
+    border-radius: 10px;
+    background: white;
+}
+
+.theme-choice {
+    min-width: 112px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: #687287;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.theme-choice:hover {
+    opacity: 1;
+    background: #f3f6fb;
+}
+
+.theme-choice.is-active {
+    background: #172033;
+    color: white;
+}
+
+html[data-ui-theme="terminal"] {
+    color-scheme: dark;
+    background: #05080a;
+}
+
+html[data-ui-theme="terminal"] body {
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        #05080a;
+    background-size: 24px 24px;
+    color: #d4dfd7;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+}
+
+html[data-ui-theme="terminal"] .page-shell {
+    width: min(1420px, calc(100% - 24px));
+    padding-top: 24px;
+}
+
+html[data-ui-theme="terminal"] .hero {
+    align-items: flex-start;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #355044;
+}
+
+html[data-ui-theme="terminal"] .eyebrow {
+    color: #77ffad;
+    letter-spacing: 0.16em;
+}
+
+html[data-ui-theme="terminal"] h1,
+html[data-ui-theme="terminal"] h2,
+html[data-ui-theme="terminal"] h3 {
+    color: #f2f7f3;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    letter-spacing: 0.02em;
+}
+
+html[data-ui-theme="terminal"] h1 {
+    font-size: clamp(28px, 4vw, 44px);
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] .subtitle,
+html[data-ui-theme="terminal"] .section-heading p,
+html[data-ui-theme="terminal"] #request-status,
+html[data-ui-theme="terminal"] #execution-status,
+html[data-ui-theme="terminal"] .estimate-note {
+    color: #8ea99a;
+}
+
+html[data-ui-theme="terminal"] .status-card {
+    border: 1px solid #2d6e4c;
+    border-radius: 2px;
+    background: #07110c;
+    color: #9affbd;
+    box-shadow: inset 0 0 0 1px rgba(119, 255, 173, 0.04);
+}
+
+html[data-ui-theme="terminal"] .status-dot {
+    background: #62ff9b;
+    box-shadow: 0 0 8px rgba(98, 255, 155, 0.6);
+}
+
+html[data-ui-theme="terminal"] .notice {
+    border: 1px solid #6f5b24;
+    border-radius: 2px;
+    background: #171307;
+    color: #f6d97d;
+    box-shadow: none;
+}
+
+html[data-ui-theme="terminal"] .panel {
+    border: 1px solid #24372f;
+    border-radius: 2px;
+    background: rgba(7, 12, 10, 0.97);
+    box-shadow: none;
+}
+
+html[data-ui-theme="terminal"] .panel h2 {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #20342b;
+    color: #77ffad;
+    font-size: 18px;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] label {
+    color: #9caf9f;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] input,
+html[data-ui-theme="terminal"] select {
+    border: 1px solid #355044;
+    border-radius: 1px;
+    background: #020504;
+    color: #e7eee9;
+    caret-color: #77ffad;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+html[data-ui-theme="terminal"] input:focus,
+html[data-ui-theme="terminal"] select:focus {
+    outline: 1px solid #77ffad;
+    border-color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] .parameter-row {
+    border-top-color: #1e3028;
+}
+
+html[data-ui-theme="terminal"] .parameter-name strong {
+    color: #dbe8df;
+}
+
+html[data-ui-theme="terminal"] .parameter-description,
+html[data-ui-theme="terminal"] .fixed-parameter {
+    color: #6f887a;
+}
+
+html[data-ui-theme="terminal"] button:not(.theme-choice) {
+    border: 1px solid #4fbf7a;
+    border-radius: 1px;
+    background: #07150d;
+    color: #7effac;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] button:not(.theme-choice):hover {
+    background: #0c2014;
+    opacity: 1;
+}
+
+html[data-ui-theme="terminal"] button:not(.theme-choice):disabled {
+    border-color: #2b3b33;
+    color: #607066;
+    cursor: not-allowed;
+}
+
+html[data-ui-theme="terminal"] .summary-card {
+    border: 1px solid #284337;
+    border-radius: 1px;
+    background: #030806;
+}
+
+html[data-ui-theme="terminal"] .summary-card span {
+    color: #729080;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] .summary-card strong {
+    color: #ffcf66;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+html[data-ui-theme="terminal"] details {
+    border-top: 1px solid #1d3027;
+    padding-top: 12px;
+}
+
+html[data-ui-theme="terminal"] summary {
+    color: #79dba0;
+    cursor: pointer;
+}
+
+html[data-ui-theme="terminal"] pre {
+    border: 1px solid #284337;
+    border-radius: 1px;
+    background: #010302;
+    color: #9fffc0;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+}
+
+html[data-ui-theme="terminal"] .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #20372c;
+}
+
+html[data-ui-theme="terminal"] table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+html[data-ui-theme="terminal"] th,
+html[data-ui-theme="terminal"] td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #182920;
+    text-align: right;
+    white-space: nowrap;
+}
+
+html[data-ui-theme="terminal"] th:first-child,
+html[data-ui-theme="terminal"] td:first-child {
+    text-align: left;
+}
+
+html[data-ui-theme="terminal"] th {
+    background: #08130d;
+    color: #77ffad;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] td {
+    color: #d8e3dc;
+}
+
+html[data-ui-theme="terminal"] tbody tr:hover td {
+    background: #0a1510;
+}
+
+html[data-ui-theme="terminal"] .error-panel {
+    border-color: #7a2e2e;
+}
+
+html[data-ui-theme="terminal"] .theme-switch-label {
+    color: #6f887a;
+}
+
+html[data-ui-theme="terminal"] .theme-switch-buttons {
+    border: 1px solid #284337;
+    border-radius: 1px;
+    background: #020504;
+}
+
+html[data-ui-theme="terminal"] .theme-choice {
+    border-radius: 1px;
+    color: #7f9a8b;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    text-transform: uppercase;
+}
+
+html[data-ui-theme="terminal"] .theme-choice:hover {
+    background: #09130e;
+}
+
+html[data-ui-theme="terminal"] .theme-choice.is-active {
+    border-color: #4fbf7a;
+    background: #0b1d12;
+    color: #7effac;
+}
+
+@media (max-width: 850px) {
+    .theme-switch {
+        justify-items: start;
+        margin-left: 0;
+    }
+
+    .theme-switch-buttons {
+        width: 100%;
+    }
+
+    .theme-choice {
+        flex: 1;
+    }
+}
+
+
+/* === RESULTS EXPORT PATCH === */
+.export-actions {
+    margin: -6px 0 14px;
+}
+
+.export-actions button {
+    min-width: 132px;
+}
+
+html[data-ui-theme="terminal"] .export-actions {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1d3027;
+}

@@ -20,7 +20,7 @@ function formatElapsed(ms) {
 
 function startExecutionTimer() {
     executionStartedAt = performance.now();
-    executionStatus.textContent = "Running... 0.0 s";
+    executionStatus.textContent = "Running... 0.0";
 
     executionTimer = window.setInterval(() => {
         const elapsed = performance.now() - executionStartedAt;
@@ -252,7 +252,7 @@ function renderResult(config, response) {
     ].join("");
 
     const gateNote = executionGate.allowed
-        ? "Within commissioning limits. Running will read D1 and execute the real backtesting engine in Cloudflare."
+        ? "Within limits. Running will read D1 and execute the real backtesting engine in Cloudflare."
         : `Blocked: ${executionGate.reasons.join("; ")}`;
 
     document.querySelector("#estimate-note").textContent = `${usageEstimate.note} ${gateNote}`;
@@ -268,6 +268,8 @@ function renderResult(config, response) {
 }
 
 function renderExecution(response) {
+    lastExecutionResponse = response;
+    exportActions.hidden = false;
     const { execution, result } = response;
     const d1 = execution.d1;
 
@@ -388,6 +390,8 @@ runButton.addEventListener("click", async () => {
         return;
     }
 
+    lastExecutionResponse = null;
+    exportActions.hidden = true;
     runButton.disabled = true;
     startExecutionTimer();
     executionPanel.hidden = true;
@@ -424,4 +428,201 @@ runButton.addEventListener("click", async () => {
 loadStrategies().catch((error) => {
     document.querySelector("#error-output").textContent = error.message;
     errorPanel.hidden = false;
+});
+
+
+// === TERMINAL THEME PATCH ===
+const themeChoices = [...document.querySelectorAll("[data-theme-choice]")];
+const THEME_STORAGE_KEY = "forexResearchUiTheme";
+
+function applyUiTheme(theme) {
+    const normalizedTheme = theme === "terminal" ? "terminal" : "contemporary";
+
+    if (normalizedTheme === "terminal") {
+        document.documentElement.dataset.uiTheme = "terminal";
+    } else {
+        delete document.documentElement.dataset.uiTheme;
+    }
+
+    for (const button of themeChoices) {
+        const active = button.dataset.themeChoice === normalizedTheme;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+    }
+}
+
+for (const button of themeChoices) {
+    button.addEventListener("click", () => {
+        const theme = button.dataset.themeChoice;
+        applyUiTheme(theme);
+        window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    });
+}
+
+const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+applyUiTheme(savedTheme === "terminal" ? "terminal" : "contemporary");
+
+
+// === RESULTS EXPORT PATCH ===
+const exportActions = document.querySelector("#export-actions");
+const exportCsvButton = document.querySelector("#export-csv-button");
+const exportJsonButton = document.querySelector("#export-json-button");
+
+let lastExecutionResponse = null;
+
+function downloadBlob(filename, type, content) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function csvValue(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    const text = typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value);
+
+    if (/[",\r\n]/.test(text)) {
+        return "\"" + text.replaceAll("\"", "\"\"") + "\"";
+    }
+
+    return text;
+}
+
+function safeFilenamePart(value, fallback) {
+    const text = String(value ?? fallback ?? "")
+        .trim()
+        .replace(/[^A-Za-z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    return text || fallback || "export";
+}
+
+function datePart(value) {
+    const time = Date.parse(value);
+
+    if (!Number.isFinite(time)) {
+        return "date";
+    }
+
+    return new Date(time).toISOString().slice(0, 10);
+}
+
+function createExportBaseName(response) {
+    const result = response?.result ?? {};
+    const experiment = result.experiment ?? {};
+    const backtest = experiment.backtest ?? {};
+    const strategy = experiment.strategy ?? {};
+    const strategyId = strategy.id ?? strategy.name ?? "strategy";
+    const instrument = backtest.instrument ?? "instrument";
+    const timeframe = backtest.strategyTimeframe ?? "tf";
+    const runCount = result.runs?.length ?? 0;
+
+    return [
+        safeFilenamePart(strategyId, "strategy"),
+        safeFilenamePart(instrument, "instrument"),
+        safeFilenamePart(timeframe, "tf"),
+        datePart(backtest.from),
+        datePart(backtest.to),
+        String(runCount) + "-runs",
+    ].join("_");
+}
+
+function collectStrategyParameterNames(runs) {
+    const names = new Set();
+
+    for (const run of runs) {
+        for (const name of Object.keys(run.strategyConfig ?? {})) {
+            names.add(name);
+        }
+    }
+
+    return [...names];
+}
+
+function createRunsCsv(response) {
+    const result = response?.result ?? {};
+    const experiment = result.experiment ?? {};
+    const backtest = experiment.backtest ?? {};
+    const runs = result.runs ?? [];
+    const parameterNames = collectStrategyParameterNames(runs);
+
+    const fixedColumns = [
+        "runNumber",
+        "status",
+        "instrument",
+        "strategyTimeframe",
+        "executionTimeframe",
+        "from",
+        "to",
+    ];
+
+    const metricColumns = [
+        ["totalTrades", "totalTrades"],
+        ["winRate", "winRate"],
+        ["totalPnlPips", "totalPnlPips"],
+        ["returnPercent", "returnPercent"],
+        ["profitFactor", "profitFactor"],
+        ["maxDrawdownPercent", "maxDrawdownPercent"],
+    ];
+
+    const headings = [
+        ...fixedColumns,
+        ...parameterNames.map((name) => "parameter." + name),
+        ...metricColumns.map(([heading]) => heading),
+        "error",
+    ];
+
+    const rows = runs.map((run) => {
+        const summary = run.summary ?? {};
+        const error = run.error?.message ?? run.error ?? "";
+
+        return [
+            run.runNumber,
+            run.status,
+            backtest.instrument ?? "",
+            backtest.strategyTimeframe ?? "",
+            backtest.executionTimeframe ?? "",
+            backtest.from ?? "",
+            backtest.to ?? "",
+            ...parameterNames.map((name) => run.strategyConfig?.[name] ?? ""),
+            ...metricColumns.map(([, key]) => summary[key] ?? ""),
+            error,
+        ];
+    });
+
+    return [headings, ...rows]
+        .map((row) => row.map(csvValue).join(","))
+        .join("\r\n");
+}
+
+exportCsvButton.addEventListener("click", () => {
+    if (!lastExecutionResponse) {
+        return;
+    }
+
+    const filename = createExportBaseName(lastExecutionResponse) + ".csv";
+    const csv = createRunsCsv(lastExecutionResponse);
+    downloadBlob(filename, "text/csv;charset=utf-8", "\uFEFF" + csv);
+});
+
+exportJsonButton.addEventListener("click", () => {
+    if (!lastExecutionResponse) {
+        return;
+    }
+
+    const filename = createExportBaseName(lastExecutionResponse) + ".json";
+    const json = JSON.stringify(lastExecutionResponse, null, 2);
+    downloadBlob(filename, "application/json;charset=utf-8", json);
 });

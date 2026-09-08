@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Forex Research Platform</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="stylesheet" href="/styles.css">
 </head>
 
@@ -18,13 +19,19 @@
             </div>
             <div class="status-card">
                 <span class="status-dot"></span>
-                Cloud commissioning mode
+                Cloud mode
+            </div>
+            <div class="theme-switch" aria-label="Interface style">
+                <span class="theme-switch-label">Interface</span>
+                <div class="theme-switch-buttons" role="group" aria-label="Interface style">
+                    <button type="button" class="theme-choice is-active" data-theme-choice="contemporary" aria-pressed="true">Contemporary</button>
+                    <button type="button" class="theme-choice" data-theme-choice="terminal" aria-pressed="false">Terminal</button>
+                </div>
             </div>
         </header>
 
         <div class="notice">
-            Cloud execution is enabled. Server-side safety limits are enforced before historical data is loaded and the
-            experiment is executed.
+            Cloud execution is enabled. Server-side safety limits are enforced.
         </div>
 
         <form id="research-form">
@@ -120,6 +127,11 @@
             <h2>Cloud execution result</h2>
             <div id="execution-cards" class="summary-cards"></div>
             <h3>Run results</h3>
+<!-- === RESULTS EXPORT PATCH === -->
+            <div id="export-actions" class="actions export-actions" hidden>
+                <button id="export-csv-button" type="button">Download CSV</button>
+                <button id="export-json-button" type="button">Download JSON</button>
+            </div>
             <div class="table-wrap">
                 <table id="execution-table"></table>
             </div>

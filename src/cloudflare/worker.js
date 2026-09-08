@@ -119,7 +119,7 @@ async function executeResearch(config, env) {
         return jsonResponse({
             status: "COMPLETED",
             execution: {
-                mode: "COMMISSIONING",
+                mode: "CLOUD",
                 wallTimeMs: Math.round(performance.now() - started),
                 d1: usageTracker,
             },
