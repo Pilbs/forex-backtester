@@ -41,23 +41,39 @@ export default {
     },
 
     strategyConfig: {
-        startHour: 8,
-        startMinute: 15,
-        durationMinutes: 60,
-        timeZone: "America/New_York",
-        stopLossPips: 10,
-        takeProfitPips: 20,
-        entryMode: "ATR_WEIGHTED",
-        breakoutSource: "CLOSE",
-        retestSource: "WICK",
-        atrLength: 14,
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
+        orbStartHour: 8,
+        orbStartMinute: 15,
+        orbDurationMinutes: 60,
+        timezoneMode: "EXCHANGE",
+
+        breakoutCondition: "CLOSE",
+        requiredRetests: 1,
+        breakoutDistanceEntryEnabled: false,
+        breakoutDistanceMode: "ATR",
+        breakoutDistanceValue: 1,
+
+        maxOrbRangeEnabled: false,
+        maxOrbRangeMode: "PIPS",
+        maxOrbRangeValue: 30,
+
+        atrLength: 12,
+        stopLossMode: "PERCENT",
+        stopLossValue: 0.20,
+        takeProfitMode: "ATR",
+        takeProfitValue: 3,
+
+        tpProgressEnabled: false,
+        closeAtNextORB: true,
+        latestEntryEnabled: true,
+        latestEntryHour: 12,
+        latestEntryMinute: 15,
+        skipFridayEntries: false,
+        profitExitWindowEnabled: false,
     },
 
     parameterGrid: {
-        breakoutSource: ["CLOSE", "WICK"],
-        retestSource: ["CLOSE", "WICK"],
+        breakoutCondition: ["CLOSE", "WICK"],
+        requiredRetests: [0, 1],
     },
 
     policy: {

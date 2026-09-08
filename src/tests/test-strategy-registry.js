@@ -23,23 +23,41 @@ if (metadata.length !== 1) {
 }
 
 const orbMetadata = metadata[0];
-const breakoutSource = orbMetadata.parameters.find(
-    (parameter) => parameter.id === "breakoutSource"
+const breakoutCondition = orbMetadata.parameters.find(
+    (parameter) => parameter.id === "breakoutCondition"
 );
-const timeZone = orbMetadata.parameters.find(
-    (parameter) => parameter.id === "timeZone"
+const timezoneMode = orbMetadata.parameters.find(
+    (parameter) => parameter.id === "timezoneMode"
+);
+const strategyTimeframe = orbMetadata.parameters.find(
+    (parameter) => parameter.id === "strategyTimeframe"
+);
+const executionTimeframe = orbMetadata.parameters.find(
+    (parameter) => parameter.id === "executionTimeframe"
 );
 
-if (!breakoutSource || breakoutSource.label !== "Breakout source") {
-    throw new Error("ORB parameter metadata was not exposed correctly");
+if (!breakoutCondition || breakoutCondition.label !== "Breakout condition") {
+    throw new Error("ORB breakout-condition metadata was not exposed correctly");
 }
 
-if (!breakoutSource.options?.includes("CLOSE") || !breakoutSource.options?.includes("WICK")) {
-    throw new Error("ORB option metadata was not exposed correctly");
+if (
+    !breakoutCondition.options?.includes("CLOSE") ||
+    !breakoutCondition.options?.includes("WICK")
+) {
+    throw new Error("ORB breakout-condition options were not exposed correctly");
 }
 
-if (timeZone?.sweepable !== false) {
-    throw new Error("Non-sweepable ORB parameter metadata was not preserved");
+if (
+    !timezoneMode?.options?.includes("EXCHANGE") ||
+    !timezoneMode.options.includes("NEW_YORK") ||
+    !timezoneMode.options.includes("LONDON") ||
+    !timezoneMode.options.includes("UTC")
+) {
+    throw new Error("ORB timezone metadata was not exposed correctly");
+}
+
+if (strategyTimeframe || executionTimeframe) {
+    throw new Error("Strategy/execution timeframe must remain platform settings, not ORB parameters");
 }
 
 const serialized = JSON.stringify(metadata);

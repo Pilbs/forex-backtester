@@ -21,14 +21,19 @@ const config = normalizeResearchConfig({
     },
 
     strategyConfig: {
-        stopLossPips: 10,
-        takeProfitPips: 20,
-        entryMode: "ATR_WEIGHTED",
+        orbStartHour: 8,
+        orbStartMinute: 15,
+        orbDurationMinutes: 60,
+        timezoneMode: "EXCHANGE",
+        stopLossMode: "PERCENT",
+        stopLossValue: 0.20,
+        takeProfitMode: "ATR",
+        takeProfitValue: 3,
     },
 
     parameterGrid: {
-        breakoutSource: ["CLOSE", "WICK"],
-        retestSource: ["CLOSE", "WICK"],
+        breakoutCondition: ["CLOSE", "WICK"],
+        requiredRetests: [0, 1],
     },
 });
 
@@ -40,7 +45,7 @@ if (config.market.instrument !== "EUR_USD") {
     throw new Error("Research config market section was not preserved");
 }
 
-if (config.parameterGrid.breakoutSource.length !== 2) {
+if (config.parameterGrid.breakoutCondition.length !== 2) {
     throw new Error("Research config parameter grid was not preserved");
 }
 
@@ -85,7 +90,7 @@ try {
         strategy: "orb",
         market: {},
         parameterGrid: {
-            stopLossPips: 10,
+            stopLossValue: 0.20,
         },
     });
 } catch {

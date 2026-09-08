@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 
 import { planResearch } from "../research/run-research.js";
-import { assessResearchExecution } from "../cloudflare/research-execution-gate.js";
+import {
+    assessResearchExecution,
+    COMMISSIONING_LIMITS,
+} from "../cloudflare/research-execution-gate.js";
 import { estimateResearchUsage } from "../cloudflare/research-usage-estimate.js";
 
 function createConfig() {
@@ -29,20 +32,19 @@ function createConfig() {
             closeOpenTradesAtEnd: true,
         },
         strategyConfig: {
-            startHour: 8,
-            startMinute: 15,
-            durationMinutes: 60,
-            timeZone: "America/New_York",
-            stopLossPips: 10,
-            takeProfitPips: 20,
-            entryMode: "ATR_WEIGHTED",
-            atrLength: 14,
-            candidateBreakoutAtr: 0.5,
-            strongBreakoutAtr: 1,
+            orbStartHour: 8,
+            orbStartMinute: 15,
+            orbDurationMinutes: 60,
+            timezoneMode: "EXCHANGE",
+            atrLength: 12,
+            stopLossMode: "PIPS",
+            stopLossValue: 10,
+            takeProfitMode: "PIPS",
+            takeProfitValue: 20,
         },
         parameterGrid: {
-            breakoutSource: ["CLOSE", "WICK"],
-            retestSource: ["CLOSE", "WICK"],
+            breakoutCondition: ["CLOSE", "WICK"],
+            requiredRetests: [0, 1],
         },
         policy: {
             warningRunCount: 4,
@@ -60,18 +62,30 @@ function assess(config) {
 assert.equal(assess(createConfig()).allowed, true);
 
 const tooLong = createConfig();
-tooLong.market.to = "2026-09-02T00:00:00Z";
+tooLong.market.to = "2027-08-02T00:00:00Z";
 assert.equal(assess(tooLong).allowed, false);
-assert.ok(assess(tooLong).reasons.some((reason) => reason.includes("31 days")));
+assert.ok(
+    assess(tooLong).reasons.some((reason) =>
+        reason.includes(`${COMMISSIONING_LIMITS.maximumDateRangeDays} days`)
+    )
+);
 
 const tooManyRuns = createConfig();
-tooManyRuns.parameterGrid.stopLossPips = [8, 10];
+tooManyRuns.parameterGrid.stopLossValue = [10, 12];
 assert.equal(assess(tooManyRuns).allowed, false);
-assert.ok(assess(tooManyRuns).reasons.some((reason) => reason.includes("4")));
+assert.ok(
+    assess(tooManyRuns).reasons.some((reason) =>
+        reason.includes(String(COMMISSIONING_LIMITS.maximumRuns))
+    )
+);
 
 const wrongTimeframe = createConfig();
 wrongTimeframe.market.executionTimeframe = "M1";
 assert.equal(assess(wrongTimeframe).allowed, false);
-assert.ok(assess(wrongTimeframe).reasons.some((reason) => reason.includes("M5")));
+assert.ok(
+    assess(wrongTimeframe).reasons.some((reason) =>
+        reason.includes(COMMISSIONING_LIMITS.executionTimeframe)
+    )
+);
 
 console.log("Cloudflare execution gate test passed.");

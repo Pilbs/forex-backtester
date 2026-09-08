@@ -4,19 +4,12 @@ import {
     printBacktestExperimentPlan,
     printBacktestExperimentResult,
 } from "../reporting/console-reporter.js";
-
-import {
-    writeExperimentResult,
-} from "../reporting/json-result-writer.js";
-
+import { writeExperimentResult } from "../reporting/json-result-writer.js";
 import {
     planBacktestExperiment,
     runBacktestExperiment,
 } from "../research/backtest-experiment.js";
-
-import {
-    orbDefinition,
-} from "../strategies/orb/orb-definition.js";
+import { orbDefinition } from "../strategies/orb/orb-definition.js";
 
 async function main() {
     const experimentConfig = {
@@ -35,12 +28,10 @@ async function main() {
             currency: "USD",
             leverage: 30,
             positionMode: "HEDGING",
-
             defaultSizing: {
                 type: "CASH",
                 value: 300,
             },
-
             risk: {
                 maxOpenTrades: 5,
                 maxMarginUsagePercent: 80,
@@ -52,34 +43,33 @@ async function main() {
         executionPolicy: {
             sameCandleConflict: "STOP_FIRST",
             slippagePips: 0,
-
             commission: {
                 type: "NONE",
                 value: 0,
             },
-
             closeOpenTradesAtEnd: true,
         },
 
         baseStrategyConfig: {
-            startHour: 8,
-            startMinute: 15,
-            durationMinutes: 60,
-            timeZone: "America/New_York",
-            stopLossPips: 10,
-            takeProfitPips: 20,
-
-            entryMode: "ATR_WEIGHTED",
-            breakoutSource: "CLOSE",
-            retestSource: "WICK",
-            atrLength: 14,
-            candidateBreakoutAtr: 0.5,
-            strongBreakoutAtr: 1,
+            orbStartHour: 8,
+            orbStartMinute: 15,
+            orbDurationMinutes: 60,
+            timezoneMode: "EXCHANGE",
+            breakoutCondition: "CLOSE",
+            requiredRetests: 1,
+            breakoutDistanceEntryEnabled: true,
+            breakoutDistanceMode: "ATR",
+            breakoutDistanceValue: 1,
+            atrLength: 12,
+            stopLossMode: "PERCENT",
+            stopLossValue: 0.20,
+            takeProfitMode: "ATR",
+            takeProfitValue: 3,
         },
 
         parameterGrid: {
-            breakoutSource: ["CLOSE", "WICK"],
-            retestSource: ["CLOSE", "WICK"],
+            breakoutCondition: ["CLOSE", "WICK"],
+            breakoutDistanceValue: [0.5, 1],
         },
 
         policy: {
@@ -89,7 +79,6 @@ async function main() {
     };
 
     const plan = planBacktestExperiment(experimentConfig);
-
     printBacktestExperimentPlan(plan);
 
     if (!plan.allowed) {
@@ -98,15 +87,14 @@ async function main() {
     }
 
     console.log("");
-    console.log("Testing the four close/wick breakout and retest combinations...");
+    console.log("Testing the four CLOSE/WICK and ATR breakout-distance combinations...");
 
     const result = await runBacktestExperiment({
         ...experimentConfig,
-        experimentId: "orb-atr-entry-source-test",
+        experimentId: "orb-breakout-distance-source-test",
         includeTrades: true,
         includeRunDetails: false,
         captureEquityCurve: false,
-
         onProgress: ({ completedRuns, totalRuns }) => {
             console.log(`Completed ${completedRuns}/${totalRuns} backtests`);
         },

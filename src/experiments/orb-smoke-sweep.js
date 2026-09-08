@@ -1,9 +1,15 @@
 import "dotenv/config";
 
-import {    printBacktestExperimentPlan,    printBacktestExperimentResult,} from "../reporting/console-reporter.js";
-import {    writeExperimentResult,} from "../reporting/json-result-writer.js";
-import {    planBacktestExperiment,    runBacktestExperiment,} from "../research/backtest-experiment.js";
-import {    orbDefinition,} from "../strategies/orb/orb-definition.js";
+import {
+    printBacktestExperimentPlan,
+    printBacktestExperimentResult,
+} from "../reporting/console-reporter.js";
+import { writeExperimentResult } from "../reporting/json-result-writer.js";
+import {
+    planBacktestExperiment,
+    runBacktestExperiment,
+} from "../research/backtest-experiment.js";
+import { orbDefinition } from "../strategies/orb/orb-definition.js";
 
 const EXPERIMENT_ID = "human-v1-orb-smoke";
 
@@ -28,7 +34,6 @@ async function main() {
                 type: "CASH",
                 value: 300,
             },
-
             risk: {
                 maxOpenTrades: 3,
                 maxMarginUsagePercent: 80,
@@ -40,27 +45,31 @@ async function main() {
         executionPolicy: {
             sameCandleConflict: "STOP_FIRST",
             slippagePips: 0,
-
             commission: {
                 type: "NONE",
                 value: 0,
             },
-
             closeOpenTradesAtEnd: true,
         },
 
         baseStrategyConfig: {
-            startHour: 8,
-            startMinute: 15,
-            durationMinutes: 60,
-            timeZone: "America/New_York",
-            stopLossPips: 10,
-            takeProfitPips: 20,
+            orbStartHour: 8,
+            orbStartMinute: 15,
+            orbDurationMinutes: 60,
+            timezoneMode: "EXCHANGE",
+            breakoutCondition: "CLOSE",
+            requiredRetests: 1,
+            breakoutDistanceEntryEnabled: false,
+            atrLength: 12,
+            stopLossMode: "PERCENT",
+            stopLossValue: 0.20,
+            takeProfitMode: "ATR",
+            takeProfitValue: 3,
         },
 
         parameterGrid: {
-            stopLossPips: [8, 10, 12],
-            takeProfitPips: [15, 20],
+            stopLossValue: [0.15, 0.20, 0.25],
+            takeProfitValue: [2, 3],
         },
 
         policy: {
@@ -70,7 +79,6 @@ async function main() {
     };
 
     const plan = planBacktestExperiment(experimentConfig);
-
     printBacktestExperimentPlan(plan);
 
     if (!plan.allowed) {
@@ -79,18 +87,14 @@ async function main() {
     }
 
     console.log("");
-    console.log(
-        "Loading three months of D1 history once, then running 6 account-aware backtests..."
-    );
+    console.log("Loading three months of D1 history once, then running 6 TradingView-aligned ORB backtests...");
 
     const result = await runBacktestExperiment({
         ...experimentConfig,
         experimentId: EXPERIMENT_ID,
-
         includeTrades: true,
         includeRunDetails: false,
         captureEquityCurve: false,
-
         onProgress: ({ completedRuns, totalRuns }) => {
             console.log(`Completed ${completedRuns}/${totalRuns} backtests`);
         },

@@ -1,22 +1,18 @@
 import assert from "node:assert/strict";
-import { createAtrBreakoutDetector } from "../strategies/orb/atr-breakout-detector.js";
 
-const rangeState = {
-    complete: true,
-    date: "2026-09-01",
-    high: 100,
-    low: 90,
-};
+import { createOrbStrategy } from "../strategies/orb/orb-strategy.js";
 
-function candle({
-    time,
-    open = 100,
+const MINUTE = 60 * 1000;
+const START = Date.parse("2026-09-07T08:00:00Z");
+
+function candle(minute, {
+    open,
     high,
     low,
     close,
 }) {
     return {
-        time,
+        time: START + minute * MINUTE,
         mid: {
             open,
             high,
@@ -26,215 +22,211 @@ function candle({
     };
 }
 
-function testStrongCloseBreakoutEntersImmediately() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        retestSource: "WICK",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
-    });
-
-    const signal = detector.onCandle({
-        candle: candle({ time: 1, high: 111, low: 101, close: 110 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(signal.direction, "ABOVE");
-    assert.equal(signal.qualification, "STRONG_BREAKOUT");
-    assert.equal(signal.breakoutStrengthAtr, 1);
+function context(item, index, openTrades = []) {
+    return {
+        candle: item,
+        index,
+        instrument: "EUR_USD",
+        timeframe: "M1",
+        account: null,
+        position: null,
+        openTrades,
+        pendingOrders: [],
+    };
 }
 
-function testCandidateThenWickRetestAndCloseContinuation() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        retestSource: "WICK",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
+function createBaseStrategy(overrides = {}) {
+    return createOrbStrategy({
+        orbStartHour: 8,
+        orbStartMinute: 0,
+        orbDurationMinutes: 2,
+        timezoneMode: "UTC",
+        atrLength: 1,
+        breakoutCondition: "CLOSE",
+        requiredRetests: 1,
+        breakoutDistanceEntryEnabled: false,
+        stopLossMode: "PIPS",
+        stopLossValue: 10,
+        takeProfitMode: "PIPS",
+        takeProfitValue: 20,
+        latestEntryEnabled: false,
+        ...overrides,
     });
-
-    const candidateSignal = detector.onCandle({
-        candle: candle({ time: 1, high: 107, low: 102, close: 106 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(candidateSignal, null);
-    assert.equal(detector.getState().candidate.direction, "ABOVE");
-    assert.equal(detector.getState().candidate.strengthAtr, 0.6);
-
-    const entrySignal = detector.onCandle({
-        candle: candle({ time: 2, high: 106, low: 99, close: 104 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(entrySignal.direction, "ABOVE");
-    assert.equal(entrySignal.qualification, "RETEST_CONTINUATION");
-    assert.equal(entrySignal.candidateTime, 1);
-    assert.equal(entrySignal.retestTime, 2);
 }
 
-function testCandidateCanQualifyByReachingStrongThresholdWithoutRetest() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        retestSource: "WICK",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
-    });
-
-    detector.onCandle({
-        candle: candle({ time: 1, high: 107, low: 102, close: 106 }),
-        rangeState,
-        atr: 10,
-    });
-
-    const signal = detector.onCandle({
-        candle: candle({ time: 2, high: 112, low: 103, close: 111 }),
-        rangeState,
-        atr: 12,
-    });
-
-    assert.equal(signal.direction, "ABOVE");
-    assert.equal(signal.qualification, "STRONG_BREAKOUT_AFTER_CANDIDATE");
-    assert.equal(signal.atr, 10);
-    assert.equal(signal.breakoutStrengthAtr, 1.1);
+function openingBars() {
+    return [
+        candle(0, {
+            open: 1.1000,
+            high: 1.1010,
+            low: 1.0990,
+            close: 1.1005,
+        }),
+        candle(1, {
+            open: 1.1005,
+            high: 1.1020,
+            low: 1.1000,
+            close: 1.1015,
+        }),
+    ];
 }
 
-function testBreakoutSourceCanBeCloseOrWick() {
-    const closeDetector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
-    });
-    const wickDetector = createAtrBreakoutDetector({
-        breakoutSource: "WICK",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
-    });
-    const breakoutCandle = candle({ time: 1, high: 108, low: 99, close: 103 });
+function testRequiredRetestEntry() {
+    const strategy = createBaseStrategy();
+    const bars = [
+        ...openingBars(),
+        candle(2, {
+            open: 1.1015,
+            high: 1.1030,
+            low: 1.1010,
+            close: 1.1025,
+        }),
+        candle(3, {
+            open: 1.1025,
+            high: 1.1030,
+            low: 1.1015,
+            close: 1.1022,
+        }),
+    ];
 
-    closeDetector.onCandle({ candle: breakoutCandle, rangeState, atr: 10 });
-    wickDetector.onCandle({ candle: breakoutCandle, rangeState, atr: 10 });
+    assert.equal(strategy.onCandle(context(bars[0], 0)), null);
+    assert.equal(strategy.onCandle(context(bars[1], 1)), null);
+    assert.equal(strategy.onCandle(context(bars[2], 2)), null);
 
-    assert.equal(closeDetector.getState().candidate, null);
-    assert.equal(wickDetector.getState().candidate.direction, "ABOVE");
-    assert.equal(wickDetector.getState().candidate.strengthAtr, 0.8);
+    const intents = strategy.onCandle(context(bars[3], 3));
+
+    assert.equal(intents.length, 1);
+    assert.equal(intents[0].action, "ENTER");
+    assert.equal(intents[0].side, "LONG");
+    assert.equal(intents[0].metadata.breakoutQualification, "RETESTS");
+    assert.equal(intents[0].metadata.breakoutRetests, 1);
 }
 
-function testCloseRetestRequiresCloseToReturnToRange() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        retestSource: "CLOSE",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
+function testBreakoutDistanceEntry() {
+    const strategy = createBaseStrategy({
+        requiredRetests: 3,
+        breakoutDistanceEntryEnabled: true,
+        breakoutDistanceMode: "PIPS",
+        breakoutDistanceValue: 5,
     });
+    const bars = [
+        ...openingBars(),
+        candle(2, {
+            open: 1.1015,
+            high: 1.1030,
+            low: 1.1010,
+            close: 1.1025,
+        }),
+    ];
 
-    detector.onCandle({
-        candle: candle({ time: 1, high: 107, low: 102, close: 106 }),
-        rangeState,
-        atr: 10,
-    });
+    strategy.onCandle(context(bars[0], 0));
+    strategy.onCandle(context(bars[1], 1));
 
-    detector.onCandle({
-        candle: candle({ time: 2, high: 105, low: 99, close: 102 }),
-        rangeState,
-        atr: 10,
-    });
+    const intents = strategy.onCandle(context(bars[2], 2));
 
-    assert.equal(detector.getState().candidate.retested, false);
-
-    detector.onCandle({
-        candle: candle({ time: 3, high: 102, low: 98, close: 99 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(detector.getState().candidate.retested, true);
-
-    const signal = detector.onCandle({
-        candle: candle({ time: 4, high: 103, low: 99, close: 101 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(signal.direction, "ABOVE");
-    assert.equal(signal.qualification, "RETEST_CONTINUATION");
+    assert.equal(intents.length, 1);
+    assert.equal(intents[0].action, "ENTER");
+    assert.equal(intents[0].metadata.breakoutQualification, "DISTANCE");
 }
 
-function testCandidateIsNotInvalidatedByReturningThroughRange() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "CLOSE",
-        retestSource: "CLOSE",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
+function testWickCanCreateBreakoutBeforeClose() {
+    const closeStrategy = createBaseStrategy({
+        breakoutCondition: "CLOSE",
+        requiredRetests: 1,
     });
-
-    detector.onCandle({
-        candle: candle({ time: 1, high: 107, low: 102, close: 106 }),
-        rangeState,
-        atr: 10,
+    const wickStrategy = createBaseStrategy({
+        breakoutCondition: "WICK",
+        requiredRetests: 1,
     });
+    const bars = [
+        ...openingBars(),
+        candle(2, {
+            open: 1.1015,
+            high: 1.1030,
+            low: 1.1010,
+            close: 1.1020,
+        }),
+        candle(3, {
+            open: 1.1020,
+            high: 1.1030,
+            low: 1.1015,
+            close: 1.1023,
+        }),
+    ];
 
-    const oppositeMoveSignal = detector.onCandle({
-        candle: candle({ time: 2, high: 100, low: 88, close: 89 }),
-        rangeState,
-        atr: 10,
-    });
+    for (let index = 0; index < 3; index++) {
+        closeStrategy.onCandle(context(bars[index], index));
+        wickStrategy.onCandle(context(bars[index], index));
+    }
 
-    assert.equal(oppositeMoveSignal, null);
-    assert.equal(detector.getState().candidate.direction, "ABOVE");
-    assert.equal(detector.getState().candidate.retested, true);
+    const closeIntents = closeStrategy.onCandle(context(bars[3], 3));
+    const wickIntents = wickStrategy.onCandle(context(bars[3], 3));
 
-    const continuationSignal = detector.onCandle({
-        candle: candle({ time: 3, high: 102, low: 99, close: 101 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(continuationSignal.direction, "ABOVE");
-    assert.equal(continuationSignal.qualification, "RETEST_CONTINUATION");
+    assert.equal(closeIntents, null);
+    assert.equal(wickIntents.length, 1);
+    assert.equal(wickIntents[0].action, "ENTER");
+    assert.equal(wickIntents[0].side, "LONG");
 }
 
-function testWickRetestRequiresLaterWickContinuation() {
-    const detector = createAtrBreakoutDetector({
-        breakoutSource: "WICK",
-        retestSource: "WICK",
-        candidateBreakoutAtr: 0.5,
-        strongBreakoutAtr: 1,
+function testMaxOrbRangeBlocksTrade() {
+    const strategy = createBaseStrategy({
+        requiredRetests: 0,
+        maxOrbRangeEnabled: true,
+        maxOrbRangeMode: "PIPS",
+        maxOrbRangeValue: 5,
     });
+    const bars = [
+        ...openingBars(),
+        candle(2, {
+            open: 1.1015,
+            high: 1.1040,
+            low: 1.1010,
+            close: 1.1030,
+        }),
+    ];
 
-    detector.onCandle({
-        candle: candle({ time: 1, high: 106, low: 101, close: 104 }),
-        rangeState,
-        atr: 10,
-    });
+    strategy.onCandle(context(bars[0], 0));
+    strategy.onCandle(context(bars[1], 1));
 
-    const sameCandleSignal = detector.onCandle({
-        candle: candle({ time: 2, high: 105, low: 99, close: 102 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(sameCandleSignal, null);
-    assert.equal(detector.getState().candidate.retested, true);
-
-    const laterSignal = detector.onCandle({
-        candle: candle({ time: 3, high: 103, low: 100, close: 101 }),
-        rangeState,
-        atr: 10,
-    });
-
-    assert.equal(laterSignal.direction, "ABOVE");
-    assert.equal(laterSignal.qualification, "RETEST_CONTINUATION");
+    assert.equal(strategy.onCandle(context(bars[2], 2)), null);
 }
 
-testStrongCloseBreakoutEntersImmediately();
-testCandidateThenWickRetestAndCloseContinuation();
-testCandidateCanQualifyByReachingStrongThresholdWithoutRetest();
-testBreakoutSourceCanBeCloseOrWick();
-testCloseRetestRequiresCloseToReturnToRange();
-testCandidateIsNotInvalidatedByReturningThroughRange();
-testWickRetestRequiresLaterWickContinuation();
+function testTpProgressionUpdatesBracket() {
+    const strategy = createBaseStrategy({
+        tpProgressEnabled: true,
+        tpProgressTriggerPct: 90,
+        tpProgressStopPct: 75,
+        tpProgressExtendTarget: true,
+        tpProgressTargetPct: 125,
+        tpProgressRepeat: false,
+    });
+    const trade = {
+        id: "trade-1",
+        side: "LONG",
+        entryPrice: 1.1000,
+        stopLoss: 1.0950,
+        takeProfit: 1.1200,
+    };
+    const item = candle(10, {
+        open: 1.1180,
+        high: 1.1200,
+        low: 1.1170,
+        close: 1.1190,
+    });
 
-console.log("ORB ATR entry tests passed");
+    const intents = strategy.onCandle(context(item, 10, [trade]));
+
+    assert.equal(intents.length, 2);
+    assert.equal(intents[0].action, "UPDATE_STOP");
+    assert.ok(Math.abs(intents[0].stopLoss.value - 1.1150) < 1e-10);
+    assert.equal(intents[1].action, "UPDATE_TARGET");
+    assert.ok(Math.abs(intents[1].takeProfit.value - 1.1250) < 1e-10);
+}
+
+testRequiredRetestEntry();
+testBreakoutDistanceEntry();
+testWickCanCreateBreakoutBeforeClose();
+testMaxOrbRangeBlocksTrade();
+testTpProgressionUpdatesBracket();
+
+console.log("ORB TradingView-aligned entry tests passed");

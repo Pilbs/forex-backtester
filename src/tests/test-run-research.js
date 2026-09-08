@@ -28,13 +28,14 @@ const researchConfig = {
     },
 
     strategyConfig: {
-        stopLossPips: 10,
-        takeProfitPips: 20,
-        entryMode: "ATR_WEIGHTED",
+        stopLossMode: "PIPS",
+        stopLossValue: 10,
+        takeProfitMode: "PIPS",
+        takeProfitValue: 20,
     },
 
     parameterGrid: {
-        breakoutSource: ["CLOSE", "WICK"],
+        breakoutCondition: ["CLOSE", "WICK"],
     },
 };
 

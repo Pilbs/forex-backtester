@@ -31,20 +31,19 @@ function createConfig() {
             closeOpenTradesAtEnd: true,
         },
         strategyConfig: {
-            startHour: 8,
-            startMinute: 15,
-            durationMinutes: 60,
-            timeZone: "America/New_York",
-            stopLossPips: 10,
-            takeProfitPips: 20,
-            entryMode: "ATR_WEIGHTED",
-            atrLength: 14,
-            candidateBreakoutAtr: 0.5,
-            strongBreakoutAtr: 1,
+            orbStartHour: 8,
+            orbStartMinute: 15,
+            orbDurationMinutes: 60,
+            timezoneMode: "EXCHANGE",
+            atrLength: 12,
+            stopLossMode: "PIPS",
+            stopLossValue: 10,
+            takeProfitMode: "PIPS",
+            takeProfitValue: 20,
         },
         parameterGrid: {
-            breakoutSource: ["CLOSE", "WICK"],
-            retestSource: ["CLOSE", "WICK"],
+            breakoutCondition: ["CLOSE", "WICK"],
+            requiredRetests: [0, 1],
         },
         policy: {
             warningRunCount: 4,
@@ -71,6 +70,10 @@ const strategies = await readJson(strategiesResponse);
 
 assert.equal(strategiesResponse.status, 200);
 assert.ok(strategies.strategies.some((strategy) => strategy.id === "orb"));
+
+const orbMetadata = strategies.strategies.find((strategy) => strategy.id === "orb");
+assert.ok(orbMetadata.parameters.some((parameter) => parameter.id === "breakoutCondition"));
+assert.ok(!orbMetadata.parameters.some((parameter) => parameter.id === "entryMode"));
 
 const config = createConfig();
 const planResponse = await handleRequest(
