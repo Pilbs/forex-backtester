@@ -6,6 +6,12 @@ function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function validateOptionalText(value, name) {
+    if (value !== undefined && (typeof value !== "string" || !value.trim())) {
+        throw new Error(`${name} must be a non-empty string`);
+    }
+}
+
 function validateParameterValue(name, value, definition) {
     if (definition.type === "number" && !Number.isFinite(value)) {
         throw new Error(`${name} must be a finite number`);
@@ -49,6 +55,8 @@ export function validateStrategyDefinition(strategyDefinition) {
         throw new Error("strategyDefinition.name must be a non-empty string");
     }
 
+    validateOptionalText(strategyDefinition.description, "strategyDefinition.description");
+
     if (strategyDefinition.version !== undefined && !Number.isInteger(strategyDefinition.version)) {
         throw new Error("strategyDefinition.version must be an integer");
     }
@@ -68,6 +76,17 @@ export function validateStrategyDefinition(strategyDefinition) {
 
         if (!PARAMETER_TYPES.has(definition.type)) {
             throw new Error(`Parameter ${name}.type must be number, integer, string or boolean`);
+        }
+
+        validateOptionalText(definition.label, `Parameter ${name}.label`);
+        validateOptionalText(definition.description, `Parameter ${name}.description`);
+
+        if (definition.required !== undefined && typeof definition.required !== "boolean") {
+            throw new Error(`Parameter ${name}.required must be a boolean`);
+        }
+
+        if (definition.sweepable !== undefined && typeof definition.sweepable !== "boolean") {
+            throw new Error(`Parameter ${name}.sweepable must be a boolean`);
         }
 
         if (definition.options !== undefined) {
@@ -96,6 +115,55 @@ export function validateStrategyDefinition(strategyDefinition) {
     }
 
     return strategyDefinition;
+}
+
+export function getStrategyDefinitionMetadata(strategyDefinition) {
+    validateStrategyDefinition(strategyDefinition);
+
+    const parameters = Object.entries(strategyDefinition.parameters).map(([id, definition]) => {
+        const metadata = {
+            id,
+            type: definition.type,
+            label: definition.label ?? id,
+            required: definition.required === true,
+            sweepable: definition.sweepable !== false,
+        };
+
+        if (definition.description !== undefined) {
+            metadata.description = definition.description;
+        }
+
+        if (Object.hasOwn(definition, "default")) {
+            metadata.default = definition.default;
+        }
+
+        if (definition.options !== undefined) {
+            metadata.options = [...definition.options];
+        }
+
+        if (definition.min !== undefined) {
+            metadata.min = definition.min;
+        }
+
+        if (definition.max !== undefined) {
+            metadata.max = definition.max;
+        }
+
+        return metadata;
+    });
+
+    const metadata = {
+        id: strategyDefinition.id,
+        name: strategyDefinition.name,
+        version: strategyDefinition.version ?? null,
+        parameters,
+    };
+
+    if (strategyDefinition.description !== undefined) {
+        metadata.description = strategyDefinition.description;
+    }
+
+    return metadata;
 }
 
 export function resolveStrategyConfig({
