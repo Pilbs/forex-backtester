@@ -7,6 +7,11 @@
         "binding": "ASSETS",
         "run_worker_first": ["/api/*"]
     },
+    "vars": {
+        "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "https://old-field-e3ea.cloudflareaccess.com",
+        "CLOUDFLARE_ACCESS_AUD": "7a666baec0b53386702d4cbaab6062f25431c752fc57bce7818ab772983b09ce",
+        "APP_VERSION": "research-v1"
+    },
     "d1_databases": [
         {
             "binding": "FOREX_DB",
