@@ -4,19 +4,12 @@ import {
     printBacktestExperimentPlan,
     printBacktestExperimentResult,
 } from "../reporting/console-reporter.js";
-
-import {
-    writeExperimentResult,
-} from "../reporting/json-result-writer.js";
-
+import { writeExperimentResult } from "../reporting/json-result-writer.js";
 import {
     planBacktestExperiment,
     runBacktestExperiment,
 } from "../research/backtest-experiment.js";
-
-import {
-    orbDefinition,
-} from "../strategies/orb/orb-definition.js";
+import { orbDefinition } from "../strategies/orb/orb-definition.js";
 
 async function main() {
     const experimentConfig = {
@@ -35,12 +28,10 @@ async function main() {
             currency: "USD",
             leverage: 30,
             positionMode: "HEDGING",
-
             defaultSizing: {
                 type: "CASH",
                 value: 300,
             },
-
             risk: {
                 maxOpenTrades: 5,
                 maxMarginUsagePercent: 80,
@@ -52,27 +43,31 @@ async function main() {
         executionPolicy: {
             sameCandleConflict: "STOP_FIRST",
             slippagePips: 0,
-
             commission: {
                 type: "NONE",
                 value: 0,
             },
-
             closeOpenTradesAtEnd: true,
         },
 
         baseStrategyConfig: {
-            startHour: 8,
-            startMinute: 15,
-            durationMinutes: 60,
-            timeZone: "America/New_York",
-            stopLossPips: 10,
-            takeProfitPips: 20,
+            orbStartHour: 8,
+            orbStartMinute: 15,
+            orbDurationMinutes: 60,
+            timezoneMode: "EXCHANGE",
+            breakoutCondition: "CLOSE",
+            requiredRetests: 1,
+            breakoutDistanceEntryEnabled: false,
+            atrLength: 12,
+            stopLossMode: "PERCENT",
+            stopLossValue: 0.20,
+            takeProfitMode: "ATR",
+            takeProfitValue: 3,
         },
 
         parameterGrid: {
-            stopLossPips: [5, 10, 15],
-            takeProfitPips: [10, 15, 20, 25, 30, 35, 40],
+            stopLossValue: [0.10, 0.20, 0.30],
+            takeProfitValue: [1.5, 2, 2.5, 3, 3.5, 4, 5],
         },
 
         policy: {
@@ -82,7 +77,6 @@ async function main() {
     };
 
     const plan = planBacktestExperiment(experimentConfig);
-
     printBacktestExperimentPlan(plan);
 
     if (!plan.allowed) {
@@ -91,15 +85,13 @@ async function main() {
     }
 
     console.log("");
-    console.log("Loading historical data once, then running all parameter combinations...");
+    console.log("Loading historical data once, then running all TradingView-aligned ORB parameter combinations...");
 
     const result = await runBacktestExperiment({
         ...experimentConfig,
-
         includeTrades: false,
         includeRunDetails: false,
         captureEquityCurve: false,
-
         onProgress: ({ completedRuns, totalRuns }) => {
             console.log(`Completed ${completedRuns}/${totalRuns} backtests`);
         },

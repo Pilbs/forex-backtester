@@ -11,8 +11,6 @@ import {
 } from "../research/backtest-experiment.js";
 import { orbDefinition } from "../strategies/orb/orb-definition.js";
 
-const EXPERIMENT_ID = "human-v1-orb-smoke";
-
 async function main() {
     const experimentConfig = {
         strategyDefinition: orbDefinition,
@@ -21,7 +19,7 @@ async function main() {
             instrument: "EUR_USD",
             strategyTimeframe: "M5",
             executionTimeframe: "M1",
-            from: "2026-06-01T00:00:00Z",
+            from: "2023-01-01T00:00:00Z",
             to: "2026-09-01T00:00:00Z",
         },
 
@@ -35,9 +33,9 @@ async function main() {
                 value: 300,
             },
             risk: {
-                maxOpenTrades: 3,
+                maxOpenTrades: 5,
                 maxMarginUsagePercent: 80,
-                maxDrawdownPercent: 20,
+                maxDrawdownPercent: 25,
                 breachAction: "HALT_NEW_ENTRIES",
             },
         },
@@ -59,7 +57,9 @@ async function main() {
             timezoneMode: "EXCHANGE",
             breakoutCondition: "CLOSE",
             requiredRetests: 1,
-            breakoutDistanceEntryEnabled: false,
+            breakoutDistanceEntryEnabled: true,
+            breakoutDistanceMode: "ATR",
+            breakoutDistanceValue: 1,
             atrLength: 12,
             stopLossMode: "PERCENT",
             stopLossValue: 0.20,
@@ -68,13 +68,13 @@ async function main() {
         },
 
         parameterGrid: {
-            stopLossValue: [0.15, 0.20, 0.25],
-            takeProfitValue: [2, 3],
+            breakoutCondition: ["CLOSE", "WICK"],
+            breakoutDistanceValue: [0.5, 1],
         },
 
         policy: {
-            warningRunCount: 25,
-            maximumRunCount: 100,
+            warningRunCount: 100,
+            maximumRunCount: 5000,
         },
     };
 
@@ -87,11 +87,11 @@ async function main() {
     }
 
     console.log("");
-    console.log("Loading three months of D1 history once, then running 6 TradingView-aligned ORB backtests...");
+    console.log("Testing the four CLOSE/WICK and ATR breakout-distance combinations...");
 
     const result = await runBacktestExperiment({
         ...experimentConfig,
-        experimentId: EXPERIMENT_ID,
+        experimentId: "orb-breakout-distance-source-test",
         includeTrades: true,
         includeRunDetails: false,
         captureEquityCurve: false,
@@ -105,12 +105,10 @@ async function main() {
         sortDirection: "desc",
     });
 
-    const filePath = await writeExperimentResult(result, {
-        fileName: `${EXPERIMENT_ID}.json`,
-    });
+    const filePath = await writeExperimentResult(result);
 
     console.log("");
-    console.log(`Acceptance experiment JSON written to ${filePath}`);
+    console.log(`Experiment JSON written to ${filePath}`);
 }
 
 main().catch((error) => {

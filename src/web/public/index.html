@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Strategy Testing Platform</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <main class="page-shell">
+        <header class="hero">
+            <div>
+                <p class="eyebrow">Research Platform V1</p>
+                <h1>StratTest</h1>
+                <p class="subtitle">Configure, validate and run controlled cloud research strategy tests.</p>
+            </div>
+            <div class="status-card">
+                <span class="status-dot"></span>
+                Cloud mode
+            </div>
+            <div class="theme-switch" aria-label="Interface style">
+                <span class="theme-switch-label">Interface</span>
+                <div class="theme-switch-buttons" role="group" aria-label="Interface style">
+                    <button type="button" class="theme-choice is-active" data-theme-choice="contemporary" aria-pressed="true">Contemporary</button>
+                    <button type="button" class="theme-choice" data-theme-choice="terminal" aria-pressed="false">Terminal</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="notice">
+            Cloud execution is enabled. Server-side safety limits are enforced.
+        </div>
+
+        <form id="research-form">
+            <section class="panel">
+                <h2>Market</h2>
+                <div class="grid grid-3">
+                    <label>Strategy
+                        <select id="strategy"></select>
+                    </label>
+                    <label>Instrument
+                        <input id="instrument" value="EUR_USD" required>
+                    </label>
+                    <label>Strategy timeframe
+                        <input id="strategy-timeframe" value="M5" required>
+                    </label>
+                    <label>Execution timeframe
+                        <input id="execution-timeframe" value="M5" required>
+                    </label>
+                    <label>From
+                        <input id="from" type="datetime-local" value="2026-08-01T00:00" required>
+                    </label>
+                    <label>To
+                        <input id="to" type="datetime-local" value="2026-09-01T00:00" required>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h2>Account & execution</h2>
+                <div class="grid grid-3">
+                    <label>Initial capital
+                        <input id="initial-capital" type="number" value="500" min="1" step="1">
+                    </label>
+                    <label>Currency
+                        <input id="currency" value="USD" maxlength="3">
+                    </label>
+                    <label>Leverage
+                        <input id="leverage" type="number" value="30" min="1" step="1">
+                    </label>
+                    <label>Sizing type
+                        <select id="sizing-type">
+                            <option value="CASH">Cash</option>
+                            <option value="UNITS">Units</option>
+                            <option value="PERCENT_EQUITY">Percent equity</option>
+                            <option value="RISK_PERCENT">Risk percent</option>
+                        </select>
+                    </label>
+                    <label>Sizing value
+                        <input id="sizing-value" type="number" value="300" min="0.01" step="0.01">
+                    </label>
+                    <label>Same-candle conflict
+                        <select id="same-candle-conflict">
+                            <option value="STOP_FIRST">Stop first</option>
+                            <option value="TARGET_FIRST">Target first</option>
+                        </select>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Strategy parameters</h2>
+                        <p>Set a base value and optionally comma-separated sweep values.</p>
+                    </div>
+                </div>
+                <div id="strategy-parameters" class="parameter-list"></div>
+            </section>            
+
+            <div class="actions">
+                <button id="plan-button" type="submit">Validate experiment plan</button>
+                <span id="request-status"></span>
+            </div>
+        </form>
+
+        <section id="result-panel" class="panel result-panel" hidden>
+            <h2>Experiment preview</h2>
+            <div id="summary-cards" class="summary-cards"></div>
+            <h3>Estimated cloud workload</h3>
+            <div id="usage-cards" class="summary-cards"></div>
+            <p class="estimate-note" id="estimate-note"></p>
+            <div class="actions">
+                <button id="run-button" type="button" hidden>Run cloud experiment</button>
+                <span id="execution-status"></span>
+            </div>
+            <details>
+                <summary>Generated research configuration</summary>
+                <pre id="config-output"></pre>
+            </details>
+        </section>
+
+        <section id="execution-panel" class="panel result-panel" hidden>
+            <h2>Cloud execution result</h2>
+            <div id="execution-cards" class="summary-cards"></div>
+            <h3>Run results</h3>
+<!-- === RESULTS EXPORT PATCH === -->
+            <div id="export-actions" class="actions export-actions" hidden>
+                <button id="export-csv-button" type="button">Download CSV</button>
+                <button id="export-json-button" type="button">Download JSON</button>
+            </div>
+            <div class="table-wrap">
+                <table id="execution-table"></table>
+            </div>
+            <p class="estimate-note" id="execution-note"></p>
+        </section>
+
+        <section id="error-panel" class="panel error-panel" hidden>
+            <h2>Request failed</h2>
+            <pre id="error-output"></pre>
+        </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+</body>
+
+</html>
