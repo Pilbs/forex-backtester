@@ -34,6 +34,12 @@
             Cloud execution is enabled. Server-side safety limits are enforced.
         </div>
 
+        <nav class="workspace-nav" aria-label="Research workspace">
+            <button type="button" class="workspace-nav-button is-active" data-view-choice="research" aria-pressed="true">New experiment</button>
+            <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research history</button>
+        </nav>
+
+        <section id="research-view">
         <form id="research-form">
             <section class="panel">
                 <h2>Market</h2>
@@ -127,7 +133,6 @@
             <h2>Cloud execution result</h2>
             <div id="execution-cards" class="summary-cards"></div>
             <h3>Run results</h3>
-<!-- === RESULTS EXPORT PATCH === -->
             <div id="export-actions" class="actions export-actions" hidden>
                 <button id="export-csv-button" type="button">Download CSV</button>
                 <button id="export-json-button" type="button">Download JSON</button>
@@ -136,6 +141,66 @@
                 <table id="execution-table"></table>
             </div>
             <p class="estimate-note" id="execution-note"></p>
+        </section>
+        </section>
+
+        <section id="history-view" hidden>
+            <section id="history-list-panel" class="panel">
+                <div class="section-heading split-heading">
+                    <div>
+                        <h2>Research history</h2>
+                        <p id="history-workspace">Your saved cloud experiments.</p>
+                    </div>
+                    <button id="refresh-history-button" type="button" class="secondary-button">Refresh</button>
+                </div>
+                <div id="history-summary-cards" class="summary-cards"></div>
+                <p id="history-status" class="estimate-note">Loading experiments…</p>
+                <div class="table-wrap history-table-wrap">
+                    <table id="history-table"></table>
+                </div>
+                <div id="history-empty" class="empty-state" hidden>
+                    No experiments have been saved yet. Run your first cloud experiment to begin the research history.
+                </div>
+            </section>
+
+            <section id="history-detail-panel" class="panel" hidden>
+                <div class="detail-toolbar">
+                    <button id="back-to-history-button" type="button" class="secondary-button">← Back to history</button>
+                    <span id="detail-status" class="status-badge"></span>
+                </div>
+                <div class="section-heading">
+                    <h2 id="detail-title">Experiment</h2>
+                    <p id="detail-subtitle"></p>
+                </div>
+                <div id="detail-summary-cards" class="summary-cards"></div>
+
+                <h3>Parameter runs</h3>
+                <p class="estimate-note">Select a column to sort. Select a run to inspect every saved metric.</p>
+                <div class="table-wrap history-table-wrap">
+                    <table id="history-runs-table"></table>
+                </div>
+
+                <section id="run-detail-panel" class="run-detail" hidden>
+                    <div class="section-heading">
+                        <h3 id="run-detail-title">Run details</h3>
+                        <p id="run-detail-subtitle"></p>
+                    </div>
+                    <div id="run-summary-grid" class="metric-grid"></div>
+                    <h3>Monthly and yearly summaries</h3>
+                    <div class="table-wrap">
+                        <table id="run-period-table"></table>
+                    </div>
+                    <details>
+                        <summary>Complete saved run record</summary>
+                        <pre id="run-json"></pre>
+                    </details>
+                </section>
+
+                <details>
+                    <summary>Experiment configuration</summary>
+                    <pre id="detail-config-output"></pre>
+                </details>
+            </section>
         </section>
 
         <section id="error-panel" class="panel error-panel" hidden>

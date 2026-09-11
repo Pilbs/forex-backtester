@@ -208,6 +208,87 @@ const repository = {
         repositoryCalls.push(["replaceRunPeriodSummaries", input]);
         return input.yearly.length + input.monthly.length;
     },
+    async listExperiments(input) {
+        repositoryCalls.push(["listExperiments", input]);
+        return [storedExperiment];
+    },
+    async getExperimentDetail(input) {
+        repositoryCalls.push(["getExperimentDetail", input]);
+
+        if (input.experimentId === "missing") {
+            return null;
+        }
+
+        return {
+            experiment: storedExperiment,
+            runs: [storedRun],
+            periodSummaries: [storedPeriod],
+        };
+    },
+};
+
+const storedExperiment = {
+    id: "experiment-history-1",
+    workspace_id: "workspace-1",
+    purpose: "RESEARCH",
+    status: "COMPLETED",
+    name: "ORB baseline",
+    strategy_id: "orb",
+    strategy_name: "Opening Range Breakout",
+    strategy_version: 1,
+    instrument: "EUR_USD",
+    strategy_timeframe: "M5",
+    execution_timeframe: "M5",
+    from_time: "2026-08-01T00:00:00.000Z",
+    to_time: "2026-09-01T00:00:00.000Z",
+    config_json: JSON.stringify(config),
+    requested_runs: 4,
+    valid_runs: 4,
+    completed_runs: 4,
+    failed_runs: 0,
+    dataset_rows: 100,
+    candle_evaluations: 400,
+    wall_time_ms: 800,
+    d1_query_count: 1,
+    d1_rows_read: 100,
+    d1_duration_ms: 2.5,
+    best_return_percent: 2.5,
+    best_profit_factor: 1.8,
+    lowest_drawdown_percent: 0.9,
+    application_version: "test-sha",
+    result_schema_version: 5,
+    error_json: null,
+    created_at: 1_800_000_000_000,
+    started_at: 1_800_000_000_001,
+    completed_at: 1_800_000_000_800,
+    updated_at: 1_800_000_000_800,
+};
+
+const storedRun = {
+    id: "stored-run-1",
+    run_number: 1,
+    status: "COMPLETED",
+    parameter_values_json: JSON.stringify({ breakoutCondition: "CLOSE" }),
+    strategy_config_json: JSON.stringify(config.strategyConfig),
+    summary_json: JSON.stringify({
+        totalTrades: 2,
+        winRate: 50,
+        returnPercent: 2.5,
+    }),
+    detail_counts_json: JSON.stringify({ signals: 2 }),
+    rejection_reasons_json: JSON.stringify({}),
+    elapsed_ms: 20,
+    error_json: null,
+    has_trade_details: 0,
+    created_at: 1_800_000_000_010,
+    updated_at: 1_800_000_000_030,
+};
+
+const storedPeriod = {
+    run_id: "stored-run-1",
+    period_type: "MONTH",
+    period_key: "2026-08",
+    summary_json: JSON.stringify({ totalTrades: 2, returnPercent: 2.5 }),
 };
 
 const completedRun = {
@@ -318,5 +399,58 @@ const me = await readJson(meResponse);
 assert.equal(meResponse.status, 200);
 assert.equal(me.user.id, "user-1");
 assert.equal(me.workspace.id, "workspace-1");
+
+const historyResponse = await handleRequest(
+    apiRequest("/api/experiments?limit=20&offset=5"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const history = await readJson(historyResponse);
+
+assert.equal(historyResponse.status, 200);
+assert.equal(history.workspace.id, "workspace-1");
+assert.equal(history.experiments.length, 1);
+assert.equal(history.experiments[0].strategy.id, "orb");
+assert.equal(history.experiments[0].performance.bestReturnPercent, 2.5);
+assert.deepEqual(history.pagination, { limit: 20, offset: 5, returned: 1 });
+assert.deepEqual(
+    repositoryCalls.find(([name]) => name === "listExperiments")[1],
+    { workspaceId: "workspace-1", limit: 20, offset: 5 }
+);
+
+const detailResponse = await handleRequest(
+    apiRequest("/api/experiments/experiment-history-1"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const detail = await readJson(detailResponse);
+
+assert.equal(detailResponse.status, 200);
+assert.equal(detail.experiment.id, "experiment-history-1");
+assert.equal(detail.experiment.config.strategy, "orb");
+assert.equal(detail.runs.length, 1);
+assert.equal(detail.runs[0].summary.returnPercent, 2.5);
+assert.equal(detail.runs[0].periods[0].key, "2026-08");
+assert.deepEqual(
+    repositoryCalls.find(([name]) => name === "getExperimentDetail")[1],
+    { workspaceId: "workspace-1", experimentId: "experiment-history-1" }
+);
+
+const hiddenExperimentResponse = await handleRequest(
+    apiRequest("/api/experiments/missing"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+
+assert.equal(hiddenExperimentResponse.status, 404);
 
 console.log("Cloudflare research worker test passed.");

@@ -268,6 +268,7 @@ function renderResult(config, response) {
 }
 
 function renderExecution(response) {
+    historyLoaded = false;
     lastExecutionResponse = response;
     exportActions.hidden = false;
     const { execution, result } = response;
@@ -625,4 +626,497 @@ exportJsonButton.addEventListener("click", () => {
     const filename = createExportBaseName(lastExecutionResponse) + ".json";
     const json = JSON.stringify(lastExecutionResponse, null, 2);
     downloadBlob(filename, "application/json;charset=utf-8", json);
+});
+
+
+// === SAVED RESEARCH DASHBOARD ===
+const researchView = document.querySelector("#research-view");
+const historyView = document.querySelector("#history-view");
+const historyListPanel = document.querySelector("#history-list-panel");
+const historyDetailPanel = document.querySelector("#history-detail-panel");
+const historyTable = document.querySelector("#history-table");
+const historyRunsTable = document.querySelector("#history-runs-table");
+const historyStatus = document.querySelector("#history-status");
+const historyEmpty = document.querySelector("#history-empty");
+const refreshHistoryButton = document.querySelector("#refresh-history-button");
+const backToHistoryButton = document.querySelector("#back-to-history-button");
+const viewChoices = [...document.querySelectorAll("[data-view-choice]")];
+
+let historyLoaded = false;
+let currentExperimentDetail = null;
+let selectedHistoryRunId = null;
+let runSort = { key: "returnPercent", direction: "desc" };
+
+function formatDateTime(value) {
+    const time = Date.parse(value);
+
+    if (!Number.isFinite(time)) {
+        return "-";
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(new Date(time));
+}
+
+function formatDate(value) {
+    const time = Date.parse(value);
+
+    if (!Number.isFinite(time)) {
+        return "-";
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    }).format(new Date(time));
+}
+
+function displayValue(value, digits = 2) {
+    if (value === null || value === undefined || value === "") {
+        return "-";
+    }
+
+    if (typeof value === "number") {
+        return Number.isInteger(value)
+            ? value.toLocaleString()
+            : value.toLocaleString(undefined, { maximumFractionDigits: digits });
+    }
+
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+
+    return String(value);
+}
+
+function percentValue(value) {
+    return value === null || value === undefined
+        ? "-"
+        : `${displayValue(value)}%`;
+}
+
+function renderDashboardCards(container, items) {
+    container.replaceChildren();
+
+    for (const [label, value] of items) {
+        const card = document.createElement("div");
+        const labelElement = document.createElement("span");
+        const valueElement = document.createElement("strong");
+
+        card.className = "summary-card";
+        labelElement.textContent = label;
+        valueElement.textContent = displayValue(value);
+        card.append(labelElement, valueElement);
+        container.append(card);
+    }
+}
+
+function createTextCell(value) {
+    const cell = document.createElement("td");
+    cell.textContent = displayValue(value);
+    return cell;
+}
+
+function setWorkspaceView(view) {
+    const showHistory = view === "history";
+    researchView.hidden = showHistory;
+    historyView.hidden = !showHistory;
+    errorPanel.hidden = true;
+
+    for (const button of viewChoices) {
+        const active = button.dataset.viewChoice === view;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+    }
+
+    if (showHistory && !historyLoaded) {
+        loadExperimentHistory();
+    }
+}
+
+function renderHistoryTable(experiments) {
+    historyTable.replaceChildren();
+
+    const headings = [
+        "Created",
+        "Strategy",
+        "Market",
+        "Period",
+        "Runs",
+        "Best return",
+        "Wall time",
+        "Status",
+    ];
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+
+    for (const heading of headings) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    historyTable.append(head);
+
+    const body = document.createElement("tbody");
+
+    for (const experiment of experiments) {
+        const row = document.createElement("tr");
+        const market = experiment.market;
+        row.className = "history-row";
+        row.tabIndex = 0;
+        row.append(
+            createTextCell(formatDateTime(experiment.createdAt)),
+            createTextCell(experiment.name || experiment.strategy.name),
+            createTextCell(`${market.instrument} · ${market.strategyTimeframe}`),
+            createTextCell(`${formatDate(market.from)} – ${formatDate(market.to)}`),
+            createTextCell(`${experiment.completedRuns}/${experiment.validRuns}`),
+            createTextCell(percentValue(experiment.performance.bestReturnPercent)),
+            createTextCell(experiment.wallTimeMs === null
+                ? "-"
+                : `${experiment.wallTimeMs.toLocaleString()} ms`),
+            createTextCell(experiment.status)
+        );
+
+        const open = () => loadExperimentDetail(experiment.id);
+        row.addEventListener("click", open);
+        row.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                open();
+            }
+        });
+        body.append(row);
+    }
+
+    historyTable.append(body);
+}
+
+async function loadExperimentHistory({ force = false } = {}) {
+    if (historyLoaded && !force) {
+        return;
+    }
+
+    historyStatus.hidden = false;
+    historyStatus.textContent = "Loading experiments…";
+    historyEmpty.hidden = true;
+    refreshHistoryButton.disabled = true;
+
+    try {
+        const response = await fetch("/api/experiments?limit=100");
+        const body = await response.json();
+
+        if (!response.ok) {
+            throw new Error(body.error ?? "Unable to load experiment history");
+        }
+
+        const experiments = body.experiments ?? [];
+        const completed = experiments.filter((item) => item.status === "COMPLETED");
+        const totalRuns = experiments.reduce(
+            (total, item) => total + (item.completedRuns ?? 0),
+            0
+        );
+        const bestReturns = experiments
+            .map((item) => item.performance?.bestReturnPercent)
+            .filter((value) => Number.isFinite(value));
+        const bestReturn = bestReturns.length ? Math.max(...bestReturns) : null;
+
+        document.querySelector("#history-workspace").textContent =
+            `${body.workspace.name} · saved cloud research`;
+        renderDashboardCards(
+            document.querySelector("#history-summary-cards"),
+            [
+                ["Experiments", experiments.length],
+                ["Completed", completed.length],
+                ["Completed runs", totalRuns],
+                ["Best saved return", percentValue(bestReturn)],
+            ]
+        );
+        renderHistoryTable(experiments);
+        historyStatus.textContent = `${experiments.length} most recent experiment${experiments.length === 1 ? "" : "s"}`;
+        historyEmpty.hidden = experiments.length !== 0;
+        historyTable.hidden = experiments.length === 0;
+        historyLoaded = true;
+    } catch (error) {
+        historyStatus.textContent = `Unable to load history: ${error.message}`;
+        historyTable.replaceChildren();
+    } finally {
+        refreshHistoryButton.disabled = false;
+    }
+}
+
+function runColumnDefinitions(runs) {
+    const parameterNames = new Set();
+
+    for (const run of runs) {
+        for (const name of Object.keys(run.parameterValues ?? {})) {
+            parameterNames.add(name);
+        }
+    }
+
+    return [
+        { key: "runNumber", label: "Run", value: (run) => run.runNumber },
+        ...[...parameterNames].map((name) => ({
+            key: `parameter:${name}`,
+            label: name,
+            value: (run) => run.parameterValues?.[name],
+        })),
+        { key: "totalTrades", label: "Trades", value: (run) => run.summary?.totalTrades },
+        { key: "winRate", label: "Win %", value: (run) => run.summary?.winRate },
+        { key: "netPnlAccount", label: "Net P&L", value: (run) => run.summary?.netPnlAccount },
+        { key: "returnPercent", label: "Return %", value: (run) => run.summary?.returnPercent },
+        { key: "profitFactor", label: "PF", value: (run) => run.summary?.profitFactor },
+        { key: "maxDrawdownPercent", label: "DD %", value: (run) => run.summary?.maxDrawdownPercent },
+        { key: "expectancyPips", label: "Exp. pips", value: (run) => run.summary?.expectancyPips },
+        { key: "averageMfePips", label: "Avg MFE", value: (run) => run.summary?.averageMfePips },
+        { key: "averageMaePips", label: "Avg MAE", value: (run) => run.summary?.averageMaePips },
+        { key: "elapsedMs", label: "Time ms", value: (run) => run.elapsedMs },
+        { key: "status", label: "Status", value: (run) => run.status },
+    ];
+}
+
+function compareRunValues(left, right) {
+    const leftMissing = left === null || left === undefined;
+    const rightMissing = right === null || right === undefined;
+
+    if (leftMissing || rightMissing) {
+        return leftMissing === rightMissing ? 0 : leftMissing ? 1 : -1;
+    }
+
+    if (typeof left === "number" && typeof right === "number") {
+        return left - right;
+    }
+
+    return String(left).localeCompare(String(right), undefined, {
+        numeric: true,
+        sensitivity: "base",
+    });
+}
+
+function renderRunsTable() {
+    const runs = currentExperimentDetail?.runs ?? [];
+    const columns = runColumnDefinitions(runs);
+    const sortColumn = columns.find((column) => column.key === runSort.key)
+        ?? columns[0];
+    const direction = runSort.direction === "asc" ? 1 : -1;
+    const sortedRuns = [...runs].sort((left, right) =>
+        compareRunValues(sortColumn.value(left), sortColumn.value(right)) * direction
+    );
+
+    historyRunsTable.replaceChildren();
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+
+    for (const column of columns) {
+        const cell = document.createElement("th");
+        const button = document.createElement("button");
+        const active = column.key === sortColumn.key;
+        cell.className = "sortable-heading";
+        button.type = "button";
+        button.textContent = `${column.label}${active ? runSort.direction === "asc" ? " ↑" : " ↓" : ""}`;
+        button.addEventListener("click", () => {
+            runSort = {
+                key: column.key,
+                direction: runSort.key === column.key && runSort.direction === "desc"
+                    ? "asc"
+                    : "desc",
+            };
+            renderRunsTable();
+        });
+        cell.append(button);
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    historyRunsTable.append(head);
+
+    const body = document.createElement("tbody");
+
+    for (const run of sortedRuns) {
+        const row = document.createElement("tr");
+        row.className = "history-row";
+        row.tabIndex = 0;
+        row.classList.toggle("is-selected", run.id === selectedHistoryRunId);
+
+        for (const column of columns) {
+            row.append(createTextCell(column.value(run)));
+        }
+
+        const select = () => renderRunDetail(run);
+        row.addEventListener("click", select);
+        row.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                select();
+            }
+        });
+        body.append(row);
+    }
+
+    historyRunsTable.append(body);
+}
+
+function humanizeMetric(name) {
+    return name
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function renderPeriodTable(periods) {
+    const table = document.querySelector("#run-period-table");
+    table.replaceChildren();
+    const headings = ["Period", "Trades", "Win %", "PnL pips", "Net P&L", "Return %", "PF", "DD %"];
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+
+    for (const heading of headings) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    table.append(head);
+    const body = document.createElement("tbody");
+
+    for (const period of periods) {
+        const summary = period.summary ?? {};
+        const row = document.createElement("tr");
+        row.append(
+            createTextCell(`${period.type === "MONTH" ? "Month" : "Year"} ${period.key}`),
+            createTextCell(summary.totalTrades),
+            createTextCell(summary.winRate),
+            createTextCell(summary.totalPnlPips),
+            createTextCell(summary.netPnlAccount),
+            createTextCell(summary.returnPercent),
+            createTextCell(summary.profitFactor),
+            createTextCell(summary.maxDrawdownPercent)
+        );
+        body.append(row);
+    }
+
+    if (periods.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = headings.length;
+        cell.textContent = "No period summaries were recorded for this run.";
+        row.append(cell);
+        body.append(row);
+    }
+
+    table.append(body);
+}
+
+function renderRunDetail(run) {
+    selectedHistoryRunId = run.id;
+    renderRunsTable();
+
+    const panel = document.querySelector("#run-detail-panel");
+    const summaryGrid = document.querySelector("#run-summary-grid");
+    const parameters = Object.entries(run.parameterValues ?? {})
+        .map(([name, value]) => `${name}: ${displayValue(value)}`)
+        .join(" · ");
+
+    document.querySelector("#run-detail-title").textContent = `Run ${run.runNumber}`;
+    document.querySelector("#run-detail-subtitle").textContent =
+        parameters || "Base strategy configuration";
+    summaryGrid.replaceChildren();
+
+    for (const [name, value] of Object.entries(run.summary ?? {})) {
+        const item = document.createElement("div");
+        const label = document.createElement("span");
+        const metric = document.createElement("strong");
+        item.className = "metric-item";
+        label.textContent = humanizeMetric(name);
+        metric.textContent = displayValue(value, 4);
+        item.append(label, metric);
+        summaryGrid.append(item);
+    }
+
+    renderPeriodTable(run.periods ?? []);
+    document.querySelector("#run-json").textContent = JSON.stringify(run, null, 2);
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function renderExperimentDetail(detail) {
+    currentExperimentDetail = detail;
+    selectedHistoryRunId = null;
+    runSort = { key: "returnPercent", direction: "desc" };
+
+    const experiment = detail.experiment;
+    const market = experiment.market;
+    const completedReturns = detail.runs
+        .map((run) => run.summary?.returnPercent)
+        .filter((value) => Number.isFinite(value));
+    const bestReturn = completedReturns.length
+        ? Math.max(...completedReturns)
+        : null;
+
+    document.querySelector("#detail-title").textContent =
+        experiment.name || experiment.strategy.name;
+    document.querySelector("#detail-subtitle").textContent =
+        `${market.instrument} · ${market.strategyTimeframe}/${market.executionTimeframe} · ${formatDate(market.from)} – ${formatDate(market.to)}`;
+
+    const status = document.querySelector("#detail-status");
+    status.textContent = experiment.status;
+    status.dataset.status = experiment.status;
+
+    renderDashboardCards(
+        document.querySelector("#detail-summary-cards"),
+        [
+            ["Completed runs", `${experiment.completedRuns}/${experiment.validRuns}`],
+            ["Best return", percentValue(bestReturn)],
+            ["Wall time", experiment.wallTimeMs === null ? "-" : `${experiment.wallTimeMs.toLocaleString()} ms`],
+            ["Dataset rows", experiment.datasetRows],
+            ["Candle evaluations", experiment.candleEvaluations],
+            ["D1 rows read", experiment.d1.rowsRead],
+            ["Created", formatDateTime(experiment.createdAt)],
+            ["Version", experiment.applicationVersion],
+        ]
+    );
+
+    document.querySelector("#detail-config-output").textContent =
+        JSON.stringify(experiment.config, null, 2);
+    document.querySelector("#run-detail-panel").hidden = true;
+    renderRunsTable();
+}
+
+async function loadExperimentDetail(experimentId) {
+    historyStatus.textContent = "Loading experiment…";
+
+    try {
+        const response = await fetch(`/api/experiments/${encodeURIComponent(experimentId)}`);
+        const body = await response.json();
+
+        if (!response.ok) {
+            throw new Error(body.error ?? "Unable to load experiment");
+        }
+
+        renderExperimentDetail(body);
+        historyListPanel.hidden = true;
+        historyDetailPanel.hidden = false;
+    } catch (error) {
+        historyStatus.textContent = `Unable to open experiment: ${error.message}`;
+    }
+}
+
+for (const button of viewChoices) {
+    button.addEventListener("click", () => setWorkspaceView(button.dataset.viewChoice));
+}
+
+refreshHistoryButton.addEventListener("click", () => {
+    historyLoaded = false;
+    loadExperimentHistory({ force: true });
+});
+
+backToHistoryButton.addEventListener("click", () => {
+    historyDetailPanel.hidden = true;
+    historyListPanel.hidden = false;
+    currentExperimentDetail = null;
+    selectedHistoryRunId = null;
 });

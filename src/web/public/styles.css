@@ -90,6 +90,28 @@ h1 {
     line-height: 1.45;
 }
 
+.workspace-nav {
+    display: inline-flex;
+    gap: 6px;
+    padding: 5px;
+    margin-bottom: 18px;
+    border: 1px solid #d7deea;
+    border-radius: 12px;
+    background: white;
+}
+
+.workspace-nav-button {
+    min-width: 150px;
+    padding: 10px 14px;
+    background: transparent;
+    color: #687287;
+}
+
+.workspace-nav-button.is-active {
+    background: #172033;
+    color: white;
+}
+
 .panel {
     background: white;
     border: 1px solid #dde3ed;
@@ -146,6 +168,48 @@ select:focus {
 .section-heading p {
     margin: -9px 0 18px;
     color: #6b7588;
+}
+
+.split-heading,
+.detail-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+}
+
+.split-heading .secondary-button {
+    flex: 0 0 auto;
+}
+
+.secondary-button {
+    border: 1px solid #cfd7e5;
+    background: white;
+    color: #28344a;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #cad4e2;
+    border-radius: 999px;
+    padding: 7px 11px;
+    color: #4d5b70;
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-badge[data-status="COMPLETED"] {
+    border-color: #acd9bf;
+    color: #11683b;
+    background: #eefaf3;
+}
+
+.status-badge[data-status="FAILED"] {
+    border-color: #e6b6b6;
+    color: #9a2d2d;
+    background: #fff3f3;
 }
 
 .parameter-row {
@@ -275,6 +339,81 @@ th {
     background: #f8f9fc;
 }
 
+.history-table-wrap {
+    margin-top: 14px;
+}
+
+.history-row {
+    cursor: pointer;
+}
+
+.history-row:hover td,
+.history-row.is-selected td {
+    background: #f1f5fb;
+}
+
+.sortable-heading {
+    padding: 0;
+}
+
+.sortable-heading button {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.sortable-heading:first-child button {
+    text-align: left;
+}
+
+.empty-state {
+    margin-top: 16px;
+    border: 1px dashed #cfd7e5;
+    border-radius: 12px;
+    padding: 30px;
+    color: #687287;
+    text-align: center;
+}
+
+.run-detail {
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 1px solid #e1e6ee;
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.metric-item {
+    min-width: 0;
+    border: 1px solid #e0e5ee;
+    border-radius: 10px;
+    padding: 11px 12px;
+    background: #fafbfd;
+}
+
+.metric-item span {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #707a8e;
+    font-size: 12px;
+}
+
+.metric-item strong {
+    display: block;
+    margin-top: 5px;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
 .error-panel {
     border-color: #e4b3b3;
 }
@@ -288,8 +427,24 @@ th {
     .grid-3,
     .grid-2,
     .parameter-row,
-    .summary-cards {
+    .summary-cards,
+    .metric-grid {
         grid-template-columns: 1fr;
+    }
+
+    .workspace-nav {
+        display: flex;
+    }
+
+    .workspace-nav-button {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .split-heading,
+    .detail-toolbar {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 
@@ -415,6 +570,25 @@ html[data-ui-theme="terminal"] .notice {
     box-shadow: none;
 }
 
+html[data-ui-theme="terminal"] .workspace-nav {
+    border: 1px solid #284337;
+    border-radius: 1px;
+    background: #020504;
+}
+
+html[data-ui-theme="terminal"] .workspace-nav-button {
+    border: 1px solid transparent;
+    border-radius: 1px;
+    background: transparent;
+    color: #7f9a8b;
+}
+
+html[data-ui-theme="terminal"] .workspace-nav-button.is-active {
+    border-color: #4fbf7a;
+    background: #0b1d12;
+    color: #7effac;
+}
+
 html[data-ui-theme="terminal"] .panel {
     border: 1px solid #24372f;
     border-radius: 2px;
@@ -492,6 +666,66 @@ html[data-ui-theme="terminal"] .summary-card {
     border: 1px solid #284337;
     border-radius: 1px;
     background: #030806;
+}
+
+html[data-ui-theme="terminal"] .secondary-button {
+    border-color: #355044;
+    background: #020504;
+    color: #9adbb0;
+}
+
+html[data-ui-theme="terminal"] .status-badge {
+    border-radius: 1px;
+    border-color: #355044;
+    background: #020504;
+    color: #a9bbb0;
+}
+
+html[data-ui-theme="terminal"] .status-badge[data-status="COMPLETED"] {
+    border-color: #347c51;
+    color: #77ffad;
+    background: #07150d;
+}
+
+html[data-ui-theme="terminal"] .status-badge[data-status="FAILED"] {
+    border-color: #7a2e2e;
+    color: #ff9898;
+    background: #170707;
+}
+
+html[data-ui-theme="terminal"] .history-row:hover td,
+html[data-ui-theme="terminal"] .history-row.is-selected td {
+    background: #0a1510;
+}
+
+html[data-ui-theme="terminal"] .sortable-heading button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+}
+
+html[data-ui-theme="terminal"] .empty-state {
+    border-color: #355044;
+    border-radius: 1px;
+    color: #8ea99a;
+}
+
+html[data-ui-theme="terminal"] .run-detail {
+    border-top-color: #20342b;
+}
+
+html[data-ui-theme="terminal"] .metric-item {
+    border-color: #284337;
+    border-radius: 1px;
+    background: #030806;
+}
+
+html[data-ui-theme="terminal"] .metric-item span {
+    color: #729080;
+}
+
+html[data-ui-theme="terminal"] .metric-item strong {
+    color: #ffcf66;
 }
 
 html[data-ui-theme="terminal"] .summary-card span {

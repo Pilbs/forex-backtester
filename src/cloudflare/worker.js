@@ -23,6 +23,111 @@ function jsonResponse(body, status = 200) {
     });
 }
 
+function parseStoredJson(value, fallback = null) {
+    if (typeof value !== "string") {
+        return fallback;
+    }
+
+    try {
+        return JSON.parse(value);
+    } catch {
+        return fallback;
+    }
+}
+
+function toIsoTimestamp(value) {
+    return Number.isFinite(value) ? new Date(value).toISOString() : null;
+}
+
+function serializeStoredExperiment(row, { includeConfig = false } = {}) {
+    const experiment = {
+        id: row.id,
+        workspaceId: row.workspace_id,
+        purpose: row.purpose,
+        status: row.status,
+        name: row.name,
+        strategy: {
+            id: row.strategy_id,
+            name: row.strategy_name,
+            version: row.strategy_version,
+        },
+        market: {
+            instrument: row.instrument,
+            strategyTimeframe: row.strategy_timeframe,
+            executionTimeframe: row.execution_timeframe,
+            from: row.from_time,
+            to: row.to_time,
+        },
+        requestedRuns: row.requested_runs,
+        validRuns: row.valid_runs,
+        completedRuns: row.completed_runs,
+        failedRuns: row.failed_runs,
+        datasetRows: row.dataset_rows,
+        candleEvaluations: row.candle_evaluations,
+        wallTimeMs: row.wall_time_ms,
+        d1: {
+            queryCount: row.d1_query_count,
+            rowsRead: row.d1_rows_read,
+            durationMs: row.d1_duration_ms,
+        },
+        performance: {
+            bestReturnPercent: row.best_return_percent ?? null,
+            bestProfitFactor: row.best_profit_factor ?? null,
+            lowestDrawdownPercent: row.lowest_drawdown_percent ?? null,
+        },
+        applicationVersion: row.application_version,
+        resultSchemaVersion: row.result_schema_version,
+        error: parseStoredJson(row.error_json),
+        createdAt: toIsoTimestamp(row.created_at),
+        startedAt: toIsoTimestamp(row.started_at),
+        completedAt: toIsoTimestamp(row.completed_at),
+        updatedAt: toIsoTimestamp(row.updated_at),
+    };
+
+    if (includeConfig) {
+        experiment.config = parseStoredJson(row.config_json, {});
+    }
+
+    return experiment;
+}
+
+function serializeStoredRun(row, periods = []) {
+    return {
+        id: row.id,
+        runNumber: row.run_number,
+        status: row.status,
+        parameterValues: parseStoredJson(row.parameter_values_json, {}),
+        strategyConfig: parseStoredJson(row.strategy_config_json, {}),
+        summary: parseStoredJson(row.summary_json),
+        detailCounts: parseStoredJson(row.detail_counts_json, {}),
+        rejectionReasons: parseStoredJson(row.rejection_reasons_json, {}),
+        elapsedMs: row.elapsed_ms,
+        error: parseStoredJson(row.error_json),
+        hasTradeDetails: row.has_trade_details === 1,
+        periods: periods.map((period) => ({
+            type: period.period_type,
+            key: period.period_key,
+            summary: parseStoredJson(period.summary_json, {}),
+        })),
+        createdAt: toIsoTimestamp(row.created_at),
+        updatedAt: toIsoTimestamp(row.updated_at),
+    };
+}
+
+function parsePaginationInteger(value, fallback, name) {
+    if (value === null) {
+        return fallback;
+    }
+
+    const parsed = Number(value);
+
+    if (!Number.isInteger(parsed)) {
+        throw new Error(`${name} must be an integer`);
+    }
+
+    return parsed;
+}
+
 async function readJson(request) {
     try {
         return await request.json();
@@ -343,6 +448,86 @@ export async function handleRequest(request, env = {}, {
             const context = await repository.resolveUserContext(identity);
 
             return jsonResponse(context);
+        }
+
+        if (request.method === "GET" && url.pathname === "/api/experiments") {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "RESEARCH_DB D1 binding is unavailable",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+            const limit = parsePaginationInteger(
+                url.searchParams.get("limit"),
+                50,
+                "limit"
+            );
+            const offset = parsePaginationInteger(
+                url.searchParams.get("offset"),
+                0,
+                "offset"
+            );
+            const experiments = await repository.listExperiments({
+                workspaceId: context.workspace.id,
+                limit,
+                offset,
+            });
+
+            return jsonResponse({
+                workspace: context.workspace,
+                experiments: experiments.map((experiment) =>
+                    serializeStoredExperiment(experiment)
+                ),
+                pagination: {
+                    limit,
+                    offset,
+                    returned: experiments.length,
+                },
+            });
+        }
+
+        const experimentDetailMatch = request.method === "GET"
+            ? url.pathname.match(/^\/api\/experiments\/([^/]+)$/)
+            : null;
+
+        if (experimentDetailMatch) {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "RESEARCH_DB D1 binding is unavailable",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+            const experimentId = decodeURIComponent(experimentDetailMatch[1]);
+            const detail = await repository.getExperimentDetail({
+                workspaceId: context.workspace.id,
+                experimentId,
+            });
+
+            if (!detail) {
+                return jsonResponse({ error: "Experiment not found" }, 404);
+            }
+
+            const periodsByRun = new Map();
+
+            for (const period of detail.periodSummaries) {
+                const periods = periodsByRun.get(period.run_id) ?? [];
+                periods.push(period);
+                periodsByRun.set(period.run_id, periods);
+            }
+
+            return jsonResponse({
+                experiment: serializeStoredExperiment(
+                    detail.experiment,
+                    { includeConfig: true }
+                ),
+                runs: detail.runs.map((run) =>
+                    serializeStoredRun(run, periodsByRun.get(run.id) ?? [])
+                ),
+            });
         }
 
         if (request.method === "GET" && url.pathname === "/api/strategies") {

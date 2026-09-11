@@ -278,6 +278,28 @@ const experiments = await repository.listExperiments({
 
 assert.equal(experiments.length, 1);
 assert.equal(experiments[0].id, experiment.id);
+assert.equal(experiments[0].best_return_percent, 2.13);
+
+const detail = await repository.getExperimentDetail({
+    workspaceId: firstContext.workspace.id,
+    experimentId: experiment.id,
+});
+
+assert.equal(detail.experiment.id, experiment.id);
+assert.equal(detail.runs.length, 1);
+assert.equal(detail.runs[0].id, persistedRun.id);
+assert.equal(detail.periodSummaries.length, 2);
+assert.deepEqual(
+    detail.periodSummaries.map((period) => period.period_type),
+    ["MONTH", "YEAR"]
+);
+
+const inaccessibleDetail = await repository.getExperimentDetail({
+    workspaceId: "another-workspace",
+    experimentId: experiment.id,
+});
+
+assert.equal(inaccessibleDetail, null);
 
 await assert.rejects(
     repository.createExperiment({

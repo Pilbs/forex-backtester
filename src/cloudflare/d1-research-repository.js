@@ -329,14 +329,54 @@ export function createD1ResearchRepository({
         }
 
         const result = await db.prepare(`
-            SELECT *
-            FROM experiments
-            WHERE workspace_id = ?
-            ORDER BY created_at DESC
+            SELECT
+                e.*,
+                MAX(er.return_percent) AS best_return_percent,
+                MAX(er.profit_factor) AS best_profit_factor,
+                MIN(er.max_drawdown_percent) AS lowest_drawdown_percent
+            FROM experiments e
+            LEFT JOIN experiment_runs er
+                ON er.experiment_id = e.id
+                AND er.status = 'COMPLETED'
+            WHERE e.workspace_id = ?
+            GROUP BY e.id
+            ORDER BY e.created_at DESC
             LIMIT ? OFFSET ?
         `).bind(workspaceId, limit, offset).all();
 
         return result?.results ?? [];
+    }
+
+    async function getExperimentDetail({ workspaceId, experimentId }) {
+        const experiment = await getExperiment({ workspaceId, experimentId });
+
+        if (!experiment) {
+            return null;
+        }
+
+        const [runResult, periodResult] = await Promise.all([
+            db.prepare(`
+                SELECT er.*
+                FROM experiment_runs er
+                JOIN experiments e ON e.id = er.experiment_id
+                WHERE e.workspace_id = ? AND e.id = ?
+                ORDER BY er.run_number ASC
+            `).bind(workspaceId, experimentId).all(),
+            db.prepare(`
+                SELECT ps.*
+                FROM run_period_summaries ps
+                JOIN experiment_runs er ON er.id = ps.run_id
+                JOIN experiments e ON e.id = er.experiment_id
+                WHERE e.workspace_id = ? AND e.id = ?
+                ORDER BY ps.run_id, ps.period_type, ps.period_key
+            `).bind(workspaceId, experimentId).all(),
+        ]);
+
+        return {
+            experiment,
+            runs: runResult?.results ?? [],
+            periodSummaries: periodResult?.results ?? [],
+        };
     }
 
     async function updateExperimentStatus({
@@ -741,6 +781,7 @@ export function createD1ResearchRepository({
         createExperiment,
         getExperiment,
         listExperiments,
+        getExperimentDetail,
         updateExperimentStatus,
         saveExperimentRun,
         replaceRunPeriodSummaries,
