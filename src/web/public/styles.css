@@ -178,6 +178,40 @@ select:focus {
     align-items: flex-start;
 }
 
+.detail-actions,
+.run-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.run-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px solid #e0e5ee;
+    border-radius: 12px;
+    background: #fafbfd;
+}
+
+.run-tools {
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.compact-actions {
+    margin: 0;
+    gap: 8px;
+}
+
+.compact-actions button,
+.detail-actions button {
+    padding: 9px 12px;
+    font-size: 13px;
+}
+
 .split-heading .secondary-button {
     flex: 0 0 auto;
 }
@@ -370,6 +404,40 @@ th {
     text-align: left;
 }
 
+#history-runs-table th:first-child,
+#history-runs-table td:first-child {
+    width: 70px;
+    text-align: center;
+}
+
+#history-runs-table input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: #172033;
+    cursor: pointer;
+}
+
+.comparison-table-wrap {
+    max-height: 620px;
+}
+
+#comparison-table th:first-child,
+#comparison-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #f8f9fc;
+    text-align: left;
+}
+
+#comparison-table tbody tr:nth-child(even) td {
+    background: #fbfcfe;
+}
+
+#comparison-table tbody tr:nth-child(even) td:first-child {
+    background: #f3f6fa;
+}
+
 .empty-state {
     margin-top: 16px;
     border: 1px dashed #cfd7e5;
@@ -414,6 +482,66 @@ th {
     font-variant-numeric: tabular-nums;
 }
 
+.period-insight-cards {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin-bottom: 14px;
+}
+
+.period-chart {
+    display: grid;
+    gap: 8px;
+    margin: 14px 0 18px;
+    padding: 14px;
+    border: 1px solid #e0e5ee;
+    border-radius: 12px;
+    background: #fafbfd;
+}
+
+.period-chart-title {
+    margin: 0 0 4px;
+    color: #4b566b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.period-bar-row {
+    display: grid;
+    grid-template-columns: minmax(72px, 100px) minmax(180px, 1fr) 70px;
+    align-items: center;
+    gap: 10px;
+    min-height: 22px;
+    color: #5e687a;
+    font-size: 12px;
+}
+
+.period-bar-row strong {
+    color: #263247;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.period-bar-lane {
+    position: relative;
+    height: 14px;
+    background: linear-gradient(to right, transparent calc(50% - 0.5px), #b7c1cf calc(50% - 0.5px), #b7c1cf calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+
+.period-bar {
+    position: absolute;
+    top: 2px;
+    min-width: 2px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.period-bar.is-positive {
+    background: #218653;
+}
+
+.period-bar.is-negative {
+    background: #c24d4d;
+}
+
 .error-panel {
     border-color: #e4b3b3;
 }
@@ -430,6 +558,25 @@ th {
     .summary-cards,
     .metric-grid {
         grid-template-columns: 1fr;
+    }
+
+    .run-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .run-tools,
+    .detail-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .compact-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .period-bar-row {
+        grid-template-columns: 72px minmax(120px, 1fr) 62px;
     }
 
     .workspace-nav {
@@ -672,6 +819,51 @@ html[data-ui-theme="terminal"] .secondary-button {
     border-color: #355044;
     background: #020504;
     color: #9adbb0;
+}
+
+html[data-ui-theme="terminal"] .run-filters,
+html[data-ui-theme="terminal"] .period-chart {
+    border-color: #284337;
+    border-radius: 1px;
+    background: #030806;
+}
+
+html[data-ui-theme="terminal"] #history-runs-table input[type="checkbox"] {
+    accent-color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] #comparison-table th:first-child,
+html[data-ui-theme="terminal"] #comparison-table td:first-child {
+    background: #08130d;
+}
+
+html[data-ui-theme="terminal"] #comparison-table tbody tr:nth-child(even) td {
+    background: #07100b;
+}
+
+html[data-ui-theme="terminal"] #comparison-table tbody tr:nth-child(even) td:first-child {
+    background: #0a1610;
+}
+
+html[data-ui-theme="terminal"] .period-chart-title,
+html[data-ui-theme="terminal"] .period-bar-row {
+    color: #8ea99a;
+}
+
+html[data-ui-theme="terminal"] .period-bar-row strong {
+    color: #d8e3dc;
+}
+
+html[data-ui-theme="terminal"] .period-bar-lane {
+    background: linear-gradient(to right, transparent calc(50% - 0.5px), #355044 calc(50% - 0.5px), #355044 calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+
+html[data-ui-theme="terminal"] .period-bar.is-positive {
+    background: #62ff9b;
+}
+
+html[data-ui-theme="terminal"] .period-bar.is-negative {
+    background: #ff7777;
 }
 
 html[data-ui-theme="terminal"] .status-badge {

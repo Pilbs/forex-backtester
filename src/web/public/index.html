@@ -166,7 +166,11 @@
             <section id="history-detail-panel" class="panel" hidden>
                 <div class="detail-toolbar">
                     <button id="back-to-history-button" type="button" class="secondary-button">← Back to history</button>
-                    <span id="detail-status" class="status-badge"></span>
+                    <div class="detail-actions">
+                        <button id="history-export-csv-button" type="button" class="secondary-button">Download CSV</button>
+                        <button id="history-export-json-button" type="button" class="secondary-button">Download JSON</button>
+                        <span id="detail-status" class="status-badge"></span>
+                    </div>
                 </div>
                 <div class="section-heading">
                     <h2 id="detail-title">Experiment</h2>
@@ -175,10 +179,55 @@
                 <div id="detail-summary-cards" class="summary-cards"></div>
 
                 <h3>Parameter runs</h3>
-                <p class="estimate-note">Select a column to sort. Select a run to inspect every saved metric.</p>
+                <div class="run-filters" aria-label="Run result filters">
+                    <label>Status
+                        <select id="run-filter-status">
+                            <option value="ALL">All statuses</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                    </label>
+                    <label>Minimum trades
+                        <input id="run-filter-minimum-trades" type="number" min="0" step="1" placeholder="Any">
+                    </label>
+                    <label>Minimum return %
+                        <input id="run-filter-minimum-return" type="number" step="any" placeholder="Any">
+                    </label>
+                    <label>Maximum drawdown %
+                        <input id="run-filter-maximum-drawdown" type="number" min="0" step="any" placeholder="Any">
+                    </label>
+                    <label>Minimum profit factor
+                        <input id="run-filter-minimum-profit-factor" type="number" min="0" step="any" placeholder="Any">
+                    </label>
+                    <label>Parameter search
+                        <input id="run-filter-parameter-search" type="search" placeholder="Value or setting">
+                    </label>
+                </div>
+                <div class="run-tools">
+                    <span id="run-filter-count" class="estimate-note"></span>
+                    <div class="actions compact-actions">
+                        <button id="clear-run-filters-button" type="button" class="secondary-button">Clear filters</button>
+                        <button id="clear-comparison-button" type="button" class="secondary-button" disabled>Clear selection</button>
+                        <button id="compare-runs-button" type="button" disabled>Compare selected</button>
+                    </div>
+                </div>
+                <p class="estimate-note">Select a column to sort. Tick up to four runs to compare, or select a row to inspect it.</p>
                 <div class="table-wrap history-table-wrap">
                     <table id="history-runs-table"></table>
                 </div>
+
+                <section id="comparison-panel" class="run-detail" hidden>
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h3>Run comparison</h3>
+                            <p id="comparison-subtitle"></p>
+                        </div>
+                        <button id="close-comparison-button" type="button" class="secondary-button">Close comparison</button>
+                    </div>
+                    <div class="table-wrap comparison-table-wrap">
+                        <table id="comparison-table"></table>
+                    </div>
+                </section>
 
                 <section id="run-detail-panel" class="run-detail" hidden>
                     <div class="section-heading">
@@ -187,6 +236,8 @@
                     </div>
                     <div id="run-summary-grid" class="metric-grid"></div>
                     <h3>Monthly and yearly summaries</h3>
+                    <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
+                    <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>
                     <div class="table-wrap">
                         <table id="run-period-table"></table>
                     </div>

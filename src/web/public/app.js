@@ -1,3 +1,12 @@
+import {
+    calculatePeriodInsights,
+    createHistoricalExportBaseName,
+    createHistoricalJson,
+    createHistoricalRunsCsv,
+    createRunComparison,
+    filterRuns,
+} from "./dashboard-analysis.js";
+
 const strategySelect = document.querySelector("#strategy");
 const parameterContainer = document.querySelector("#strategy-parameters");
 const form = document.querySelector("#research-form");
@@ -640,11 +649,28 @@ const historyStatus = document.querySelector("#history-status");
 const historyEmpty = document.querySelector("#history-empty");
 const refreshHistoryButton = document.querySelector("#refresh-history-button");
 const backToHistoryButton = document.querySelector("#back-to-history-button");
+const historyExportCsvButton = document.querySelector("#history-export-csv-button");
+const historyExportJsonButton = document.querySelector("#history-export-json-button");
+const compareRunsButton = document.querySelector("#compare-runs-button");
+const clearComparisonButton = document.querySelector("#clear-comparison-button");
+const closeComparisonButton = document.querySelector("#close-comparison-button");
+const clearRunFiltersButton = document.querySelector("#clear-run-filters-button");
+const comparisonPanel = document.querySelector("#comparison-panel");
+const comparisonTable = document.querySelector("#comparison-table");
+const runFilterControls = [
+    document.querySelector("#run-filter-status"),
+    document.querySelector("#run-filter-minimum-trades"),
+    document.querySelector("#run-filter-minimum-return"),
+    document.querySelector("#run-filter-maximum-drawdown"),
+    document.querySelector("#run-filter-minimum-profit-factor"),
+    document.querySelector("#run-filter-parameter-search"),
+];
 const viewChoices = [...document.querySelectorAll("[data-view-choice]")];
 
 let historyLoaded = false;
 let currentExperimentDetail = null;
 let selectedHistoryRunId = null;
+let comparisonRunIds = new Set();
 let runSort = { key: "returnPercent", direction: "desc" };
 
 function formatDateTime(value) {
@@ -897,8 +923,54 @@ function compareRunValues(left, right) {
     });
 }
 
+function optionalNumber(selector) {
+    const value = document.querySelector(selector).value;
+    return value === "" ? null : Number(value);
+}
+
+function readRunFilters() {
+    return {
+        status: document.querySelector("#run-filter-status").value,
+        minimumTrades: optionalNumber("#run-filter-minimum-trades"),
+        minimumReturnPercent: optionalNumber("#run-filter-minimum-return"),
+        maximumDrawdownPercent: optionalNumber("#run-filter-maximum-drawdown"),
+        minimumProfitFactor: optionalNumber("#run-filter-minimum-profit-factor"),
+        parameterSearch: document.querySelector("#run-filter-parameter-search").value,
+    };
+}
+
+function clearRunFilters() {
+    document.querySelector("#run-filter-status").value = "ALL";
+    document.querySelector("#run-filter-minimum-trades").value = "";
+    document.querySelector("#run-filter-minimum-return").value = "";
+    document.querySelector("#run-filter-maximum-drawdown").value = "";
+    document.querySelector("#run-filter-minimum-profit-factor").value = "";
+    document.querySelector("#run-filter-parameter-search").value = "";
+}
+
+function updateComparisonControls() {
+    const count = comparisonRunIds.size;
+    compareRunsButton.disabled = count < 2;
+    compareRunsButton.textContent = count < 2
+        ? "Compare selected"
+        : `Compare ${count} runs`;
+    clearComparisonButton.disabled = count === 0;
+}
+
+function toggleComparisonRun(runId, selected) {
+    if (selected && comparisonRunIds.size < 4) {
+        comparisonRunIds.add(runId);
+    } else if (!selected) {
+        comparisonRunIds.delete(runId);
+    }
+
+    updateComparisonControls();
+    renderRunsTable();
+}
+
 function renderRunsTable() {
-    const runs = currentExperimentDetail?.runs ?? [];
+    const allRuns = currentExperimentDetail?.runs ?? [];
+    const runs = filterRuns(allRuns, readRunFilters());
     const columns = runColumnDefinitions(runs);
     const sortColumn = columns.find((column) => column.key === runSort.key)
         ?? columns[0];
@@ -910,6 +982,9 @@ function renderRunsTable() {
     historyRunsTable.replaceChildren();
     const head = document.createElement("thead");
     const headingRow = document.createElement("tr");
+    const comparisonHeading = document.createElement("th");
+    comparisonHeading.textContent = "Compare";
+    headingRow.append(comparisonHeading);
 
     for (const column of columns) {
         const cell = document.createElement("th");
@@ -942,6 +1017,19 @@ function renderRunsTable() {
         row.tabIndex = 0;
         row.classList.toggle("is-selected", run.id === selectedHistoryRunId);
 
+        const comparisonCell = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = comparisonRunIds.has(run.id);
+        checkbox.disabled = comparisonRunIds.size >= 4 && !checkbox.checked;
+        checkbox.setAttribute("aria-label", `Compare run ${run.runNumber}`);
+        checkbox.addEventListener("click", (event) => event.stopPropagation());
+        checkbox.addEventListener("change", () =>
+            toggleComparisonRun(run.id, checkbox.checked)
+        );
+        comparisonCell.append(checkbox);
+        row.append(comparisonCell);
+
         for (const column of columns) {
             row.append(createTextCell(column.value(run)));
         }
@@ -957,7 +1045,18 @@ function renderRunsTable() {
         body.append(row);
     }
 
+    if (sortedRuns.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = columns.length + 1;
+        cell.textContent = "No runs match the current filters.";
+        row.append(cell);
+        body.append(row);
+    }
+
     historyRunsTable.append(body);
+    document.querySelector("#run-filter-count").textContent =
+        `${runs.length} of ${allRuns.length} runs shown · ${comparisonRunIds.size} selected`;
 }
 
 function humanizeMetric(name) {
@@ -969,7 +1068,7 @@ function humanizeMetric(name) {
 function renderPeriodTable(periods) {
     const table = document.querySelector("#run-period-table");
     table.replaceChildren();
-    const headings = ["Period", "Trades", "Win %", "PnL pips", "Net P&L", "Return %", "PF", "DD %"];
+    const headings = ["Period", "Trades", "Win %", "PnL pips", "P&L account", "PF pips", "PF account", "DD pips", "DD account"];
     const head = document.createElement("thead");
     const headingRow = document.createElement("tr");
 
@@ -991,10 +1090,11 @@ function renderPeriodTable(periods) {
             createTextCell(summary.totalTrades),
             createTextCell(summary.winRate),
             createTextCell(summary.totalPnlPips),
-            createTextCell(summary.netPnlAccount),
-            createTextCell(summary.returnPercent),
+            createTextCell(summary.totalPnlAccount),
             createTextCell(summary.profitFactor),
-            createTextCell(summary.maxDrawdownPercent)
+            createTextCell(summary.profitFactorAccount),
+            createTextCell(summary.maxDrawdownPips),
+            createTextCell(summary.closedTradeMaxDrawdownAccount)
         );
         body.append(row);
     }
@@ -1009,6 +1109,127 @@ function renderPeriodTable(periods) {
     }
 
     table.append(body);
+}
+
+function renderPeriodInsights(periods) {
+    const insights = calculatePeriodInsights(periods);
+    const primaryLabel = insights.primaryType === "MONTH"
+        ? "months"
+        : insights.primaryType === "YEAR"
+            ? "years"
+            : "periods";
+    const metricUnit = insights.metricKey === "totalPnlAccount" ? "account" : "pips";
+    const metricValue = (period) => period?.summary?.[insights.metricKey];
+    const best = insights.best
+        ? `${insights.best.key} · ${displayValue(metricValue(insights.best))} ${metricUnit}`
+        : "-";
+    const worst = insights.worst
+        ? `${insights.worst.key} · ${displayValue(metricValue(insights.worst))} ${metricUnit}`
+        : "-";
+
+    renderDashboardCards(
+        document.querySelector("#period-insight-cards"),
+        [
+            ["Months recorded", insights.monthlyCount],
+            ["Years recorded", insights.yearlyCount],
+            [`Profitable ${primaryLabel}`, percentValue(insights.profitablePercent)],
+            ["Best period", best],
+            ["Worst period", worst],
+        ]
+    );
+
+    const chart = document.querySelector("#period-chart");
+    const preferredPeriods = periods.filter((period) =>
+        period.type === (insights.primaryType ?? "MONTH")
+        && Number.isFinite(metricValue(period))
+    );
+    chart.replaceChildren();
+    chart.hidden = preferredPeriods.length === 0;
+
+    if (preferredPeriods.length === 0) {
+        return;
+    }
+
+    const title = document.createElement("p");
+    title.className = "period-chart-title";
+    title.textContent = `${insights.primaryType === "MONTH" ? "Monthly" : "Yearly"} P&L · ${metricUnit}`;
+    chart.append(title);
+
+    const maximumMagnitude = Math.max(
+        ...preferredPeriods.map((period) => Math.abs(metricValue(period))),
+        0.01
+    );
+
+    for (const period of preferredPeriods) {
+        const value = metricValue(period);
+        const row = document.createElement("div");
+        const label = document.createElement("span");
+        const lane = document.createElement("div");
+        const bar = document.createElement("span");
+        const amount = document.createElement("strong");
+
+        row.className = "period-bar-row";
+        label.textContent = period.key;
+        lane.className = "period-bar-lane";
+        bar.className = `period-bar ${value >= 0 ? "is-positive" : "is-negative"}`;
+        bar.style.width = `${Math.abs(value) / maximumMagnitude * 50}%`;
+
+        if (value >= 0) {
+            bar.style.left = "50%";
+        } else {
+            bar.style.right = "50%";
+        }
+
+        amount.textContent = displayValue(value);
+        lane.append(bar);
+        row.append(label, lane, amount);
+        chart.append(row);
+    }
+}
+
+function renderComparison() {
+    const runs = (currentExperimentDetail?.runs ?? [])
+        .filter((run) => comparisonRunIds.has(run.id))
+        .sort((left, right) => left.runNumber - right.runNumber);
+
+    if (runs.length < 2) {
+        comparisonPanel.hidden = true;
+        return;
+    }
+
+    comparisonTable.replaceChildren();
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+    const metricHeading = document.createElement("th");
+    metricHeading.textContent = "Metric";
+    headingRow.append(metricHeading);
+
+    for (const run of runs) {
+        const cell = document.createElement("th");
+        cell.textContent = `Run ${run.runNumber}`;
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    comparisonTable.append(head);
+    const body = document.createElement("tbody");
+
+    for (const comparison of createRunComparison(runs)) {
+        const row = document.createElement("tr");
+        row.append(createTextCell(comparison.label));
+
+        for (const value of comparison.values) {
+            row.append(createTextCell(value));
+        }
+
+        body.append(row);
+    }
+
+    comparisonTable.append(body);
+    document.querySelector("#comparison-subtitle").textContent =
+        `${runs.length} runs · exact configurations and all shared summary metrics`;
+    comparisonPanel.hidden = false;
+    comparisonPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function renderRunDetail(run) {
@@ -1037,6 +1258,7 @@ function renderRunDetail(run) {
         summaryGrid.append(item);
     }
 
+    renderPeriodInsights(run.periods ?? []);
     renderPeriodTable(run.periods ?? []);
     document.querySelector("#run-json").textContent = JSON.stringify(run, null, 2);
     panel.hidden = false;
@@ -1046,7 +1268,10 @@ function renderRunDetail(run) {
 function renderExperimentDetail(detail) {
     currentExperimentDetail = detail;
     selectedHistoryRunId = null;
+    comparisonRunIds = new Set();
     runSort = { key: "returnPercent", direction: "desc" };
+    clearRunFilters();
+    updateComparisonControls();
 
     const experiment = detail.experiment;
     const market = experiment.market;
@@ -1083,6 +1308,7 @@ function renderExperimentDetail(detail) {
     document.querySelector("#detail-config-output").textContent =
         JSON.stringify(experiment.config, null, 2);
     document.querySelector("#run-detail-panel").hidden = true;
+    comparisonPanel.hidden = true;
     renderRunsTable();
 }
 
@@ -1119,4 +1345,48 @@ backToHistoryButton.addEventListener("click", () => {
     historyListPanel.hidden = false;
     currentExperimentDetail = null;
     selectedHistoryRunId = null;
+    comparisonRunIds = new Set();
+});
+
+for (const control of runFilterControls) {
+    control.addEventListener(control.tagName === "SELECT" ? "change" : "input", () => {
+        renderRunsTable();
+    });
+}
+
+clearRunFiltersButton.addEventListener("click", () => {
+    clearRunFilters();
+    renderRunsTable();
+});
+
+clearComparisonButton.addEventListener("click", () => {
+    comparisonRunIds = new Set();
+    comparisonPanel.hidden = true;
+    updateComparisonControls();
+    renderRunsTable();
+});
+
+compareRunsButton.addEventListener("click", renderComparison);
+closeComparisonButton.addEventListener("click", () => {
+    comparisonPanel.hidden = true;
+});
+
+historyExportCsvButton.addEventListener("click", () => {
+    if (!currentExperimentDetail) {
+        return;
+    }
+
+    const filename = `${createHistoricalExportBaseName(currentExperimentDetail.experiment)}.csv`;
+    const csv = createHistoricalRunsCsv(currentExperimentDetail);
+    downloadBlob(filename, "text/csv;charset=utf-8", `\uFEFF${csv}`);
+});
+
+historyExportJsonButton.addEventListener("click", () => {
+    if (!currentExperimentDetail) {
+        return;
+    }
+
+    const filename = `${createHistoricalExportBaseName(currentExperimentDetail.experiment)}.json`;
+    const json = createHistoricalJson(currentExperimentDetail);
+    downloadBlob(filename, "application/json;charset=utf-8", json);
 });
