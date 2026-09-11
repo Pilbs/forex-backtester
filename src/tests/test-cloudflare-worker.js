@@ -210,6 +210,15 @@ const repository = {
     },
     async listExperiments(input) {
         repositoryCalls.push(["listExperiments", input]);
+
+        if (input.limit === 3) {
+            return [
+                storedExperiment,
+                { ...storedExperiment, id: "experiment-history-2" },
+                { ...storedExperiment, id: "experiment-history-3" },
+            ];
+        }
+
         return [storedExperiment];
     },
     async getExperimentDetail(input) {
@@ -401,7 +410,14 @@ assert.equal(me.user.id, "user-1");
 assert.equal(me.workspace.id, "workspace-1");
 
 const historyResponse = await handleRequest(
-    apiRequest("/api/experiments?limit=20&offset=5"),
+    apiRequest(
+        "/api/experiments?limit=20&offset=5"
+        + "&status=completed&strategy=orb&instrument=eur_usd&timeframe=m5"
+        + "&minimumCompletedRuns=2&minimumBestReturn=1.5"
+        + "&createdFrom=2026-08-01T00%3A00%3A00Z"
+        + "&createdTo=2026-09-01T00%3A00%3A00Z"
+        + "&search=baseline&sort=best_return"
+    ),
     { RESEARCH_DB: { prepare() {} } },
     {
         ...authenticatedDependencies,
@@ -415,11 +431,70 @@ assert.equal(history.workspace.id, "workspace-1");
 assert.equal(history.experiments.length, 1);
 assert.equal(history.experiments[0].strategy.id, "orb");
 assert.equal(history.experiments[0].performance.bestReturnPercent, 2.5);
-assert.deepEqual(history.pagination, { limit: 20, offset: 5, returned: 1 });
+assert.deepEqual(history.pagination, {
+    limit: 20,
+    offset: 5,
+    returned: 1,
+    hasMore: false,
+    nextOffset: null,
+});
 assert.deepEqual(
     repositoryCalls.find(([name]) => name === "listExperiments")[1],
-    { workspaceId: "workspace-1", limit: 20, offset: 5 }
+    {
+        workspaceId: "workspace-1",
+        limit: 21,
+        offset: 5,
+        filters: {
+            status: "COMPLETED",
+            strategy: "orb",
+            instrument: "EUR_USD",
+            timeframe: "M5",
+            minimumCompletedRuns: 2,
+            minimumBestReturn: 1.5,
+            createdFrom: Date.parse("2026-08-01T00:00:00Z"),
+            createdTo: Date.parse("2026-09-01T00:00:00Z"),
+            search: "baseline",
+        },
+        sort: "BEST_RETURN",
+    }
 );
+
+const pagedHistoryResponse = await handleRequest(
+    apiRequest("/api/experiments?limit=2"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const pagedHistory = await readJson(pagedHistoryResponse);
+
+assert.equal(pagedHistory.experiments.length, 2);
+assert.equal(pagedHistory.pagination.hasMore, true);
+assert.equal(pagedHistory.pagination.nextOffset, 2);
+
+const invalidHistoryLimit = await handleRequest(
+    apiRequest("/api/experiments?limit=101"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+assert.equal(invalidHistoryLimit.status, 400);
+
+const invalidHistoryDates = await handleRequest(
+    apiRequest(
+        "/api/experiments?createdFrom=2026-09-01T00%3A00%3A00Z"
+        + "&createdTo=2026-08-01T00%3A00%3A00Z"
+    ),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+assert.equal(invalidHistoryDates.status, 400);
 
 const detailResponse = await handleRequest(
     apiRequest("/api/experiments/experiment-history-1"),

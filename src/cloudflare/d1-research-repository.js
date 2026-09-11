@@ -13,6 +13,17 @@ const EXPERIMENT_STATUSES = new Set([
     "CANCELLED",
 ]);
 
+const EXPERIMENT_LIST_SORTS = {
+    NEWEST: "e.created_at DESC",
+    OLDEST: "e.created_at ASC",
+    BEST_RETURN: "best_return_percent DESC, e.created_at DESC",
+    WORST_RETURN: "(best_return_percent IS NULL) ASC, best_return_percent ASC, e.created_at DESC",
+    MOST_RUNS: "e.completed_runs DESC, e.created_at DESC",
+    LEAST_RUNS: "e.completed_runs ASC, e.created_at DESC",
+    FASTEST: "(e.wall_time_ms IS NULL) ASC, e.wall_time_ms ASC, e.created_at DESC",
+    SLOWEST: "e.wall_time_ms DESC, e.created_at DESC",
+};
+
 function requiredText(value, name) {
     if (typeof value !== "string" || !value.trim()) {
         throw new Error(`${name} must be a non-empty string`);
@@ -47,6 +58,48 @@ function integerOrZero(value) {
 
 function integerOrNull(value) {
     return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function optionalFilterText(value, name) {
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+
+    const text = requiredText(value, name);
+
+    if (text.length > 100) {
+        throw new Error(`${name} must be no more than 100 characters`);
+    }
+
+    return text;
+}
+
+function optionalFinite(value, name) {
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+
+    if (!Number.isFinite(value)) {
+        throw new Error(`${name} must be a finite number`);
+    }
+
+    return value;
+}
+
+function optionalNonNegativeInteger(value, name) {
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+
+    if (!Number.isInteger(value) || value < 0) {
+        throw new Error(`${name} must be a non-negative integer`);
+    }
+
+    return value;
+}
+
+function escapeLike(value) {
+    return value.replace(/[\\%_]/g, "\\$&");
 }
 
 function createIdentifier(prefix, createId) {
@@ -319,7 +372,13 @@ export function createD1ResearchRepository({
         `).bind(workspaceId, experimentId));
     }
 
-    async function listExperiments({ workspaceId, limit = 50, offset = 0 }) {
+    async function listExperiments({
+        workspaceId,
+        limit = 50,
+        offset = 0,
+        filters = {},
+        sort = "NEWEST",
+    }) {
         if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
             throw new Error("limit must be an integer between 1 and 200");
         }
@@ -327,6 +386,88 @@ export function createD1ResearchRepository({
         if (!Number.isInteger(offset) || offset < 0) {
             throw new Error("offset must be a non-negative integer");
         }
+
+        if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+            throw new Error("filters must be an object");
+        }
+
+        if (!Object.hasOwn(EXPERIMENT_LIST_SORTS, sort)) {
+            throw new Error(`Unsupported experiment sort: ${sort}`);
+        }
+
+        const status = optionalFilterText(filters.status, "filters.status");
+
+        if (status && !EXPERIMENT_STATUSES.has(status)) {
+            throw new Error(`Unsupported experiment status: ${status}`);
+        }
+
+        const strategy = optionalFilterText(filters.strategy, "filters.strategy");
+        const instrument = optionalFilterText(filters.instrument, "filters.instrument");
+        const timeframe = optionalFilterText(filters.timeframe, "filters.timeframe");
+        const search = optionalFilterText(filters.search, "filters.search");
+        const minimumCompletedRuns = optionalNonNegativeInteger(
+            filters.minimumCompletedRuns,
+            "filters.minimumCompletedRuns"
+        );
+        const minimumBestReturn = optionalFinite(
+            filters.minimumBestReturn,
+            "filters.minimumBestReturn"
+        );
+        const createdFrom = optionalFinite(filters.createdFrom, "filters.createdFrom");
+        const createdTo = optionalFinite(filters.createdTo, "filters.createdTo");
+        const where = ["e.workspace_id = ?"];
+        const values = [workspaceId];
+
+        if (status) {
+            where.push("e.status = ?");
+            values.push(status);
+        }
+
+        if (strategy) {
+            where.push("e.strategy_id = ?");
+            values.push(strategy);
+        }
+
+        if (instrument) {
+            where.push("e.instrument = ?");
+            values.push(instrument);
+        }
+
+        if (timeframe) {
+            where.push("e.strategy_timeframe = ?");
+            values.push(timeframe);
+        }
+
+        if (minimumCompletedRuns !== null) {
+            where.push("e.completed_runs >= ?");
+            values.push(minimumCompletedRuns);
+        }
+
+        if (createdFrom !== null) {
+            where.push("e.created_at >= ?");
+            values.push(createdFrom);
+        }
+
+        if (createdTo !== null) {
+            where.push("e.created_at <= ?");
+            values.push(createdTo);
+        }
+
+        if (search) {
+            const pattern = `%${escapeLike(search)}%`;
+            where.push("(e.id LIKE ? ESCAPE '\\' OR e.name LIKE ? ESCAPE '\\')");
+            values.push(pattern, pattern);
+        }
+
+        const having = minimumBestReturn === null
+            ? ""
+            : "HAVING MAX(er.return_percent) >= ?";
+
+        if (minimumBestReturn !== null) {
+            values.push(minimumBestReturn);
+        }
+
+        values.push(limit, offset);
 
         const result = await db.prepare(`
             SELECT
@@ -338,11 +479,12 @@ export function createD1ResearchRepository({
             LEFT JOIN experiment_runs er
                 ON er.experiment_id = e.id
                 AND er.status = 'COMPLETED'
-            WHERE e.workspace_id = ?
+            WHERE ${where.join(" AND ")}
             GROUP BY e.id
-            ORDER BY e.created_at DESC
+            ${having}
+            ORDER BY ${EXPERIMENT_LIST_SORTS[sort]}
             LIMIT ? OFFSET ?
-        `).bind(workspaceId, limit, offset).all();
+        `).bind(...values).all();
 
         return result?.results ?? [];
     }

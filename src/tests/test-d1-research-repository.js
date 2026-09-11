@@ -280,6 +280,49 @@ assert.equal(experiments.length, 1);
 assert.equal(experiments[0].id, experiment.id);
 assert.equal(experiments[0].best_return_percent, 2.13);
 
+const filteredExperiments = await repository.listExperiments({
+    workspaceId: firstContext.workspace.id,
+    filters: {
+        status: "COMPLETED",
+        strategy: "simple-sma",
+        instrument: "EUR_USD",
+        timeframe: "M5",
+        minimumCompletedRuns: 1,
+        minimumBestReturn: 2,
+        createdFrom: experiment.created_at - 1,
+        createdTo: completed.completed_at + 1,
+        search: "baseline",
+    },
+    sort: "BEST_RETURN",
+});
+
+assert.equal(filteredExperiments.length, 1);
+assert.equal(filteredExperiments[0].id, experiment.id);
+
+assert.deepEqual(
+    await repository.listExperiments({
+        workspaceId: firstContext.workspace.id,
+        filters: { minimumBestReturn: 3 },
+    }),
+    []
+);
+
+assert.deepEqual(
+    await repository.listExperiments({
+        workspaceId: firstContext.workspace.id,
+        filters: { search: "%" },
+    }),
+    []
+);
+
+await assert.rejects(
+    repository.listExperiments({
+        workspaceId: firstContext.workspace.id,
+        sort: "DROP_TABLE",
+    }),
+    /Unsupported experiment sort/
+);
+
 const detail = await repository.getExperimentDetail({
     workspaceId: firstContext.workspace.id,
     experimentId: experiment.id,

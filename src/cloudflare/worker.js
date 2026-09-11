@@ -128,6 +128,52 @@ function parsePaginationInteger(value, fallback, name) {
     return parsed;
 }
 
+function parseOptionalQueryText(value, name) {
+    if (value === null || value === "") {
+        return undefined;
+    }
+
+    const text = value.trim();
+
+    if (!text || text.length > 100) {
+        throw new Error(`${name} must be between 1 and 100 characters`);
+    }
+
+    return text;
+}
+
+function parseOptionalQueryNumber(value, name, { integer = false, minimum } = {}) {
+    if (value === null || value === "") {
+        return undefined;
+    }
+
+    const parsed = Number(value);
+
+    if (!Number.isFinite(parsed) || (integer && !Number.isInteger(parsed))) {
+        throw new Error(`${name} must be ${integer ? "an integer" : "a number"}`);
+    }
+
+    if (minimum !== undefined && parsed < minimum) {
+        throw new Error(`${name} must be at least ${minimum}`);
+    }
+
+    return parsed;
+}
+
+function parseOptionalQueryDate(value, name) {
+    if (value === null || value === "") {
+        return undefined;
+    }
+
+    const parsed = Date.parse(value);
+
+    if (!Number.isFinite(parsed)) {
+        throw new Error(`${name} must be a valid date/time`);
+    }
+
+    return parsed;
+}
+
 async function readJson(request) {
     try {
         return await request.json();
@@ -469,11 +515,67 @@ export async function handleRequest(request, env = {}, {
                 0,
                 "offset"
             );
-            const experiments = await repository.listExperiments({
+
+            if (limit < 1 || limit > 100) {
+                throw new Error("limit must be between 1 and 100");
+            }
+
+            if (offset < 0) {
+                throw new Error("offset must be non-negative");
+            }
+
+            const filters = {
+                status: parseOptionalQueryText(
+                    url.searchParams.get("status"),
+                    "status"
+                )?.toUpperCase(),
+                strategy: parseOptionalQueryText(url.searchParams.get("strategy"), "strategy"),
+                instrument: parseOptionalQueryText(
+                    url.searchParams.get("instrument"),
+                    "instrument"
+                )?.toUpperCase(),
+                timeframe: parseOptionalQueryText(
+                    url.searchParams.get("timeframe"),
+                    "timeframe"
+                )?.toUpperCase(),
+                minimumCompletedRuns: parseOptionalQueryNumber(
+                    url.searchParams.get("minimumCompletedRuns"),
+                    "minimumCompletedRuns",
+                    { integer: true, minimum: 0 }
+                ),
+                minimumBestReturn: parseOptionalQueryNumber(
+                    url.searchParams.get("minimumBestReturn"),
+                    "minimumBestReturn"
+                ),
+                createdFrom: parseOptionalQueryDate(
+                    url.searchParams.get("createdFrom"),
+                    "createdFrom"
+                ),
+                createdTo: parseOptionalQueryDate(
+                    url.searchParams.get("createdTo"),
+                    "createdTo"
+                ),
+                search: parseOptionalQueryText(url.searchParams.get("search"), "search"),
+            };
+            if (
+                filters.createdFrom !== undefined
+                && filters.createdTo !== undefined
+                && filters.createdFrom > filters.createdTo
+            ) {
+                throw new Error("createdFrom must not be after createdTo");
+            }
+
+            const sort = parseOptionalQueryText(url.searchParams.get("sort"), "sort")
+                ?.toUpperCase() ?? "NEWEST";
+            const matchingExperiments = await repository.listExperiments({
                 workspaceId: context.workspace.id,
-                limit,
+                limit: limit + 1,
                 offset,
+                filters,
+                sort,
             });
+            const hasMore = matchingExperiments.length > limit;
+            const experiments = matchingExperiments.slice(0, limit);
 
             return jsonResponse({
                 workspace: context.workspace,
@@ -484,6 +586,8 @@ export async function handleRequest(request, env = {}, {
                     limit,
                     offset,
                     returned: experiments.length,
+                    hasMore,
+                    nextOffset: hasMore ? offset + experiments.length : null,
                 },
             });
         }

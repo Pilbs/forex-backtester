@@ -348,12 +348,23 @@ async function loadStrategies() {
 
     strategies = body.strategies;
     strategySelect.replaceChildren();
+    const historyStrategySelect = document.querySelector("#experiment-filter-strategy");
+    historyStrategySelect.replaceChildren();
+    const allStrategiesOption = document.createElement("option");
+    allStrategiesOption.value = "";
+    allStrategiesOption.textContent = "All strategies";
+    historyStrategySelect.append(allStrategiesOption);
 
     for (const strategy of strategies) {
         const option = document.createElement("option");
         option.value = strategy.id;
         option.textContent = strategy.name;
         strategySelect.append(option);
+
+        const historyOption = document.createElement("option");
+        historyOption.value = strategy.id;
+        historyOption.textContent = strategy.name;
+        historyStrategySelect.append(historyOption);
     }
 
     renderParameters(strategies[0]);
@@ -648,6 +659,9 @@ const historyRunsTable = document.querySelector("#history-runs-table");
 const historyStatus = document.querySelector("#history-status");
 const historyEmpty = document.querySelector("#history-empty");
 const refreshHistoryButton = document.querySelector("#refresh-history-button");
+const experimentFilterForm = document.querySelector("#experiment-filter-form");
+const clearExperimentFiltersButton = document.querySelector("#clear-experiment-filters-button");
+const loadMoreExperimentsButton = document.querySelector("#load-more-experiments-button");
 const backToHistoryButton = document.querySelector("#back-to-history-button");
 const historyExportCsvButton = document.querySelector("#history-export-csv-button");
 const historyExportJsonButton = document.querySelector("#history-export-json-button");
@@ -668,6 +682,8 @@ const runFilterControls = [
 const viewChoices = [...document.querySelectorAll("[data-view-choice]")];
 
 let historyLoaded = false;
+let loadedExperiments = [];
+let historyNextOffset = null;
 let currentExperimentDetail = null;
 let selectedHistoryRunId = null;
 let comparisonRunIds = new Set();
@@ -822,56 +838,129 @@ function renderHistoryTable(experiments) {
     historyTable.append(body);
 }
 
-async function loadExperimentHistory({ force = false } = {}) {
-    if (historyLoaded && !force) {
+function appendHistoryQuery(params, name, value) {
+    if (value !== "" && value !== null && value !== undefined) {
+        params.set(name, value);
+    }
+}
+
+function createHistoryQuery(offset) {
+    const params = new URLSearchParams({
+        limit: "25",
+        offset: String(offset),
+        sort: document.querySelector("#experiment-filter-sort").value,
+    });
+    const createdFrom = document.querySelector("#experiment-filter-created-from").value;
+    const createdTo = document.querySelector("#experiment-filter-created-to").value;
+
+    appendHistoryQuery(params, "status", document.querySelector("#experiment-filter-status").value);
+    appendHistoryQuery(params, "strategy", document.querySelector("#experiment-filter-strategy").value);
+    appendHistoryQuery(params, "instrument", document.querySelector("#experiment-filter-instrument").value.trim());
+    appendHistoryQuery(params, "timeframe", document.querySelector("#experiment-filter-timeframe").value.trim());
+    appendHistoryQuery(params, "minimumCompletedRuns", document.querySelector("#experiment-filter-minimum-runs").value);
+    appendHistoryQuery(params, "minimumBestReturn", document.querySelector("#experiment-filter-minimum-return").value);
+    appendHistoryQuery(params, "search", document.querySelector("#experiment-filter-search").value.trim());
+
+    if (createdFrom) {
+        params.set("createdFrom", `${createdFrom}T00:00:00.000Z`);
+    }
+
+    if (createdTo) {
+        params.set("createdTo", `${createdTo}T23:59:59.999Z`);
+    }
+
+    return params;
+}
+
+function renderHistorySummary(experiments) {
+    const completed = experiments.filter((item) => item.status === "COMPLETED");
+    const totalRuns = experiments.reduce(
+        (total, item) => total + (item.completedRuns ?? 0),
+        0
+    );
+    const bestReturns = experiments
+        .map((item) => item.performance?.bestReturnPercent)
+        .filter((value) => Number.isFinite(value));
+    const bestReturn = bestReturns.length ? Math.max(...bestReturns) : null;
+
+    renderDashboardCards(
+        document.querySelector("#history-summary-cards"),
+        [
+            ["Experiments loaded", experiments.length],
+            ["Completed", completed.length],
+            ["Completed runs", totalRuns],
+            ["Best loaded return", percentValue(bestReturn)],
+        ]
+    );
+}
+
+function clearExperimentFilters() {
+    document.querySelector("#experiment-filter-status").value = "";
+    document.querySelector("#experiment-filter-strategy").value = "";
+    document.querySelector("#experiment-filter-instrument").value = "";
+    document.querySelector("#experiment-filter-timeframe").value = "";
+    document.querySelector("#experiment-filter-minimum-runs").value = "";
+    document.querySelector("#experiment-filter-minimum-return").value = "";
+    document.querySelector("#experiment-filter-created-from").value = "";
+    document.querySelector("#experiment-filter-created-to").value = "";
+    document.querySelector("#experiment-filter-search").value = "";
+    document.querySelector("#experiment-filter-sort").value = "NEWEST";
+}
+
+async function loadExperimentHistory({ reset = true } = {}) {
+    const offset = reset ? 0 : historyNextOffset;
+
+    if (offset === null) {
         return;
     }
 
     historyStatus.hidden = false;
-    historyStatus.textContent = "Loading experiments…";
-    historyEmpty.hidden = true;
+    historyStatus.textContent = reset ? "Loading experiments…" : "Loading more experiments…";
+    if (reset) {
+        historyEmpty.hidden = true;
+    }
     refreshHistoryButton.disabled = true;
+    loadMoreExperimentsButton.disabled = true;
+    experimentFilterForm.querySelector('button[type="submit"]').disabled = true;
 
     try {
-        const response = await fetch("/api/experiments?limit=100");
+        const response = await fetch(`/api/experiments?${createHistoryQuery(offset)}`);
         const body = await response.json();
 
         if (!response.ok) {
             throw new Error(body.error ?? "Unable to load experiment history");
         }
 
-        const experiments = body.experiments ?? [];
-        const completed = experiments.filter((item) => item.status === "COMPLETED");
-        const totalRuns = experiments.reduce(
-            (total, item) => total + (item.completedRuns ?? 0),
-            0
-        );
-        const bestReturns = experiments
-            .map((item) => item.performance?.bestReturnPercent)
-            .filter((value) => Number.isFinite(value));
-        const bestReturn = bestReturns.length ? Math.max(...bestReturns) : null;
+        const page = body.experiments ?? [];
+        const combined = reset ? page : [...loadedExperiments, ...page];
+        loadedExperiments = [...new Map(
+            combined.map((experiment) => [experiment.id, experiment])
+        ).values()];
+        historyNextOffset = body.pagination?.nextOffset ?? null;
 
         document.querySelector("#history-workspace").textContent =
             `${body.workspace.name} · saved cloud research`;
-        renderDashboardCards(
-            document.querySelector("#history-summary-cards"),
-            [
-                ["Experiments", experiments.length],
-                ["Completed", completed.length],
-                ["Completed runs", totalRuns],
-                ["Best saved return", percentValue(bestReturn)],
-            ]
-        );
-        renderHistoryTable(experiments);
-        historyStatus.textContent = `${experiments.length} most recent experiment${experiments.length === 1 ? "" : "s"}`;
-        historyEmpty.hidden = experiments.length !== 0;
-        historyTable.hidden = experiments.length === 0;
+        renderHistorySummary(loadedExperiments);
+        renderHistoryTable(loadedExperiments);
+        historyStatus.textContent = historyNextOffset === null
+            ? `${loadedExperiments.length} matching experiment${loadedExperiments.length === 1 ? "" : "s"} loaded`
+            : `${loadedExperiments.length} matching experiments loaded · more available`;
+        historyEmpty.hidden = loadedExperiments.length !== 0;
+        historyTable.hidden = loadedExperiments.length === 0;
+        loadMoreExperimentsButton.hidden = historyNextOffset === null;
         historyLoaded = true;
     } catch (error) {
         historyStatus.textContent = `Unable to load history: ${error.message}`;
-        historyTable.replaceChildren();
+        if (reset) {
+            loadedExperiments = [];
+            historyNextOffset = null;
+            historyTable.replaceChildren();
+            loadMoreExperimentsButton.hidden = true;
+        }
     } finally {
         refreshHistoryButton.disabled = false;
+        loadMoreExperimentsButton.disabled = false;
+        experimentFilterForm.querySelector('button[type="submit"]').disabled = false;
     }
 }
 
@@ -1337,7 +1426,23 @@ for (const button of viewChoices) {
 
 refreshHistoryButton.addEventListener("click", () => {
     historyLoaded = false;
-    loadExperimentHistory({ force: true });
+    loadExperimentHistory({ reset: true });
+});
+
+experimentFilterForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    historyLoaded = false;
+    loadExperimentHistory({ reset: true });
+});
+
+clearExperimentFiltersButton.addEventListener("click", () => {
+    clearExperimentFilters();
+    historyLoaded = false;
+    loadExperimentHistory({ reset: true });
+});
+
+loadMoreExperimentsButton.addEventListener("click", () => {
+    loadExperimentHistory({ reset: false });
 });
 
 backToHistoryButton.addEventListener("click", () => {

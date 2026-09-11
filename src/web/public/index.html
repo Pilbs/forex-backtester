@@ -153,13 +153,76 @@
                     </div>
                     <button id="refresh-history-button" type="button" class="secondary-button">Refresh</button>
                 </div>
+                <details class="experiment-filter-panel" open>
+                    <summary>Filter experiments</summary>
+                    <form id="experiment-filter-form">
+                        <div class="experiment-filters">
+                            <label>Status
+                                <select id="experiment-filter-status">
+                                    <option value="">All statuses</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="FAILED">Failed</option>
+                                    <option value="RUNNING">Running</option>
+                                    <option value="PLANNED">Planned</option>
+                                    <option value="QUEUED">Queued</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
+                            </label>
+                            <label>Strategy
+                                <select id="experiment-filter-strategy">
+                                    <option value="">All strategies</option>
+                                </select>
+                            </label>
+                            <label>Instrument
+                                <input id="experiment-filter-instrument" placeholder="Any, e.g. EUR_USD">
+                            </label>
+                            <label>Strategy timeframe
+                                <input id="experiment-filter-timeframe" placeholder="Any, e.g. M5">
+                            </label>
+                            <label>Minimum completed runs
+                                <input id="experiment-filter-minimum-runs" type="number" min="0" step="1" placeholder="Any">
+                            </label>
+                            <label>Minimum best return %
+                                <input id="experiment-filter-minimum-return" type="number" step="any" placeholder="Any">
+                            </label>
+                            <label>Created from (UTC)
+                                <input id="experiment-filter-created-from" type="date">
+                            </label>
+                            <label>Created to (UTC)
+                                <input id="experiment-filter-created-to" type="date">
+                            </label>
+                            <label>Experiment search
+                                <input id="experiment-filter-search" type="search" placeholder="Name or experiment ID">
+                            </label>
+                            <label>Sort by
+                                <select id="experiment-filter-sort">
+                                    <option value="NEWEST">Newest first</option>
+                                    <option value="OLDEST">Oldest first</option>
+                                    <option value="BEST_RETURN">Best return first</option>
+                                    <option value="WORST_RETURN">Worst return first</option>
+                                    <option value="MOST_RUNS">Most completed runs</option>
+                                    <option value="LEAST_RUNS">Fewest completed runs</option>
+                                    <option value="FASTEST">Fastest first</option>
+                                    <option value="SLOWEST">Slowest first</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="actions compact-actions experiment-filter-actions">
+                            <button type="submit">Apply filters</button>
+                            <button id="clear-experiment-filters-button" type="button" class="secondary-button">Clear filters</button>
+                        </div>
+                    </form>
+                </details>
                 <div id="history-summary-cards" class="summary-cards"></div>
                 <p id="history-status" class="estimate-note">Loading experiments…</p>
                 <div class="table-wrap history-table-wrap">
                     <table id="history-table"></table>
                 </div>
                 <div id="history-empty" class="empty-state" hidden>
-                    No experiments have been saved yet. Run your first cloud experiment to begin the research history.
+                    No experiments match the current filters.
+                </div>
+                <div class="load-more-wrap">
+                    <button id="load-more-experiments-button" type="button" class="secondary-button" hidden>Load more experiments</button>
                 </div>
             </section>
 

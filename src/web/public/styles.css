@@ -196,6 +196,38 @@ select:focus {
     background: #fafbfd;
 }
 
+.experiment-filter-panel {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border: 1px solid #e0e5ee;
+    border-radius: 12px;
+    background: #fafbfd;
+}
+
+.experiment-filter-panel > summary {
+    color: #344158;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.experiment-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.experiment-filter-actions {
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.load-more-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+}
+
 .run-tools {
     justify-content: space-between;
     margin-top: 10px;
@@ -564,6 +596,10 @@ th {
         grid-template-columns: 1fr;
     }
 
+    .experiment-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .run-tools,
     .detail-actions {
         align-items: stretch;
@@ -592,6 +628,12 @@ th {
     .detail-toolbar {
         align-items: stretch;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 560px) {
+    .experiment-filters {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -826,6 +868,16 @@ html[data-ui-theme="terminal"] .period-chart {
     border-color: #284337;
     border-radius: 1px;
     background: #030806;
+}
+
+html[data-ui-theme="terminal"] .experiment-filter-panel {
+    border-color: #284337;
+    border-radius: 1px;
+    background: #030806;
+}
+
+html[data-ui-theme="terminal"] .experiment-filter-panel > summary {
+    color: #77ffad;
 }
 
 html[data-ui-theme="terminal"] #history-runs-table input[type="checkbox"] {
