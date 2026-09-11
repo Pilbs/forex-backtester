@@ -1,5 +1,5 @@
 export const COMMISSIONING_LIMITS = Object.freeze({
-    strategy: "orb",
+    strategies: Object.freeze(["simple-sma", "orb"]),
     instrument: "EUR_USD",
     strategyTimeframe: "M5",
     executionTimeframe: "M5",
@@ -17,8 +17,10 @@ export function assessResearchExecution(config, plan, usageEstimate) {
         reasons.push(plan?.rejectionReason ?? "Research plan is not allowed");
     }
 
-    if (config?.strategy !== COMMISSIONING_LIMITS.strategy) {
-        reasons.push(`Only strategy ${COMMISSIONING_LIMITS.strategy} is enabled for cloud commissioning`);
+    if (!COMMISSIONING_LIMITS.strategies.includes(config?.strategy)) {
+        reasons.push(
+            `Strategy must be one of: ${COMMISSIONING_LIMITS.strategies.join(", ")}`
+        );
     }
 
     if (market.instrument !== COMMISSIONING_LIMITS.instrument) {
@@ -59,6 +61,9 @@ export function assessResearchExecution(config, plan, usageEstimate) {
         mode: "COMMISSIONING",
         allowed: reasons.length === 0,
         reasons,
-        limits: { ...COMMISSIONING_LIMITS },
+        limits: {
+            ...COMMISSIONING_LIMITS,
+            strategies: [...COMMISSIONING_LIMITS.strategies],
+        },
     };
 }

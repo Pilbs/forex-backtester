@@ -7,7 +7,7 @@ import {
 } from "../cloudflare/research-execution-gate.js";
 import { estimateResearchUsage } from "../cloudflare/research-usage-estimate.js";
 
-function createConfig() {
+function createOrbConfig() {
     return {
         strategy: "orb",
         market: {
@@ -53,15 +53,29 @@ function createConfig() {
     };
 }
 
+function createSimpleSmaConfig() {
+    const config = createOrbConfig();
+    config.strategy = "simple-sma";
+    config.strategyConfig = {
+        smaLength: 20,
+    };
+    config.parameterGrid = {
+        smaLength: [10, 20],
+    };
+    return config;
+}
+
 function assess(config) {
     const plan = planResearch(config);
     const usageEstimate = estimateResearchUsage(config, plan);
     return assessResearchExecution(config, plan, usageEstimate);
 }
 
-assert.equal(assess(createConfig()).allowed, true);
+assert.deepEqual(COMMISSIONING_LIMITS.strategies, ["simple-sma", "orb"]);
+assert.equal(assess(createOrbConfig()).allowed, true);
+assert.equal(assess(createSimpleSmaConfig()).allowed, true);
 
-const tooLong = createConfig();
+const tooLong = createOrbConfig();
 tooLong.market.to = "2027-08-02T00:00:00Z";
 assert.equal(assess(tooLong).allowed, false);
 assert.ok(
@@ -70,7 +84,7 @@ assert.ok(
     )
 );
 
-const tooManyRuns = createConfig();
+const tooManyRuns = createOrbConfig();
 tooManyRuns.parameterGrid.stopLossValue = [10, 12];
 assert.equal(assess(tooManyRuns).allowed, false);
 assert.ok(
@@ -79,7 +93,7 @@ assert.ok(
     )
 );
 
-const wrongTimeframe = createConfig();
+const wrongTimeframe = createOrbConfig();
 wrongTimeframe.market.executionTimeframe = "M1";
 assert.equal(assess(wrongTimeframe).allowed, false);
 assert.ok(

@@ -4,7 +4,15 @@ import {
     listStrategyMetadata,
 } from "../strategies/strategy-registry.js";
 
+const simpleSmaDefinition = getStrategyDefinition("simple-sma");
 const orbDefinition = getStrategyDefinition("orb");
+
+if (
+    simpleSmaDefinition.id !== "simple-sma" ||
+    simpleSmaDefinition.name !== "Simple SMA"
+) {
+    throw new Error("Simple SMA was not resolved from the strategy registry");
+}
 
 if (orbDefinition.id !== "orb" || orbDefinition.name !== "Opening Range Breakout") {
     throw new Error("ORB was not resolved from the strategy registry");
@@ -12,27 +20,40 @@ if (orbDefinition.id !== "orb" || orbDefinition.name !== "Opening Range Breakout
 
 const definitions = listStrategyDefinitions();
 
-if (definitions.length !== 1 || definitions[0] !== orbDefinition) {
-    throw new Error("Strategy registry did not list the registered ORB definition");
+if (
+    definitions.length !== 2 ||
+    definitions[0] !== simpleSmaDefinition ||
+    definitions[1] !== orbDefinition
+) {
+    throw new Error("Strategy registry did not list Simple SMA first and ORB second");
 }
 
 const metadata = listStrategyMetadata();
 
-if (metadata.length !== 1) {
-    throw new Error("Strategy metadata did not contain exactly one registered strategy");
+if (metadata.length !== 2) {
+    throw new Error("Strategy metadata did not contain both registered strategies");
 }
 
-const orbMetadata = metadata[0];
-const breakoutCondition = orbMetadata.parameters.find(
+const simpleSmaMetadata = metadata.find((strategy) => strategy.id === "simple-sma");
+const smaLength = simpleSmaMetadata?.parameters.find(
+    (parameter) => parameter.id === "smaLength"
+);
+
+if (!smaLength || smaLength.label !== "SMA length" || smaLength.default !== 20) {
+    throw new Error("Simple SMA parameter metadata was not exposed correctly");
+}
+
+const orbMetadata = metadata.find((strategy) => strategy.id === "orb");
+const breakoutCondition = orbMetadata?.parameters.find(
     (parameter) => parameter.id === "breakoutCondition"
 );
-const timezoneMode = orbMetadata.parameters.find(
+const timezoneMode = orbMetadata?.parameters.find(
     (parameter) => parameter.id === "timezoneMode"
 );
-const strategyTimeframe = orbMetadata.parameters.find(
+const strategyTimeframe = orbMetadata?.parameters.find(
     (parameter) => parameter.id === "strategyTimeframe"
 );
-const executionTimeframe = orbMetadata.parameters.find(
+const executionTimeframe = orbMetadata?.parameters.find(
     (parameter) => parameter.id === "executionTimeframe"
 );
 

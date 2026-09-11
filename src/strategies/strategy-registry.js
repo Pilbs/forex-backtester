@@ -1,10 +1,12 @@
 import { orbDefinition } from "./orb/orb-definition.js";
+import { simpleSmaDefinition } from "./simple-sma/simple-sma-definition.js";
 import {
     getStrategyDefinitionMetadata,
     validateStrategyDefinition,
 } from "./strategy-definition.js";
 
 const strategyDefinitions = [
+    simpleSmaDefinition,
     orbDefinition,
 ];
 
