@@ -13,6 +13,13 @@
             "database_name": "forex-backtester",
             "database_id": "8bf34fd0-17f4-4bff-a478-2eb81414b4c2",
             "remote": true
+        },
+        {
+            "binding": "RESEARCH_DB",
+            "database_name": "forex-research",
+            "database_id": "bc6ac6e8-8a8d-450b-9f52-e950194dcda4",
+            "migrations_dir": "migrations/research",
+            "remote": true
         }
     ],
     "limits": {
