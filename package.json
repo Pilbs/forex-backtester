@@ -14,6 +14,7 @@
         "test:orb": "node src/tests/test-real-orb-strategy.js",
         "test:orb:entry": "node src/tests/test-orb-atr-entry.js",
         "test:sma": "node src/tests/test-simple-sma-strategy.js",
+        "benchmark:research": "node src/benchmarks/research-engine-benchmark.js",
         "research": "node src/research-cli.js",
         "research:web": "npx wrangler dev",
         "research:web:deploy": "npx wrangler deploy",
