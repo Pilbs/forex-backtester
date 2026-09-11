@@ -4,7 +4,7 @@ export const COMMISSIONING_LIMITS = Object.freeze({
     strategyTimeframe: "M5",
     executionTimeframe: "M5",
     maximumDateRangeDays: 365,
-    maximumRuns: 6,
+    maximumRuns: 12,
     maximumDatasetRows: 100000,
     maximumCandleEvaluations: 400000,
 });

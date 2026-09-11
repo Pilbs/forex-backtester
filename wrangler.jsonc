@@ -28,7 +28,7 @@
         }
     ],
     "limits": {
-        "cpu_ms": 30000,
+        "cpu_ms": 60000,
         "subrequests": 20
     }
 }
