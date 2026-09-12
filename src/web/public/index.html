@@ -13,7 +13,7 @@
     <main class="page-shell">
         <header class="hero">
             <div>
-                <p class="eyebrow">Research Platform V1</p>
+                <p class="eyebrow">Research Platform V3</p>
                 <h1>StratTest</h1>
                 <p class="subtitle">Configure, validate and run controlled cloud research strategy tests.</p>
             </div>
@@ -24,8 +24,10 @@
             <div class="theme-switch" aria-label="Interface style">
                 <span class="theme-switch-label">Interface</span>
                 <div class="theme-switch-buttons" role="group" aria-label="Interface style">
-                    <button type="button" class="theme-choice is-active" data-theme-choice="contemporary" aria-pressed="true">Contemporary</button>
-                    <button type="button" class="theme-choice" data-theme-choice="terminal" aria-pressed="false">Terminal</button>
+                    <button type="button" class="theme-choice is-active" data-theme-choice="contemporary"
+                        aria-pressed="true">Contemporary</button>
+                    <button type="button" class="theme-choice" data-theme-choice="terminal"
+                        aria-pressed="false">Terminal</button>
                 </div>
             </div>
         </header>
@@ -35,122 +37,130 @@
         </div>
 
         <nav class="workspace-nav" aria-label="Research workspace">
-            <button type="button" class="workspace-nav-button is-active" data-view-choice="research" aria-pressed="true">New experiment</button>
-            <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research history</button>
+            <button type="button" class="workspace-nav-button is-active" data-view-choice="research"
+                aria-pressed="true">New experiment</button>
+            <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research
+                history</button>
         </nav>
 
         <section id="research-view">
-        <form id="research-form">
-            <section class="panel">
-                <h2>Market</h2>
-                <div class="grid grid-3">
-                    <label>Experiment name / tag
-                        <input id="experiment-name" maxlength="100" placeholder="Optional, e.g. ORB baseline September">
-                    </label>
-                    <label>Strategy
-                        <select id="strategy"></select>
-                    </label>
-                    <label>Instrument
-                        <input id="instrument" value="EUR_USD" required>
-                    </label>
-                    <label>Strategy timeframe
-                        <input id="strategy-timeframe" value="M5" required>
-                    </label>
-                    <label>Execution timeframe
-                        <input id="execution-timeframe" value="M5" required>
-                    </label>
-                    <label>From
-                        <input id="from" type="datetime-local" value="2026-08-01T00:00" required>
-                    </label>
-                    <label>To
-                        <input id="to" type="datetime-local" value="2026-09-01T00:00" required>
-                    </label>
+            <form id="research-form">
+                <section class="panel">
+                    <h2>Market</h2>
+                    <div class="grid grid-3">
+                        <label>Experiment name / tag
+                            <input id="experiment-name" maxlength="100"
+                                placeholder="Optional, e.g. ORB baseline September">
+                        </label>
+                        <label>Strategy
+                            <select id="strategy"></select>
+                        </label>
+                        <label>Instrument
+                            <input id="instrument" value="EUR_USD" required>
+                        </label>
+                        <label>Strategy timeframe
+                            <input id="strategy-timeframe" value="M5" required>
+                        </label>
+                        <label>Execution timeframe
+                            <input id="execution-timeframe" value="M5" required>
+                        </label>
+                        <div class="market-date-range">
+                            <label>From
+                                <input id="from" type="datetime-local" value="2026-08-01T00:00" required>
+                            </label>
+                            <label>To
+                                <input id="to" type="datetime-local" value="2026-09-01T00:00" required>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Account & execution</h2>
+                    <div class="grid grid-3">
+                        <label>Initial capital
+                            <input id="initial-capital" type="number" value="500" min="1" step="1">
+                        </label>
+                        <label>Currency
+                            <input id="currency" value="USD" maxlength="3">
+                        </label>
+                        <label>Leverage
+                            <input id="leverage" type="number" value="30" min="1" step="1">
+                        </label>
+                        <label>Sizing type
+                            <select id="sizing-type">
+                                <option value="CASH">Cash</option>
+                                <option value="UNITS">Units</option>
+                                <option value="PERCENT_EQUITY">Percent equity</option>
+                                <option value="RISK_PERCENT">Risk percent</option>
+                            </select>
+                        </label>
+                        <label>Sizing value
+                            <input id="sizing-value" type="number" value="300" min="0.01" step="0.01">
+                        </label>
+                        <label>Same-candle conflict
+                            <select id="same-candle-conflict">
+                                <option value="STOP_FIRST">Stop first</option>
+                                <option value="TARGET_FIRST">Target first</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h2>Strategy parameters</h2>
+                            <p>Set a base value and optional sweep values, or save the current strategy defaults in this
+                                browser.</p>
+                        </div>
+                        <div class="detail-actions">
+                            <button id="save-defaults-button" type="button" class="secondary-button">Save strategy
+                                defaults</button>
+                            <button id="reset-defaults-button" type="button" class="secondary-button">Reset strategy
+                                defaults</button>
+                        </div>
+                    </div>
+                    <p id="defaults-status" class="estimate-note" aria-live="polite"></p>
+                    <div id="strategy-parameters" class="parameter-list"></div>
+                </section>
+
+                <div class="actions">
+                    <button id="plan-button" type="submit">Validate experiment plan</button>
+                    <span id="request-status"></span>
                 </div>
+            </form>
+
+            <section id="result-panel" class="panel result-panel" hidden>
+                <h2>Experiment preview</h2>
+                <div id="summary-cards" class="summary-cards"></div>
+                <h3>Estimated cloud workload</h3>
+                <div id="usage-cards" class="summary-cards"></div>
+                <p class="estimate-note" id="estimate-note"></p>
+                <div class="actions">
+                    <button id="run-button" type="button" hidden>Run cloud experiment</button>
+                    <span id="execution-status"></span>
+                </div>
+                <details>
+                    <summary>Generated research configuration</summary>
+                    <pre id="config-output"></pre>
+                </details>
             </section>
 
-            <section class="panel">
-                <h2>Account & execution</h2>
-                <div class="grid grid-3">
-                    <label>Initial capital
-                        <input id="initial-capital" type="number" value="500" min="1" step="1">
-                    </label>
-                    <label>Currency
-                        <input id="currency" value="USD" maxlength="3">
-                    </label>
-                    <label>Leverage
-                        <input id="leverage" type="number" value="30" min="1" step="1">
-                    </label>
-                    <label>Sizing type
-                        <select id="sizing-type">
-                            <option value="CASH">Cash</option>
-                            <option value="UNITS">Units</option>
-                            <option value="PERCENT_EQUITY">Percent equity</option>
-                            <option value="RISK_PERCENT">Risk percent</option>
-                        </select>
-                    </label>
-                    <label>Sizing value
-                        <input id="sizing-value" type="number" value="300" min="0.01" step="0.01">
-                    </label>
-                    <label>Same-candle conflict
-                        <select id="same-candle-conflict">
-                            <option value="STOP_FIRST">Stop first</option>
-                            <option value="TARGET_FIRST">Target first</option>
-                        </select>
-                    </label>
+            <section id="execution-panel" class="panel result-panel" hidden>
+                <h2>Cloud execution result</h2>
+                <div id="execution-cards" class="summary-cards"></div>
+                <h3>Run results</h3>
+                <div id="export-actions" class="actions export-actions" hidden>
+                    <button id="view-experiment-button" type="button">View saved experiment</button>
+                    <button id="export-csv-button" type="button">Download CSV</button>
+                    <button id="export-json-button" type="button">Download JSON</button>
                 </div>
+                <div class="table-wrap">
+                    <table id="execution-table"></table>
+                </div>
+                <p class="estimate-note" id="execution-note"></p>
             </section>
-
-            <section class="panel">
-                <div class="section-heading split-heading">
-                    <div>
-                        <h2>Strategy parameters</h2>
-                        <p>Set a base value and optional sweep values, or save the current strategy defaults in this browser.</p>
-                    </div>
-                    <div class="detail-actions">
-                        <button id="save-defaults-button" type="button" class="secondary-button">Save strategy defaults</button>
-                        <button id="reset-defaults-button" type="button" class="secondary-button">Reset strategy defaults</button>
-                    </div>
-                </div>
-                <p id="defaults-status" class="estimate-note" aria-live="polite"></p>
-                <div id="strategy-parameters" class="parameter-list"></div>
-            </section>            
-
-            <div class="actions">
-                <button id="plan-button" type="submit">Validate experiment plan</button>
-                <span id="request-status"></span>
-            </div>
-        </form>
-
-        <section id="result-panel" class="panel result-panel" hidden>
-            <h2>Experiment preview</h2>
-            <div id="summary-cards" class="summary-cards"></div>
-            <h3>Estimated cloud workload</h3>
-            <div id="usage-cards" class="summary-cards"></div>
-            <p class="estimate-note" id="estimate-note"></p>
-            <div class="actions">
-                <button id="run-button" type="button" hidden>Run cloud experiment</button>
-                <span id="execution-status"></span>
-            </div>
-            <details>
-                <summary>Generated research configuration</summary>
-                <pre id="config-output"></pre>
-            </details>
-        </section>
-
-        <section id="execution-panel" class="panel result-panel" hidden>
-            <h2>Cloud execution result</h2>
-            <div id="execution-cards" class="summary-cards"></div>
-            <h3>Run results</h3>
-            <div id="export-actions" class="actions export-actions" hidden>
-                <button id="view-experiment-button" type="button">View saved experiment</button>
-                <button id="export-csv-button" type="button">Download CSV</button>
-                <button id="export-json-button" type="button">Download JSON</button>
-            </div>
-            <div class="table-wrap">
-                <table id="execution-table"></table>
-            </div>
-            <p class="estimate-note" id="execution-note"></p>
-        </section>
         </section>
 
         <section id="history-view" hidden>
@@ -170,7 +180,8 @@
                                 <legend>Find experiments</legend>
                                 <div class="filter-pair">
                                     <label>Search
-                                        <input id="experiment-filter-search" type="search" placeholder="Name or experiment ID">
+                                        <input id="experiment-filter-search" type="search"
+                                            placeholder="Name or experiment ID">
                                     </label>
                                     <label>Status
                                         <select id="experiment-filter-status">
@@ -205,10 +216,12 @@
                                 <legend>Performance</legend>
                                 <div class="filter-pair">
                                     <label>Minimum completed runs
-                                        <input id="experiment-filter-minimum-runs" type="number" min="0" step="1" placeholder="Any">
+                                        <input id="experiment-filter-minimum-runs" type="number" min="0" step="1"
+                                            placeholder="Any">
                                     </label>
                                     <label>Minimum best return %
-                                        <input id="experiment-filter-minimum-return" type="number" step="any" placeholder="Any">
+                                        <input id="experiment-filter-minimum-return" type="number" step="any"
+                                            placeholder="Any">
                                     </label>
                                 </div>
                             </fieldset>
@@ -226,7 +239,8 @@
                         </div>
                         <div class="actions compact-actions experiment-filter-actions">
                             <button type="submit">Apply filters</button>
-                            <button id="clear-experiment-filters-button" type="button" class="secondary-button">Clear filters</button>
+                            <button id="clear-experiment-filters-button" type="button" class="secondary-button">Clear
+                                filters</button>
                         </div>
                     </form>
                 </details>
@@ -239,16 +253,20 @@
                     No experiments match the current filters.
                 </div>
                 <div class="load-more-wrap">
-                    <button id="load-more-experiments-button" type="button" class="secondary-button" hidden>Load more experiments</button>
+                    <button id="load-more-experiments-button" type="button" class="secondary-button" hidden>Load more
+                        experiments</button>
                 </div>
             </section>
 
             <section id="history-detail-panel" class="panel" hidden>
                 <div class="detail-toolbar">
-                    <button id="back-to-history-button" type="button" class="secondary-button">← Back to history</button>
+                    <button id="back-to-history-button" type="button" class="secondary-button">← Back to
+                        history</button>
                     <div class="detail-actions">
-                        <button id="history-export-csv-button" type="button" class="secondary-button">Download CSV</button>
-                        <button id="history-export-json-button" type="button" class="secondary-button">Download JSON</button>
+                        <button id="history-export-csv-button" type="button" class="secondary-button">Download
+                            CSV</button>
+                        <button id="history-export-json-button" type="button" class="secondary-button">Download
+                            JSON</button>
                         <span id="detail-status" class="status-badge"></span>
                     </div>
                 </div>
@@ -260,98 +278,110 @@
                 <div id="detail-summary-cards" class="summary-cards"></div>
 
                 <nav class="detail-tabs" role="tablist" aria-label="Experiment detail sections">
-                    <button type="button" class="detail-tab is-active" data-detail-tab="runs" role="tab" aria-selected="true">Runs</button>
-                    <button type="button" class="detail-tab" data-detail-tab="analysis" role="tab" aria-selected="false" disabled>Run analysis</button>
-                    <button type="button" class="detail-tab" data-detail-tab="validation" role="tab" aria-selected="false" disabled>Validation data</button>
-                    <button type="button" class="detail-tab" data-detail-tab="configuration" role="tab" aria-selected="false">Configuration</button>
+                    <button type="button" class="detail-tab is-active" data-detail-tab="runs" role="tab"
+                        aria-selected="true">Runs</button>
+                    <button type="button" class="detail-tab" data-detail-tab="analysis" role="tab" aria-selected="false"
+                        disabled>Run analysis</button>
+                    <button type="button" class="detail-tab" data-detail-tab="validation" role="tab"
+                        aria-selected="false" disabled>Validation data</button>
+                    <button type="button" class="detail-tab" data-detail-tab="configuration" role="tab"
+                        aria-selected="false">Configuration</button>
                 </nav>
 
                 <section data-detail-tab-panel="runs">
-                <h3>Parameter runs</h3>
-                <div class="run-filters" aria-label="Run result filters">
-                    <label>Status
-                        <select id="run-filter-status">
-                            <option value="ALL">All statuses</option>
-                            <option value="COMPLETED">Completed</option>
-                            <option value="FAILED">Failed</option>
-                        </select>
-                    </label>
-                    <label>Minimum trades
-                        <input id="run-filter-minimum-trades" type="number" min="0" step="1" placeholder="Any">
-                    </label>
-                    <label>Minimum return %
-                        <input id="run-filter-minimum-return" type="number" step="any" placeholder="Any">
-                    </label>
-                    <label>Maximum drawdown %
-                        <input id="run-filter-maximum-drawdown" type="number" min="0" step="any" placeholder="Any">
-                    </label>
-                    <label>Minimum profit factor
-                        <input id="run-filter-minimum-profit-factor" type="number" min="0" step="any" placeholder="Any">
-                    </label>
-                    <label>Parameter search
-                        <input id="run-filter-parameter-search" type="search" placeholder="Value or setting">
-                    </label>
-                </div>
-                <div class="run-tools">
-                    <span id="run-filter-count" class="estimate-note"></span>
-                    <div class="actions compact-actions">
-                        <button id="clear-run-filters-button" type="button" class="secondary-button">Clear filters</button>
-                        <button id="clear-comparison-button" type="button" class="secondary-button" disabled>Clear selection</button>
-                        <button id="compare-runs-button" type="button" disabled>Compare selected</button>
+                    <h3>Parameter runs</h3>
+                    <div class="run-filters" aria-label="Run result filters">
+                        <label>Status
+                            <select id="run-filter-status">
+                                <option value="ALL">All statuses</option>
+                                <option value="COMPLETED">Completed</option>
+                                <option value="FAILED">Failed</option>
+                            </select>
+                        </label>
+                        <label>Minimum trades
+                            <input id="run-filter-minimum-trades" type="number" min="0" step="1" placeholder="Any">
+                        </label>
+                        <label>Minimum return %
+                            <input id="run-filter-minimum-return" type="number" step="any" placeholder="Any">
+                        </label>
+                        <label>Maximum drawdown %
+                            <input id="run-filter-maximum-drawdown" type="number" min="0" step="any" placeholder="Any">
+                        </label>
+                        <label>Minimum profit factor
+                            <input id="run-filter-minimum-profit-factor" type="number" min="0" step="any"
+                                placeholder="Any">
+                        </label>
+                        <label>Parameter search
+                            <input id="run-filter-parameter-search" type="search" placeholder="Value or setting">
+                        </label>
                     </div>
-                </div>
-                <p class="estimate-note">Select a column to sort. Tick up to four runs to compare, or select a row to inspect it.</p>
-                <div class="table-wrap history-table-wrap">
-                    <table id="history-runs-table"></table>
-                </div>
-
-                <section id="comparison-panel" class="run-detail" hidden>
-                    <div class="section-heading split-heading">
-                        <div>
-                            <h3>Run comparison</h3>
-                            <p id="comparison-subtitle"></p>
+                    <div class="run-tools">
+                        <span id="run-filter-count" class="estimate-note"></span>
+                        <div class="actions compact-actions">
+                            <button id="clear-run-filters-button" type="button" class="secondary-button">Clear
+                                filters</button>
+                            <button id="clear-comparison-button" type="button" class="secondary-button" disabled>Clear
+                                selection</button>
+                            <button id="compare-runs-button" type="button" disabled>Compare selected</button>
                         </div>
-                        <button id="close-comparison-button" type="button" class="secondary-button">Close comparison</button>
                     </div>
-                    <div class="table-wrap comparison-table-wrap">
-                        <table id="comparison-table"></table>
+                    <p class="estimate-note">Select a column to sort. Tick up to four runs to compare, or select a row
+                        to inspect it.</p>
+                    <div class="table-wrap history-table-wrap">
+                        <table id="history-runs-table"></table>
                     </div>
-                </section>
+
+                    <section id="comparison-panel" class="run-detail" hidden>
+                        <div class="section-heading split-heading">
+                            <div>
+                                <h3>Run comparison</h3>
+                                <p id="comparison-subtitle"></p>
+                            </div>
+                            <button id="close-comparison-button" type="button" class="secondary-button">Close
+                                comparison</button>
+                        </div>
+                        <div class="table-wrap comparison-table-wrap">
+                            <table id="comparison-table"></table>
+                        </div>
+                    </section>
                 </section>
 
                 <section data-detail-tab-panel="analysis" hidden>
-                <section id="run-detail-panel" class="run-detail" hidden>
-                    <div class="section-heading split-heading">
-                        <div>
-                            <h3 id="run-detail-title">Run details</h3>
-                            <p id="run-detail-subtitle"></p>
+                    <section id="run-detail-panel" class="run-detail" hidden>
+                        <div class="section-heading split-heading">
+                            <div>
+                                <h3 id="run-detail-title">Run details</h3>
+                                <p id="run-detail-subtitle"></p>
+                            </div>
+                            <div class="detail-actions">
+                                <button id="set-run-defaults-button" type="button" class="secondary-button">Set as
+                                    strategy defaults</button>
+                                <button id="use-run-button" type="button" class="secondary-button">Use in new
+                                    experiment</button>
+                                <button id="detailed-rerun-button" type="button">Run detailed validation</button>
+                            </div>
                         </div>
-                        <div class="detail-actions">
-                            <button id="set-run-defaults-button" type="button" class="secondary-button">Set as strategy defaults</button>
-                            <button id="use-run-button" type="button" class="secondary-button">Use in new experiment</button>
-                            <button id="detailed-rerun-button" type="button">Run detailed validation</button>
+                        <p id="detailed-rerun-status" class="estimate-note"></p>
+                        <div id="detailed-rerun-feedback" class="validation-feedback" role="alert" hidden></div>
+                        <div id="run-summary-grid" class="metric-grid"></div>
+                        <h3>Monthly and yearly summaries</h3>
+                        <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
+                        <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>
+                        <div class="table-wrap">
+                            <table id="run-period-table"></table>
                         </div>
-                    </div>
-                    <p id="detailed-rerun-status" class="estimate-note"></p>
-                    <div id="detailed-rerun-feedback" class="validation-feedback" role="alert" hidden></div>
-                    <div id="run-summary-grid" class="metric-grid"></div>
-                    <h3>Monthly and yearly summaries</h3>
-                    <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
-                    <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>
-                    <div class="table-wrap">
-                        <table id="run-period-table"></table>
-                    </div>
-                    <details>
-                        <summary>Complete saved run record</summary>
-                        <pre id="run-json"></pre>
-                    </details>
-                </section>
+                        <details>
+                            <summary>Complete saved run record</summary>
+                            <pre id="run-json"></pre>
+                        </details>
+                    </section>
                 </section>
 
                 <section data-detail-tab-panel="validation" hidden>
                     <section id="validation-comparison-panel" hidden>
                         <h3>Original versus detailed rerun</h3>
-                        <p class="estimate-note">Matching values confirm that the saved configuration was reproduced against the current stored candle data.</p>
+                        <p class="estimate-note">Matching values confirm that the saved configuration was reproduced
+                            against the current stored candle data.</p>
                         <div class="table-wrap comparison-table-wrap">
                             <table id="validation-comparison-table"></table>
                         </div>
@@ -363,8 +393,10 @@
                                 <p id="detailed-data-subtitle"></p>
                             </div>
                             <div class="detail-actions">
-                                <button id="trade-export-csv-button" type="button" class="secondary-button">Trades CSV</button>
-                                <button id="trade-export-json-button" type="button" class="secondary-button">Validation JSON</button>
+                                <button id="trade-export-csv-button" type="button" class="secondary-button">Trades
+                                    CSV</button>
+                                <button id="trade-export-json-button" type="button" class="secondary-button">Validation
+                                    JSON</button>
                             </div>
                         </div>
                         <h3>Trades</h3>
@@ -372,7 +404,8 @@
                             <table id="run-trades-table"></table>
                         </div>
                         <h3>Diagnostic events</h3>
-                        <p class="estimate-note">Signals, orders, fills, rejections and risk events only—no per-candle trace.</p>
+                        <p class="estimate-note">Signals, orders, fills, rejections and risk events only—no per-candle
+                            trace.</p>
                         <div class="table-wrap history-table-wrap">
                             <table id="run-events-table"></table>
                         </div>
@@ -383,10 +416,10 @@
                 </section>
 
                 <section data-detail-tab-panel="configuration" hidden>
-                <details open>
-                    <summary>Complete experiment configuration</summary>
-                    <pre id="detail-config-output"></pre>
-                </details>
+                    <details open>
+                        <summary>Complete experiment configuration</summary>
+                        <pre id="detail-config-output"></pre>
+                    </details>
                 </section>
             </section>
         </section>
@@ -397,7 +430,8 @@
         </section>
     </main>
 
-    <button id="back-to-top-button" class="back-to-top-button" type="button" aria-label="Back to top" hidden>↑ Top</button>
+    <button id="back-to-top-button" class="back-to-top-button" type="button" aria-label="Back to top" hidden>↑
+        Top</button>
 
     <script type="module" src="/app.js"></script>
 </body>

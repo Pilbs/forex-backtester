@@ -47,7 +47,7 @@ select {
 .eye {
     margin: 0 0 8px;
     font-weight: 700;
-    text-transform:none;
+    text-transform: none;
     letter-spacing: 0.08em;
     font-size: 12px;
 }
@@ -204,7 +204,26 @@ select:focus {
     background: #fafbfd;
 }
 
-.experiment-filter-panel > summary {
+.market-date-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    min-width: 0;
+}
+
+.market-date-range label,
+.market-date-range input {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (max-width: 560px) {
+    .market-date-range {
+        grid-template-columns: 1fr;
+    }
+}
+
+.experiment-filter-panel>summary {
     color: #344158;
     font-weight: 700;
     cursor: pointer;
@@ -1003,7 +1022,7 @@ html[data-ui-theme="terminal"] .experiment-filter-panel {
     background: #030806;
 }
 
-html[data-ui-theme="terminal"] .experiment-filter-panel > summary {
+html[data-ui-theme="terminal"] .experiment-filter-panel>summary {
     color: #77ffad;
 }
 
