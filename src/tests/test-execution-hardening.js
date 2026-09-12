@@ -106,6 +106,7 @@ function testSameCandleConflictPolicy() {
     const intent = {
         action: "ENTER",
         side: "LONG",
+        reason: "TEST_ENTRY",
         size: { type: "UNITS", value: 1000 },
         stopLoss: { type: "PIPS", value: 10 },
         takeProfit: { type: "PIPS", value: 10 },
@@ -130,6 +131,7 @@ function testSameCandleConflictPolicy() {
     });
 
     assert.equal(stopFirst.trades[0].exitReason, "STOP_LOSS");
+    assert.equal(stopFirst.trades[0].entryReason, "TEST_ENTRY");
     assert.equal(targetFirst.trades[0].exitReason, "TAKE_PROFIT");
 }
 

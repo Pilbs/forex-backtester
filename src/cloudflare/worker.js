@@ -43,6 +43,8 @@ function serializeStoredExperiment(row, { includeConfig = false } = {}) {
     const experiment = {
         id: row.id,
         workspaceId: row.workspace_id,
+        parentExperimentId: row.parent_experiment_id ?? null,
+        sourceRunId: row.source_run_id ?? null,
         purpose: row.purpose,
         status: row.status,
         name: row.name,
@@ -111,6 +113,40 @@ function serializeStoredRun(row, periods = []) {
         })),
         createdAt: toIsoTimestamp(row.created_at),
         updatedAt: toIsoTimestamp(row.updated_at),
+    };
+}
+
+function serializeStoredTrade(row) {
+    return {
+        id: row.id,
+        tradeNumber: row.trade_number,
+        side: row.side,
+        result: row.result,
+        entryTime: toIsoTimestamp(row.entry_time),
+        exitTime: toIsoTimestamp(row.exit_time),
+        entryPrice: row.entry_price,
+        exitPrice: row.exit_price,
+        units: row.units,
+        pnlPips: row.pnl_pips,
+        pnlAccount: row.pnl_account,
+        commissionAccount: row.commission_account,
+        mfePips: row.mfe_pips,
+        maePips: row.mae_pips,
+        holdingMinutes: row.holding_minutes,
+        entryReason: row.entry_reason,
+        exitReason: row.exit_reason,
+        data: parseStoredJson(row.trade_json, {}),
+    };
+}
+
+function serializeStoredDiagnosticEvent(row) {
+    return {
+        id: row.id,
+        eventNumber: row.event_number,
+        type: row.event_type,
+        time: toIsoTimestamp(row.event_time),
+        reason: row.reason,
+        data: parseStoredJson(row.event_json, {}),
     };
 }
 
@@ -277,6 +313,238 @@ function planExecution(config) {
         usageEstimate,
         executionGate,
     };
+}
+
+function diagnosticEventTime(event) {
+    const value = event?.decisionTime
+        ?? event?.time
+        ?? event?.fillTime
+        ?? event?.createdTime
+        ?? event?.cancelTime
+        ?? event?.sourceTime;
+
+    if (Number.isFinite(value)) {
+        return value;
+    }
+
+    const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function createDiagnosticEvents(run) {
+    const groups = [
+        ["SIGNAL", run.signals],
+        ["ORDER", run.orders],
+        ["FILL", run.fills],
+        ["REJECTION", run.rejectedOrders],
+        ["RISK", run.riskEvents],
+    ];
+    let sequence = 0;
+
+    return groups.flatMap(([type, items]) => (items ?? []).map((data) => ({
+        type,
+        time: diagnosticEventTime(data),
+        reason: data?.reason ?? data?.rejectionReason ?? (type === "RISK" ? data?.type : null),
+        data,
+        sequence: sequence++,
+    }))).sort((left, right) => {
+        if (left.time === null || right.time === null) {
+            return left.time === right.time ? left.sequence - right.sequence : left.time === null ? 1 : -1;
+        }
+
+        return left.time - right.time || left.sequence - right.sequence;
+    }).map(({ sequence: unused, ...event }) => event);
+}
+
+function createDetailedRerunConfig(experiment, run) {
+    const originalConfig = parseStoredJson(experiment.config_json, {});
+
+    return {
+        ...originalConfig,
+        name: `${experiment.name ?? experiment.strategy_name} · Run ${run.run_number} validation`,
+        strategy: experiment.strategy_id,
+        market: {
+            ...(originalConfig.market ?? {}),
+            instrument: experiment.instrument,
+            strategyTimeframe: experiment.strategy_timeframe,
+            executionTimeframe: experiment.execution_timeframe,
+            from: experiment.from_time,
+            to: experiment.to_time,
+        },
+        strategyConfig: parseStoredJson(run.strategy_config_json, {}),
+        parameterGrid: {},
+        policy: {
+            warningRunCount: 1,
+            maximumRunCount: 1,
+        },
+    };
+}
+
+async function executeDetailedRerun({
+    source,
+    request,
+    env,
+    userContext,
+    repository,
+    runResearchJob,
+}) {
+    if (source.run.status !== "COMPLETED") {
+        return jsonResponse({ error: "Only completed runs can be validated" }, 409);
+    }
+
+    const config = createDetailedRerunConfig(source.experiment, source.run);
+    const { plan, usageEstimate, executionGate } = planExecution(config);
+
+    if (!executionGate.allowed) {
+        return jsonResponse({
+            error: "Detailed rerun blocked by cloud commissioning limits",
+            plan: summarizePlan(plan),
+            usageEstimate,
+            executionGate,
+        }, 422);
+    }
+
+    const usageTracker = createD1UsageTracker();
+    const started = performance.now();
+    let experiment;
+    let batch;
+    let tradeCount = 0;
+    let diagnosticEventCount = 0;
+
+    try {
+        experiment = await repository.createExperiment({
+            workspaceId: userContext.workspace.id,
+            createdByUserId: userContext.user.id,
+            parentExperimentId: source.experiment.id,
+            sourceRunId: source.run.id,
+            purpose: "DETAILED_RERUN",
+            name: config.name,
+            strategy: plan.strategy,
+            market: plan.backtest,
+            config,
+            requestedRuns: 1,
+            validRuns: 1,
+            resultSchemaVersion: 5,
+            applicationVersion: env.APP_VERSION ?? null,
+        });
+
+        await repository.updateExperimentStatus({
+            workspaceId: userContext.workspace.id,
+            experimentId: experiment.id,
+            status: "RUNNING",
+        });
+
+        batch = await repository.createExperimentBatch({
+            experimentId: experiment.id,
+            batchNumber: 1,
+            firstRunNumber: 1,
+            lastRunNumber: 1,
+            status: "RUNNING",
+            workerRequestId: request.headers.get("cf-ray"),
+        });
+
+        const result = await runResearchJob(config, {
+            experimentId: experiment.id,
+            includeTrades: true,
+            includeRunDetails: true,
+            captureEquityCurve: false,
+            stopOnError: true,
+            datasetLoader: createCloudflareDatasetLoader({
+                db: env.FOREX_DB,
+                usageTracker,
+            }),
+            onProgress: async ({ currentRun }) => {
+                const persistedRun = await repository.saveExperimentRun({
+                    experimentId: experiment.id,
+                    run: { ...currentRun, trades: undefined },
+                });
+
+                await repository.replaceRunPeriodSummaries({
+                    runId: persistedRun.id,
+                    yearly: currentRun.yearlySummary ?? [],
+                    monthly: currentRun.monthlySummary ?? [],
+                });
+                await repository.saveRunTrades({
+                    runId: persistedRun.id,
+                    trades: currentRun.trades ?? [],
+                });
+                tradeCount = currentRun.trades?.length ?? 0;
+                const diagnosticEvents = createDiagnosticEvents(currentRun);
+                await repository.saveRunDiagnosticEvents({
+                    runId: persistedRun.id,
+                    events: diagnosticEvents,
+                });
+                diagnosticEventCount = diagnosticEvents.length;
+            },
+        });
+        const wallTimeMs = Math.round(performance.now() - started);
+        const metrics = executionMetrics({ result, usageTracker, wallTimeMs });
+
+        await repository.updateExperimentBatch({
+            batchId: batch.id,
+            status: "COMPLETED",
+            execution: metrics,
+        });
+        await repository.updateExperimentStatus({
+            workspaceId: userContext.workspace.id,
+            experimentId: experiment.id,
+            status: "COMPLETED",
+            totals: result.totals,
+            execution: metrics,
+        });
+
+        return jsonResponse({
+            status: "COMPLETED",
+            experimentId: experiment.id,
+            sourceExperimentId: source.experiment.id,
+            sourceRunId: source.run.id,
+            tradeCount,
+            diagnosticEventCount,
+            execution: { mode: "CLOUD", wallTimeMs, d1: usageTracker },
+        });
+    } catch (error) {
+        const serializedError = serializeError(error);
+        const wallTimeMs = Math.round(performance.now() - started);
+        const failureMetrics = {
+            wallTimeMs,
+            d1QueryCount: usageTracker.queryCount,
+            d1RowsRead: usageTracker.rowsRead,
+            d1DurationMs: usageTracker.d1DurationMs,
+        };
+
+        if (batch?.id) {
+            try {
+                await repository.updateExperimentBatch({
+                    batchId: batch.id,
+                    status: "FAILED",
+                    execution: failureMetrics,
+                    error: serializedError,
+                });
+            } catch (persistenceError) {
+                console.error("Failed to mark detailed rerun batch as failed", persistenceError);
+            }
+        }
+
+        if (experiment?.id) {
+            try {
+                await repository.updateExperimentStatus({
+                    workspaceId: userContext.workspace.id,
+                    experimentId: experiment.id,
+                    status: "FAILED",
+                    totals: { completedRuns: 0, failedRuns: 1 },
+                    execution: failureMetrics,
+                    error: serializedError,
+                });
+            } catch (persistenceError) {
+                console.error("Failed to mark detailed rerun as failed", persistenceError);
+            }
+        }
+
+        return jsonResponse({
+            error: serializedError.message,
+            experimentId: experiment?.id ?? null,
+        }, 500);
+    }
 }
 
 async function executeResearch(config, request, env, identity, {
@@ -592,6 +860,69 @@ export async function handleRequest(request, env = {}, {
             });
         }
 
+        const detailedRerunMatch = request.method === "POST"
+            ? url.pathname.match(/^\/api\/experiments\/([^/]+)\/runs\/([^/]+)\/detailed-rerun$/)
+            : null;
+
+        if (detailedRerunMatch) {
+            if (!env.FOREX_DB?.prepare || !env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "FOREX_DB and RESEARCH_DB D1 bindings are required",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+            const experimentId = decodeURIComponent(detailedRerunMatch[1]);
+            const runId = decodeURIComponent(detailedRerunMatch[2]);
+            const source = await repository.getExperimentRun({
+                workspaceId: context.workspace.id,
+                experimentId,
+                runId,
+            });
+
+            if (!source) {
+                return jsonResponse({ error: "Experiment run not found" }, 404);
+            }
+
+            return executeDetailedRerun({
+                source,
+                request,
+                env,
+                userContext: context,
+                repository,
+                runResearchJob,
+            });
+        }
+
+        const runDetailsMatch = request.method === "GET"
+            ? url.pathname.match(/^\/api\/runs\/([^/]+)\/details$/)
+            : null;
+
+        if (runDetailsMatch) {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({ error: "RESEARCH_DB D1 binding is unavailable" }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+            const runId = decodeURIComponent(runDetailsMatch[1]);
+            const detail = await repository.getRunDetails({
+                workspaceId: context.workspace.id,
+                runId,
+            });
+
+            if (!detail) {
+                return jsonResponse({ error: "Detailed run not found" }, 404);
+            }
+
+            return jsonResponse({
+                run: serializeStoredRun(detail.run),
+                trades: detail.trades.map(serializeStoredTrade),
+                diagnosticEvents: detail.diagnosticEvents.map(serializeStoredDiagnosticEvent),
+            });
+        }
+
         const experimentDetailMatch = request.method === "GET"
             ? url.pathname.match(/^\/api\/experiments\/([^/]+)$/)
             : null;
@@ -631,6 +962,9 @@ export async function handleRequest(request, env = {}, {
                 runs: detail.runs.map((run) =>
                     serializeStoredRun(run, periodsByRun.get(run.id) ?? [])
                 ),
+                sourceRun: detail.sourceRun
+                    ? serializeStoredRun(detail.sourceRun)
+                    : null,
             });
         }
 

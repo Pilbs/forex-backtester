@@ -122,6 +122,16 @@ async function runBatch(db, statements) {
     return Promise.all(statements.map((statement) => statement.run()));
 }
 
+async function runBatchInChunks(db, statements, chunkSize = 50) {
+    const results = [];
+
+    for (let index = 0; index < statements.length; index += chunkSize) {
+        results.push(...await runBatch(db, statements.slice(index, index + chunkSize)));
+    }
+
+    return results;
+}
+
 export function createD1ResearchRepository({
     db,
     now = () => Date.now(),
@@ -372,6 +382,23 @@ export function createD1ResearchRepository({
         `).bind(workspaceId, experimentId));
     }
 
+    async function getExperimentRun({ workspaceId, experimentId, runId }) {
+        const experiment = await getExperiment({ workspaceId, experimentId });
+
+        if (!experiment) {
+            return null;
+        }
+
+        const run = await first(db.prepare(`
+            SELECT er.*
+            FROM experiment_runs er
+            JOIN experiments e ON e.id = er.experiment_id
+            WHERE e.workspace_id = ? AND e.id = ? AND er.id = ?
+        `).bind(workspaceId, experimentId, runId));
+
+        return run ? { experiment, run } : null;
+    }
+
     async function listExperiments({
         workspaceId,
         limit = 50,
@@ -496,7 +523,7 @@ export function createD1ResearchRepository({
             return null;
         }
 
-        const [runResult, periodResult] = await Promise.all([
+        const [runResult, periodResult, sourceRun] = await Promise.all([
             db.prepare(`
                 SELECT er.*
                 FROM experiment_runs er
@@ -512,12 +539,21 @@ export function createD1ResearchRepository({
                 WHERE e.workspace_id = ? AND e.id = ?
                 ORDER BY ps.run_id, ps.period_type, ps.period_key
             `).bind(workspaceId, experimentId).all(),
+            experiment.source_run_id
+                ? first(db.prepare(`
+                    SELECT er.*
+                    FROM experiment_runs er
+                    JOIN experiments e ON e.id = er.experiment_id
+                    WHERE e.workspace_id = ? AND er.id = ?
+                `).bind(workspaceId, experiment.source_run_id))
+                : null,
         ]);
 
         return {
             experiment,
             runs: runResult?.results ?? [],
             periodSummaries: periodResult?.results ?? [],
+            sourceRun,
         };
     }
 
@@ -740,9 +776,10 @@ export function createD1ResearchRepository({
         }
 
         const timestamp = now();
-        const statements = [
-            db.prepare(`DELETE FROM run_trades WHERE run_id = ?`).bind(runId),
-            ...trades.map((trade, index) => db.prepare(`
+        await db.prepare(`DELETE FROM run_trades WHERE run_id = ?`)
+            .bind(runId).run();
+
+        const statements = trades.map((trade, index) => db.prepare(`
             INSERT INTO run_trades (
                 id,
                 run_id,
@@ -786,17 +823,97 @@ export function createD1ResearchRepository({
             trade.exitReason ?? null,
             json(trade, "trade"),
             timestamp
-            )),
-            db.prepare(`
-                UPDATE experiment_runs
-                SET has_trade_details = 1, updated_at = ?
-                WHERE id = ?
-            `).bind(timestamp, runId),
-        ];
+            ));
 
-        await runBatch(db, statements);
+        await runBatchInChunks(db, statements);
+        await db.prepare(`
+            UPDATE experiment_runs
+            SET has_trade_details = 1, updated_at = ?
+            WHERE id = ?
+        `).bind(timestamp, runId).run();
 
         return trades.length;
+    }
+
+    async function saveRunDiagnosticEvents({ runId, events }) {
+        if (!Array.isArray(events)) {
+            throw new Error("events must be an array");
+        }
+
+        const supportedTypes = new Set(["SIGNAL", "ORDER", "FILL", "REJECTION", "RISK"]);
+        const timestamp = now();
+
+        await db.prepare(`DELETE FROM run_diagnostic_events WHERE run_id = ?`)
+            .bind(runId).run();
+
+        const statements = events.map((event, index) => {
+            if (!supportedTypes.has(event?.type)) {
+                throw new Error(`Unsupported diagnostic event type: ${event?.type}`);
+            }
+
+            return db.prepare(`
+                INSERT INTO run_diagnostic_events (
+                    id,
+                    run_id,
+                    event_number,
+                    event_type,
+                    event_time,
+                    reason,
+                    event_json,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+                `${runId}-event-${index + 1}`,
+                runId,
+                index + 1,
+                event.type,
+                finiteOrNull(event.time),
+                event.reason ?? null,
+                json(event.data, "diagnostic event"),
+                timestamp
+            );
+        });
+
+        await runBatchInChunks(db, statements);
+        return events.length;
+    }
+
+    async function getRunDetails({ workspaceId, runId }) {
+        const run = await first(db.prepare(`
+            SELECT er.*
+            FROM experiment_runs er
+            JOIN experiments e ON e.id = er.experiment_id
+            WHERE e.workspace_id = ? AND er.id = ?
+        `).bind(workspaceId, runId));
+
+        if (!run) {
+            return null;
+        }
+
+        const [tradeResult, eventResult] = await Promise.all([
+            db.prepare(`
+                SELECT rt.*
+                FROM run_trades rt
+                JOIN experiment_runs er ON er.id = rt.run_id
+                JOIN experiments e ON e.id = er.experiment_id
+                WHERE e.workspace_id = ? AND rt.run_id = ?
+                ORDER BY rt.trade_number ASC
+            `).bind(workspaceId, runId).all(),
+            db.prepare(`
+                SELECT de.*
+                FROM run_diagnostic_events de
+                JOIN experiment_runs er ON er.id = de.run_id
+                JOIN experiments e ON e.id = er.experiment_id
+                WHERE e.workspace_id = ? AND de.run_id = ?
+                ORDER BY de.event_number ASC
+            `).bind(workspaceId, runId).all(),
+        ]);
+
+        return {
+            run,
+            trades: tradeResult?.results ?? [],
+            diagnosticEvents: eventResult?.results ?? [],
+        };
     }
 
     async function createExperimentBatch({
@@ -922,12 +1039,15 @@ export function createD1ResearchRepository({
         assertWorkspaceMember,
         createExperiment,
         getExperiment,
+        getExperimentRun,
         listExperiments,
         getExperimentDetail,
         updateExperimentStatus,
         saveExperimentRun,
         replaceRunPeriodSummaries,
         saveRunTrades,
+        saveRunDiagnosticEvents,
+        getRunDetails,
         createExperimentBatch,
         updateExperimentBatch,
     };

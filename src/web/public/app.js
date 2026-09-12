@@ -671,6 +671,15 @@ const closeComparisonButton = document.querySelector("#close-comparison-button")
 const clearRunFiltersButton = document.querySelector("#clear-run-filters-button");
 const comparisonPanel = document.querySelector("#comparison-panel");
 const comparisonTable = document.querySelector("#comparison-table");
+const detailedRerunButton = document.querySelector("#detailed-rerun-button");
+const detailedRerunStatus = document.querySelector("#detailed-rerun-status");
+const detailedDataPanel = document.querySelector("#detailed-data-panel");
+const validationComparisonPanel = document.querySelector("#validation-comparison-panel");
+const validationComparisonTable = document.querySelector("#validation-comparison-table");
+const runTradesTable = document.querySelector("#run-trades-table");
+const runEventsTable = document.querySelector("#run-events-table");
+const tradeExportCsvButton = document.querySelector("#trade-export-csv-button");
+const tradeExportJsonButton = document.querySelector("#trade-export-json-button");
 const runFilterControls = [
     document.querySelector("#run-filter-status"),
     document.querySelector("#run-filter-minimum-trades"),
@@ -686,6 +695,7 @@ let loadedExperiments = [];
 let historyNextOffset = null;
 let currentExperimentDetail = null;
 let selectedHistoryRunId = null;
+let currentDetailedRunData = null;
 let comparisonRunIds = new Set();
 let runSort = { key: "returnPercent", direction: "desc" };
 
@@ -1321,9 +1331,202 @@ function renderComparison() {
     comparisonPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function createJsonDetailsCell(value) {
+    const cell = document.createElement("td");
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const output = document.createElement("pre");
+
+    summary.textContent = "View JSON";
+    output.textContent = JSON.stringify(value ?? {}, null, 2);
+    details.append(summary, output);
+    cell.append(details);
+    return cell;
+}
+
+function renderValidationComparison(detailedRun) {
+    const sourceRun = currentExperimentDetail?.sourceRun;
+    validationComparisonPanel.hidden = !sourceRun;
+    validationComparisonTable.replaceChildren();
+
+    if (!sourceRun) {
+        return;
+    }
+
+    const metrics = [
+        ["Total trades", "totalTrades"],
+        ["Wins", "wins"],
+        ["Losses", "losses"],
+        ["Win rate", "winRate"],
+        ["P&L pips", "totalPnlPips"],
+        ["Net P&L", "netPnlAccount"],
+        ["Return %", "returnPercent"],
+        ["Profit factor", "profitFactor"],
+        ["Max drawdown %", "maxDrawdownPercent"],
+        ["Average MFE", "averageMfePips"],
+        ["Average MAE", "averageMaePips"],
+    ];
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+
+    for (const heading of ["Metric", "Original", "Detailed rerun", "Difference"]) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    validationComparisonTable.append(head);
+    const body = document.createElement("tbody");
+
+    for (const [label, key] of metrics) {
+        const original = sourceRun.summary?.[key];
+        const rerun = detailedRun.summary?.[key];
+        const difference = Number.isFinite(original) && Number.isFinite(rerun)
+            ? rerun - original
+            : null;
+        const row = document.createElement("tr");
+        row.append(
+            createTextCell(label),
+            createTextCell(displayValue(original, 4)),
+            createTextCell(displayValue(rerun, 4)),
+            createTextCell(displayValue(difference, 4))
+        );
+        body.append(row);
+    }
+
+    validationComparisonTable.append(body);
+}
+
+function renderDetailedRunData(detail) {
+    currentDetailedRunData = detail;
+    const trades = detail.trades ?? [];
+    const events = detail.diagnosticEvents ?? [];
+
+    document.querySelector("#detailed-data-subtitle").textContent =
+        `${trades.length} trades · ${events.length} diagnostic events`;
+    runTradesTable.replaceChildren();
+    const tradeHead = document.createElement("thead");
+    const tradeHeadingRow = document.createElement("tr");
+    const tradeHeadings = [
+        "#", "Side", "Result", "Entry time", "Exit time", "Entry", "Exit",
+        "Units", "P&L pips", "P&L account", "Commission", "MFE", "MAE",
+        "Minutes", "Entry reason", "Exit reason", "Record",
+    ];
+
+    for (const heading of tradeHeadings) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        tradeHeadingRow.append(cell);
+    }
+
+    tradeHead.append(tradeHeadingRow);
+    runTradesTable.append(tradeHead);
+    const tradeBody = document.createElement("tbody");
+
+    for (const trade of trades) {
+        const row = document.createElement("tr");
+        row.append(
+            createTextCell(trade.tradeNumber),
+            createTextCell(trade.side),
+            createTextCell(trade.result),
+            createTextCell(formatDateTime(trade.entryTime)),
+            createTextCell(formatDateTime(trade.exitTime)),
+            createTextCell(displayValue(trade.entryPrice, 6)),
+            createTextCell(displayValue(trade.exitPrice, 6)),
+            createTextCell(displayValue(trade.units)),
+            createTextCell(displayValue(trade.pnlPips, 4)),
+            createTextCell(displayValue(trade.pnlAccount, 4)),
+            createTextCell(displayValue(trade.commissionAccount, 4)),
+            createTextCell(displayValue(trade.mfePips, 4)),
+            createTextCell(displayValue(trade.maePips, 4)),
+            createTextCell(displayValue(trade.holdingMinutes, 2)),
+            createTextCell(trade.entryReason),
+            createTextCell(trade.exitReason),
+            createJsonDetailsCell(trade.data)
+        );
+        tradeBody.append(row);
+    }
+
+    if (trades.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = tradeHeadings.length;
+        cell.textContent = "The detailed rerun completed without closed trades.";
+        row.append(cell);
+        tradeBody.append(row);
+    }
+
+    runTradesTable.append(tradeBody);
+    runEventsTable.replaceChildren();
+    const eventHead = document.createElement("thead");
+    const eventHeadingRow = document.createElement("tr");
+
+    for (const heading of ["#", "Time", "Type", "Reason", "Record"]) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        eventHeadingRow.append(cell);
+    }
+
+    eventHead.append(eventHeadingRow);
+    runEventsTable.append(eventHead);
+    const eventBody = document.createElement("tbody");
+
+    for (const event of events) {
+        const row = document.createElement("tr");
+        row.append(
+            createTextCell(event.eventNumber),
+            createTextCell(formatDateTime(event.time)),
+            createTextCell(event.type),
+            createTextCell(event.reason),
+            createJsonDetailsCell(event.data)
+        );
+        eventBody.append(row);
+    }
+
+    if (events.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.textContent = "No diagnostic events were recorded.";
+        row.append(cell);
+        eventBody.append(row);
+    }
+
+    runEventsTable.append(eventBody);
+    detailedDataPanel.hidden = false;
+}
+
+async function loadDetailedRunData(run) {
+    detailedRerunStatus.textContent = "Loading saved trades and diagnostics…";
+
+    try {
+        const response = await fetch(`/api/runs/${encodeURIComponent(run.id)}/details`);
+        const body = await response.json();
+
+        if (!response.ok) {
+            throw new Error(body.error ?? "Unable to load detailed run data");
+        }
+
+        if (selectedHistoryRunId !== run.id) {
+            return;
+        }
+
+        renderDetailedRunData(body);
+        renderValidationComparison(run);
+        detailedRerunStatus.textContent = "Detailed trades and diagnostic events are saved.";
+    } catch (error) {
+        detailedRerunStatus.textContent = `Unable to load detailed data: ${error.message}`;
+    }
+}
+
 function renderRunDetail(run) {
     selectedHistoryRunId = run.id;
     renderRunsTable();
+    currentDetailedRunData = null;
+    detailedDataPanel.hidden = true;
+    validationComparisonPanel.hidden = true;
+    detailedRerunStatus.textContent = "";
 
     const panel = document.querySelector("#run-detail-panel");
     const summaryGrid = document.querySelector("#run-summary-grid");
@@ -1334,6 +1537,9 @@ function renderRunDetail(run) {
     document.querySelector("#run-detail-title").textContent = `Run ${run.runNumber}`;
     document.querySelector("#run-detail-subtitle").textContent =
         parameters || "Base strategy configuration";
+    const isDetailedExperiment = currentExperimentDetail?.experiment?.purpose === "DETAILED_RERUN";
+    detailedRerunButton.hidden = isDetailedExperiment;
+    detailedRerunButton.disabled = run.status !== "COMPLETED";
     summaryGrid.replaceChildren();
 
     for (const [name, value] of Object.entries(run.summary ?? {})) {
@@ -1352,6 +1558,10 @@ function renderRunDetail(run) {
     document.querySelector("#run-json").textContent = JSON.stringify(run, null, 2);
     panel.hidden = false;
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    if (run.hasTradeDetails) {
+        loadDetailedRunData(run);
+    }
 }
 
 function renderExperimentDetail(detail) {
@@ -1374,7 +1584,7 @@ function renderExperimentDetail(detail) {
     document.querySelector("#detail-title").textContent =
         experiment.name || experiment.strategy.name;
     document.querySelector("#detail-subtitle").textContent =
-        `${market.instrument} · ${market.strategyTimeframe}/${market.executionTimeframe} · ${formatDate(market.from)} – ${formatDate(market.to)}`;
+        `${experiment.purpose === "DETAILED_RERUN" ? "Detailed validation · " : ""}${market.instrument} · ${market.strategyTimeframe}/${market.executionTimeframe} · ${formatDate(market.from)} – ${formatDate(market.to)}`;
 
     const status = document.querySelector("#detail-status");
     status.textContent = experiment.status;
@@ -1384,6 +1594,7 @@ function renderExperimentDetail(detail) {
         document.querySelector("#detail-summary-cards"),
         [
             ["Completed runs", `${experiment.completedRuns}/${experiment.validRuns}`],
+            ["Purpose", experiment.purpose],
             ["Best return", percentValue(bestReturn)],
             ["Wall time", experiment.wallTimeMs === null ? "-" : `${experiment.wallTimeMs.toLocaleString()} ms`],
             ["Dataset rows", experiment.datasetRows],
@@ -1397,8 +1608,15 @@ function renderExperimentDetail(detail) {
     document.querySelector("#detail-config-output").textContent =
         JSON.stringify(experiment.config, null, 2);
     document.querySelector("#run-detail-panel").hidden = true;
+    detailedDataPanel.hidden = true;
+    validationComparisonPanel.hidden = true;
+    currentDetailedRunData = null;
     comparisonPanel.hidden = true;
     renderRunsTable();
+
+    if (experiment.purpose === "DETAILED_RERUN" && detail.runs.length === 1) {
+        renderRunDetail(detail.runs[0]);
+    }
 }
 
 async function loadExperimentDetail(experimentId) {
@@ -1474,6 +1692,90 @@ clearComparisonButton.addEventListener("click", () => {
 compareRunsButton.addEventListener("click", renderComparison);
 closeComparisonButton.addEventListener("click", () => {
     comparisonPanel.hidden = true;
+});
+
+detailedRerunButton.addEventListener("click", async () => {
+    const experiment = currentExperimentDetail?.experiment;
+    const run = currentExperimentDetail?.runs?.find(
+        (item) => item.id === selectedHistoryRunId
+    );
+
+    if (!experiment || !run || run.status !== "COMPLETED") {
+        return;
+    }
+
+    if (!window.confirm(
+        `Run a detailed validation of run ${run.runNumber}? This executes one cloud backtest and stores its trades and diagnostic events.`
+    )) {
+        return;
+    }
+
+    detailedRerunButton.disabled = true;
+    detailedRerunStatus.textContent = "Running detailed cloud validation…";
+
+    try {
+        const response = await fetch(
+            `/api/experiments/${encodeURIComponent(experiment.id)}/runs/${encodeURIComponent(run.id)}/detailed-rerun`,
+            { method: "POST" }
+        );
+        const body = await response.json();
+
+        if (!response.ok) {
+            const reasons = body.executionGate?.reasons?.join("; ");
+            throw new Error(`${body.error ?? "Detailed validation failed"}${reasons ? `: ${reasons}` : ""}`);
+        }
+
+        historyLoaded = false;
+        await loadExperimentDetail(body.experimentId);
+    } catch (error) {
+        detailedRerunStatus.textContent = `Detailed validation failed: ${error.message}`;
+        detailedRerunButton.disabled = false;
+    }
+});
+
+function createTradesCsv(trades) {
+    const headings = [
+        "tradeNumber", "side", "result", "entryTime", "exitTime", "entryPrice",
+        "exitPrice", "units", "pnlPips", "pnlAccount", "commissionAccount",
+        "mfePips", "maePips", "holdingMinutes", "entryReason", "exitReason", "data",
+    ];
+    const rows = trades.map((trade) => headings.map((heading) => trade[heading] ?? ""));
+    return [headings, ...rows].map((row) => row.map(csvValue).join(",")).join("\r\n");
+}
+
+function detailedExportBaseName() {
+    const experiment = currentExperimentDetail?.experiment;
+    const run = currentDetailedRunData?.run;
+    return `${createHistoricalExportBaseName(experiment)}_run-${run?.runNumber ?? "detail"}_validation`;
+}
+
+tradeExportCsvButton.addEventListener("click", () => {
+    if (!currentDetailedRunData) {
+        return;
+    }
+
+    downloadBlob(
+        `${detailedExportBaseName()}_trades.csv`,
+        "text/csv;charset=utf-8",
+        `\uFEFF${createTradesCsv(currentDetailedRunData.trades ?? [])}`
+    );
+});
+
+tradeExportJsonButton.addEventListener("click", () => {
+    if (!currentDetailedRunData || !currentExperimentDetail) {
+        return;
+    }
+
+    const payload = {
+        experiment: currentExperimentDetail.experiment,
+        sourceRun: currentExperimentDetail.sourceRun,
+        ...currentDetailedRunData,
+    };
+    downloadBlob(
+        `${detailedExportBaseName()}.json`,
+        "application/json;charset=utf-8",
+        JSON.stringify(payload, null, 2)
+    );
 });
 
 historyExportCsvButton.addEventListener("click", () => {

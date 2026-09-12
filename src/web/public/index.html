@@ -293,11 +293,43 @@
                 </section>
 
                 <section id="run-detail-panel" class="run-detail" hidden>
-                    <div class="section-heading">
-                        <h3 id="run-detail-title">Run details</h3>
-                        <p id="run-detail-subtitle"></p>
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h3 id="run-detail-title">Run details</h3>
+                            <p id="run-detail-subtitle"></p>
+                        </div>
+                        <button id="detailed-rerun-button" type="button">Run detailed validation</button>
                     </div>
+                    <p id="detailed-rerun-status" class="estimate-note"></p>
                     <div id="run-summary-grid" class="metric-grid"></div>
+                    <section id="validation-comparison-panel" hidden>
+                        <h3>Original versus detailed rerun</h3>
+                        <p class="estimate-note">Matching values confirm that the saved configuration was reproduced against the current stored candle data.</p>
+                        <div class="table-wrap comparison-table-wrap">
+                            <table id="validation-comparison-table"></table>
+                        </div>
+                    </section>
+                    <section id="detailed-data-panel" hidden>
+                        <div class="section-heading split-heading">
+                            <div>
+                                <h3>Detailed validation data</h3>
+                                <p id="detailed-data-subtitle"></p>
+                            </div>
+                            <div class="detail-actions">
+                                <button id="trade-export-csv-button" type="button" class="secondary-button">Trades CSV</button>
+                                <button id="trade-export-json-button" type="button" class="secondary-button">Validation JSON</button>
+                            </div>
+                        </div>
+                        <h3>Trades</h3>
+                        <div class="table-wrap history-table-wrap">
+                            <table id="run-trades-table"></table>
+                        </div>
+                        <h3>Diagnostic events</h3>
+                        <p class="estimate-note">Signals, orders, fills, rejections and risk events only—no per-candle trace.</p>
+                        <div class="table-wrap history-table-wrap">
+                            <table id="run-events-table"></table>
+                        </div>
+                    </section>
                     <h3>Monthly and yearly summaries</h3>
                     <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
                     <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>

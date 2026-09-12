@@ -51,12 +51,17 @@ class D1TestDatabase {
 }
 
 const database = new DatabaseSync(":memory:");
-const migration = await readFile(
-    new URL("../../migrations/research/0001_research_foundation.sql", import.meta.url),
+const migrations = await Promise.all([
+    "0001_research_foundation.sql",
+    "0002_detailed_run_events.sql",
+].map((filename) => readFile(
+    new URL(`../../migrations/research/${filename}`, import.meta.url),
     "utf8"
-);
+)));
 
-database.exec(migration);
+for (const migration of migrations) {
+    database.exec(migration);
+}
 
 let timestamp = 1_800_000_000_000;
 let identifier = 0;
@@ -248,6 +253,59 @@ assert.equal(
     1
 );
 
+const eventCount = await repository.saveRunDiagnosticEvents({
+    runId: persistedRun.id,
+    events: [{
+        type: "SIGNAL",
+        time: Date.parse("2026-01-02T07:55:00Z"),
+        reason: "SMA_CLOSE_ABOVE",
+        data: { action: "ENTER", side: "LONG" },
+    }, {
+        type: "FILL",
+        time: Date.parse("2026-01-02T08:00:00Z"),
+        reason: null,
+        data: { price: 1.1, units: 1000 },
+    }],
+});
+
+assert.equal(eventCount, 2);
+
+const storedRun = await repository.getExperimentRun({
+    workspaceId: firstContext.workspace.id,
+    experimentId: experiment.id,
+    runId: persistedRun.id,
+});
+
+assert.equal(storedRun.experiment.id, experiment.id);
+assert.equal(storedRun.run.id, persistedRun.id);
+
+const runDetails = await repository.getRunDetails({
+    workspaceId: firstContext.workspace.id,
+    runId: persistedRun.id,
+});
+
+assert.equal(runDetails.trades.length, 1);
+assert.equal(runDetails.diagnosticEvents.length, 2);
+assert.equal(runDetails.diagnosticEvents[0].event_type, "SIGNAL");
+
+const otherIdentity = {
+    provider: "CLOUDFLARE_ACCESS",
+    subject: "subject-2",
+    email: "someone@example.com",
+    displayName: "Someone",
+};
+const otherContext = await repository.resolveUserContext(otherIdentity);
+
+assert.equal(await repository.getRunDetails({
+    workspaceId: otherContext.workspace.id,
+    runId: persistedRun.id,
+}), null);
+assert.equal(await repository.getExperimentRun({
+    workspaceId: otherContext.workspace.id,
+    experimentId: experiment.id,
+    runId: persistedRun.id,
+}), null);
+
 const completed = await repository.updateExperimentStatus({
     workspaceId: firstContext.workspace.id,
     experimentId: experiment.id,
@@ -272,13 +330,45 @@ assert.equal(completed.candle_evaluations, 6072);
 assert.ok(completed.started_at);
 assert.ok(completed.completed_at);
 
+const detailedExperiment = await repository.createExperiment({
+    id: "experiment-detail-1",
+    workspaceId: firstContext.workspace.id,
+    createdByUserId: firstContext.user.id,
+    parentExperimentId: experiment.id,
+    sourceRunId: persistedRun.id,
+    purpose: "DETAILED_RERUN",
+    name: "SMA baseline validation",
+    strategy: {
+        id: "simple-sma",
+        name: "Simple SMA",
+        version: 1,
+    },
+    market: {
+        instrument: "EUR_USD",
+        strategyTimeframe: "M5",
+        executionTimeframe: "M5",
+        from: "2026-01-01T00:00:00.000Z",
+        to: "2026-02-01T00:00:00.000Z",
+    },
+    config: { strategy: "simple-sma", parameterGrid: {} },
+    requestedRuns: 1,
+    validRuns: 1,
+});
+const detailedExperimentRecord = await repository.getExperimentDetail({
+    workspaceId: firstContext.workspace.id,
+    experimentId: detailedExperiment.id,
+});
+
+assert.equal(detailedExperimentRecord.sourceRun.id, persistedRun.id);
+assert.equal(detailedExperimentRecord.experiment.parent_experiment_id, experiment.id);
+
 const experiments = await repository.listExperiments({
     workspaceId: firstContext.workspace.id,
 });
 
-assert.equal(experiments.length, 1);
-assert.equal(experiments[0].id, experiment.id);
-assert.equal(experiments[0].best_return_percent, 2.13);
+assert.equal(experiments.length, 2);
+const originalListedExperiment = experiments.find((item) => item.id === experiment.id);
+assert.equal(originalListedExperiment.best_return_percent, 2.13);
 
 const filteredExperiments = await repository.listExperiments({
     workspaceId: firstContext.workspace.id,

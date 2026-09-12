@@ -49,6 +49,7 @@ export function createSimpleSmaStrategy({
         return {
             action: "ENTER",
             side: "LONG",
+            reason: "SMA_CLOSE_ABOVE",
             metadata: {
                 strategy: "SIMPLE_SMA",
                 smaLength,

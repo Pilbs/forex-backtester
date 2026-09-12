@@ -507,6 +507,7 @@ export function createOrbStrategy({
                 intents.push({
                     action: "ENTER",
                     side: breakoutBullish ? "LONG" : "SHORT",
+                    reason: "ORB_ENTRY",
                     stopLoss,
                     takeProfit,
                     metadata: {

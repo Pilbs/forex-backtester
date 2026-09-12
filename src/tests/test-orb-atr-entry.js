@@ -97,6 +97,7 @@ function testRequiredRetestEntry() {
 
     assert.equal(intents.length, 1);
     assert.equal(intents[0].action, "ENTER");
+    assert.equal(intents[0].reason, "ORB_ENTRY");
     assert.equal(intents[0].side, "LONG");
     assert.equal(intents[0].metadata.breakoutQualification, "RETESTS");
     assert.equal(intents[0].metadata.breakoutRetests, 1);

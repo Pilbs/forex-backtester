@@ -25,6 +25,7 @@ assert.equal(strategy.onCandle(context(2)), null);
 const entry = strategy.onCandle(context(3));
 assert.equal(entry.action, "ENTER");
 assert.equal(entry.side, "LONG");
+assert.equal(entry.reason, "SMA_CLOSE_ABOVE");
 assert.equal(entry.metadata.sma, 2);
 
 const openLong = [{ id: "trade-1", side: "LONG" }];

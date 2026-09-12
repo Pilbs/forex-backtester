@@ -723,6 +723,7 @@ export function runBacktest({
             decisionTime: order.createdTime,
             entryTime: candle.time,
             entryPrice,
+            entryReason: order.reason,
             originalUnits: units,
             remainingUnits: units,
             stopLoss,

@@ -228,6 +228,26 @@ select:focus {
     margin-top: 16px;
 }
 
+#validation-comparison-panel,
+#detailed-data-panel {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e5ee;
+}
+
+#run-trades-table details,
+#run-events-table details {
+    min-width: 110px;
+}
+
+#run-trades-table pre,
+#run-events-table pre {
+    width: min(520px, 70vw);
+    max-height: 340px;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+
 .run-tools {
     justify-content: space-between;
     margin-top: 10px;
@@ -878,6 +898,11 @@ html[data-ui-theme="terminal"] .experiment-filter-panel {
 
 html[data-ui-theme="terminal"] .experiment-filter-panel > summary {
     color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] #validation-comparison-panel,
+html[data-ui-theme="terminal"] #detailed-data-panel {
+    border-color: #284337;
 }
 
 html[data-ui-theme="terminal"] #history-runs-table input[type="checkbox"] {
