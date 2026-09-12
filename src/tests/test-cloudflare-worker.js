@@ -181,7 +181,11 @@ const repository = {
     async resolveUserContext(suppliedIdentity) {
         repositoryCalls.push(["resolveUserContext", suppliedIdentity]);
         return {
-            user: { id: "user-1", email: suppliedIdentity.email },
+            user: {
+                id: "user-1",
+                email: suppliedIdentity.email,
+                account_role: "OWNER",
+            },
             workspace: { id: "workspace-1", role: "OWNER" },
         };
     },
