@@ -21,6 +21,9 @@ const runButton = document.querySelector("#run-button");
 const saveDefaultsButton = document.querySelector("#save-defaults-button");
 const resetDefaultsButton = document.querySelector("#reset-defaults-button");
 const defaultsStatus = document.querySelector("#defaults-status");
+const userCard = document.querySelector("#user-card");
+const userEmail = document.querySelector("#user-email");
+const userRole = document.querySelector("#user-role");
 
 let strategies = [];
 let plannedConfig = null;
@@ -571,6 +574,19 @@ function renderExecution(response) {
     executionPanel.hidden = false;
 }
 
+async function loadCurrentUser() {
+    const response = await fetch("/api/me");
+    const body = await readJsonResponse(response);
+
+    if (!response.ok) {
+        throw new Error(body.error ?? "Unable to load signed-in user");
+    }
+
+    userEmail.textContent = body.user?.email ?? "Unknown user";
+    userRole.textContent = body.user?.account_role ?? "";
+    userCard.hidden = false;
+}
+
 async function loadStrategies() {
     const response = await fetch("/api/strategies");
     const body = await response.json();
@@ -689,6 +705,10 @@ runButton.addEventListener("click", async () => {
 loadStrategies().catch((error) => {
     document.querySelector("#error-output").textContent = error.message;
     errorPanel.hidden = false;
+});
+
+loadCurrentUser().catch(() => {
+    userCard.hidden = true;
 });
 
 
