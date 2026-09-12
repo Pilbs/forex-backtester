@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import { planResearch } from "../research/run-research.js";
 import {
+    ACCOUNT_USAGE_LIMITS,
     assessResearchExecution,
     COMMISSIONING_LIMITS,
 } from "../cloudflare/research-execution-gate.js";
@@ -65,15 +66,30 @@ function createSimpleSmaConfig() {
     return config;
 }
 
-function assess(config) {
+function assess(config, accountRole = "OWNER") {
     const plan = planResearch(config);
     const usageEstimate = estimateResearchUsage(config, plan);
-    return assessResearchExecution(config, plan, usageEstimate);
+    return assessResearchExecution(config, plan, usageEstimate, accountRole);
 }
 
 assert.deepEqual(COMMISSIONING_LIMITS.strategies, ["simple-sma", "orb"]);
 assert.equal(assess(createOrbConfig()).allowed, true);
 assert.equal(assess(createSimpleSmaConfig()).allowed, true);
+assert.equal(ACCOUNT_USAGE_LIMITS.MEMBER.maximumDateRangeDays, 30);
+assert.equal(ACCOUNT_USAGE_LIMITS.MEMBER.maximumRuns, 4);
+
+const memberAllowed = createOrbConfig();
+assert.equal(assess(memberAllowed, "MEMBER").allowed, false);
+assert.ok(
+    assess(memberAllowed, "MEMBER").reasons.some((reason) =>
+        reason.includes(`${ACCOUNT_USAGE_LIMITS.MEMBER.maximumDateRangeDays} days`)
+    )
+);
+
+const memberSmall = createOrbConfig();
+memberSmall.market.to = "2026-08-15T00:00:00Z";
+assert.equal(assess(memberSmall, "MEMBER").allowed, true);
+assert.equal(assess(memberSmall, "MEMBER").accountRole, "MEMBER");
 
 const tooLong = createOrbConfig();
 tooLong.market.to = "2027-08-02T00:00:00Z";
