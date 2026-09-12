@@ -55,6 +55,8 @@
                 aria-pressed="true">New experiment</button>
             <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research
                 history</button>
+            <button id="admin-nav-button" type="button" class="workspace-nav-button" data-view-choice="admin"
+                aria-pressed="false" hidden>Admin</button>
         </nav>
 
         <section id="research-view">
@@ -455,6 +457,24 @@
                         <pre id="detail-config-output"></pre>
                     </details>
                 </section>
+            </section>
+        </section>
+
+        <section id="admin-view" hidden>
+            <section class="panel">
+                <div class="section-heading split-heading">
+                    <div>
+                        <h2>Admin</h2>
+                        <p>Current users and research activity. Workspace review can be added from this view next.</p>
+                    </div>
+                    <button id="refresh-admin-button" type="button" class="secondary-button">Refresh</button>
+                </div>
+                <div id="admin-summary-cards" class="summary-cards"></div>
+                <p id="admin-status" class="estimate-note">Loading users…</p>
+                <div class="table-wrap history-table-wrap">
+                    <table id="admin-users-table"></table>
+                </div>
+                <div id="admin-empty" class="empty-state" hidden>No users found.</div>
             </section>
         </section>
 
