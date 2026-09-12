@@ -25,15 +25,15 @@ select {
 .page-shell {
     width: min(1180px, calc(100% - 32px));
     margin: 0 auto;
-    padding: 40px 0 72px;
+    padding: 28px 0 64px;
 }
 
 .hero {
     display: flex;
     justify-content: space-between;
     gap: 24px;
-    align-items: flex-end;
-    margin-bottom: 22px;
+    align-items: flex-start;
+    margin-bottom: 18px;
 }
 
 .eyebrow {
@@ -59,16 +59,17 @@ h1 {
 }
 
 .subtitle {
-    margin: 14px 0 0;
+    margin: 12px 0 0;
     color: #5f6b80;
 }
 
 .header-meta {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    margin-left: auto;
 }
 
 .status-card {
@@ -99,7 +100,7 @@ h1 {
     background: white;
     color: #172033;
     border-radius: 999px;
-    padding: 8px 12px;
+    padding: 7px 10px 7px 12px;
     font-size: 13px;
     font-weight: 400;
     text-transform: none;
@@ -195,57 +196,40 @@ h1 {
     text-decoration: none;
 }
 
-.status-dot {
-    width: 9px;
-    height: 9px;
-    display: inline-block;
-    border-radius: 50%;
-    background: #17834d;
-    margin-right: 7px;
-}
-
-.notice {
-    background: #fff7da;
-    border: 1px solid #ead993;
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 18px;
-    line-height: 1.45;
-}
-
 .workspace-nav {
-    display: inline-flex;
-    gap: 6px;
-    padding: 5px;
-    margin-bottom: 18px;
-    border: 1px solid #d7deea;
-    border-radius: 12px;
-    background: white;
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #d7deea;
+    background: transparent;
 }
 
 .workspace-nav-button {
-    min-width: 150px;
-    padding: 10px 14px;
+    min-width: 0;
+    padding: 10px 2px 11px;
+    border-radius: 0;
     background: transparent;
     color: #687287;
 }
 
 .workspace-nav-button.is-active {
-    background: #172033;
-    color: white;
+    border-bottom: 3px solid #172033;
+    background: transparent;
+    color: #172033;
 }
 
 .panel {
     background: white;
     border: 1px solid #dde3ed;
-    border-radius: 16px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow: 0 8px 24px rgba(24, 39, 75, 0.04);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 18px rgba(24, 39, 75, 0.035);
 }
 
 .panel h2 {
-    margin: 0 0 18px;
+    margin: 0 0 14px;
 }
 
 .panel h3 {
@@ -895,11 +879,12 @@ th {
 
     .workspace-nav {
         display: flex;
+        gap: 18px;
     }
 
     .workspace-nav-button {
         min-width: 0;
-        flex: 1;
+        flex: 0 1 auto;
     }
 
     .split-heading,
@@ -1001,30 +986,23 @@ html[data-ui-theme="terminal"] .estimate-note {
     color: #8ea99a;
 }
 
-html[data-ui-theme="terminal"] .notice {
-    border: 1px solid #6f5b24;
-    border-radius: 2px;
-    background: #171307;
-    color: #f6d97d;
-    box-shadow: none;
-}
-
 html[data-ui-theme="terminal"] .workspace-nav {
-    border: 1px solid #284337;
-    border-radius: 1px;
-    background: #020504;
+    border: 0;
+    border-bottom: 1px solid #284337;
+    border-radius: 0;
+    background: transparent;
 }
 
 html[data-ui-theme="terminal"] .workspace-nav-button {
-    border: 1px solid transparent;
-    border-radius: 1px;
+    border: 0;
+    border-radius: 0;
     background: transparent;
     color: #7f9a8b;
 }
 
 html[data-ui-theme="terminal"] .workspace-nav-button.is-active {
-    border-color: #4fbf7a;
-    background: #0b1d12;
+    border-bottom: 2px solid #4fbf7a;
+    background: transparent;
     color: #7effac;
 }
 
