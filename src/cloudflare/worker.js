@@ -785,6 +785,43 @@ export async function handleRequest(request, env = {}, {
             });
         }
 
+        if (request.method === "GET" && url.pathname === "/api/admin/users") {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "RESEARCH_DB D1 binding is unavailable",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+
+            if (context.user.account_role !== "OWNER") {
+                return jsonResponse({ error: "Admin access is required" }, 403);
+            }
+
+            const users = await repository.listAdminUsers();
+
+            return jsonResponse({
+                users: users.map((user) => ({
+                    id: user.id,
+                    email: user.email,
+                    displayName: user.display_name,
+                    status: user.status,
+                    accountRole: user.account_role,
+                    createdAt: toIsoTimestamp(user.created_at),
+                    updatedAt: toIsoTimestamp(user.updated_at),
+                    lastSeenAt: toIsoTimestamp(user.last_seen_at),
+                    lastExperimentAt: toIsoTimestamp(user.last_experiment_at),
+                    workspaceCount: Number(user.workspace_count ?? 0),
+                    experimentCount: Number(user.experiment_count ?? 0),
+                    completedRunCount: Number(user.completed_run_count ?? 0),
+                    detailedRerunCount: Number(user.detailed_rerun_count ?? 0),
+                    datasetRows: Number(user.dataset_rows ?? 0),
+                    candleEvaluations: Number(user.candle_evaluations ?? 0),
+                })),
+            });
+        }
+
         if (request.method === "GET" && url.pathname === "/api/experiments") {
             if (!env.RESEARCH_DB?.prepare) {
                 return jsonResponse({
