@@ -22,10 +22,26 @@
                     <span class="status-dot"></span>
                     Cloud mode
                 </div>
-                <div id="user-card" class="user-card" hidden>
-                    <span class="user-card-label">Signed in as</span>
-                    <strong id="user-email"></strong>
-                    <span id="user-role" class="user-role"></span>
+                <div id="user-card" class="user-menu" hidden>
+                    <button id="user-menu-button" type="button" class="user-menu-button" aria-haspopup="true"
+                        aria-expanded="false">
+                        <span class="user-card-label">Signed in as</span>
+                        <strong id="user-email"></strong>
+                        <span id="user-role" class="user-role"></span>
+                        <span class="user-menu-chevron" aria-hidden="true">▾</span>
+                    </button>
+                    <div id="user-menu-panel" class="user-menu-panel" hidden>
+                        <div class="user-menu-section">
+                            <span class="user-menu-heading">Account limits</span>
+                            <dl class="user-limit-list">
+                                <div><dt>Date range</dt><dd id="user-limit-date-range"></dd></div>
+                                <div><dt>Runs / experiment</dt><dd id="user-limit-runs"></dd></div>
+                                <div><dt>Dataset rows</dt><dd id="user-limit-rows"></dd></div>
+                                <div><dt>Candle evaluations</dt><dd id="user-limit-evaluations"></dd></div>
+                            </dl>
+                        </div>
+                        <a class="user-signout-link" href="/cdn-cgi/access/logout">Sign out</a>
+                    </div>
                 </div>
             </div>
             <div class="theme-switch" aria-label="Interface style">
@@ -143,6 +159,7 @@
                 <div id="summary-cards" class="summary-cards"></div>
                 <h3>Estimated cloud workload</h3>
                 <div id="usage-cards" class="summary-cards"></div>
+                <div id="execution-gate-feedback" class="execution-gate-feedback" role="status" hidden></div>
                 <p class="estimate-note" id="estimate-note"></p>
                 <div class="actions">
                     <button id="run-button" type="button" hidden>Run cloud experiment</button>
