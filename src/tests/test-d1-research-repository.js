@@ -54,6 +54,7 @@ const database = new DatabaseSync(":memory:");
 const migrations = await Promise.all([
     "0001_research_foundation.sql",
     "0002_detailed_run_events.sql",
+    "0003_account_roles.sql",
 ].map((filename) => readFile(
     new URL(`../../migrations/research/${filename}`, import.meta.url),
     "utf8"
@@ -85,6 +86,7 @@ const secondContext = await repository.resolveUserContext(identity);
 assert.equal(firstContext.user.id, "user-id-1");
 assert.equal(firstContext.workspace.id, "workspace-id-2");
 assert.equal(firstContext.workspace.role, "OWNER");
+assert.equal(firstContext.user.account_role, "MEMBER");
 assert.equal(secondContext.user.id, firstContext.user.id);
 assert.equal(secondContext.workspace.id, firstContext.workspace.id);
 
