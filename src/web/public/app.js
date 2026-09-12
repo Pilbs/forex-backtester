@@ -24,6 +24,13 @@ const defaultsStatus = document.querySelector("#defaults-status");
 const userCard = document.querySelector("#user-card");
 const userEmail = document.querySelector("#user-email");
 const userRole = document.querySelector("#user-role");
+const userMenuButton = document.querySelector("#user-menu-button");
+const userMenuPanel = document.querySelector("#user-menu-panel");
+const userLimitDateRange = document.querySelector("#user-limit-date-range");
+const userLimitRuns = document.querySelector("#user-limit-runs");
+const userLimitRows = document.querySelector("#user-limit-rows");
+const userLimitEvaluations = document.querySelector("#user-limit-evaluations");
+const executionGateFeedback = document.querySelector("#execution-gate-feedback");
 
 let strategies = [];
 let plannedConfig = null;
@@ -485,7 +492,7 @@ function renderResult(config, response) {
         summaryCard("Strategy", plan.strategy.name),
         summaryCard("Requested runs", plan.research.requestedCombinations),
         summaryCard("Valid runs", plan.research.validCombinations),
-        summaryCard("Plan allowed", plan.allowed ? "Yes" : "No"),
+        summaryCard("Configuration valid", plan.allowed ? "Yes" : "No"),
     ].join("");
 
     document.querySelector("#usage-cards").innerHTML = [
@@ -497,7 +504,20 @@ function renderResult(config, response) {
 
     const gateNote = executionGate.allowed
         ? "Within limits. Running will read D1 and execute the real backtesting engine in Cloudflare."
-        : `Blocked: ${executionGate.reasons.join("; ")}`;
+        : "Cloud execution is blocked by your account limits.";
+
+    if (executionGate.allowed) {
+        executionGateFeedback.hidden = true;
+        executionGateFeedback.replaceChildren();
+    } else {
+        executionGateFeedback.innerHTML = [
+            "<strong>Cloud execution blocked</strong>",
+            "<ul>",
+            ...executionGate.reasons.map((reason) => `<li>${reason}</li>`),
+            "</ul>",
+        ].join("");
+        executionGateFeedback.hidden = false;
+    }
 
     document.querySelector("#estimate-note").textContent = `${usageEstimate.note} ${gateNote}`;
     document.querySelector("#config-output").textContent = JSON.stringify(config, null, 2);
@@ -584,8 +604,44 @@ async function loadCurrentUser() {
 
     userEmail.textContent = body.user?.email ?? "Unknown user";
     userRole.textContent = body.user?.account_role ?? "";
+
+    const limits = body.usageLimits ?? {};
+    userLimitDateRange.textContent = Number.isFinite(limits.maximumDateRangeDays)
+        ? `${limits.maximumDateRangeDays.toLocaleString()} days`
+        : "-";
+    userLimitRuns.textContent = Number.isFinite(limits.maximumRuns)
+        ? limits.maximumRuns.toLocaleString()
+        : "-";
+    userLimitRows.textContent = Number.isFinite(limits.maximumDatasetRows)
+        ? limits.maximumDatasetRows.toLocaleString()
+        : "-";
+    userLimitEvaluations.textContent = Number.isFinite(limits.maximumCandleEvaluations)
+        ? limits.maximumCandleEvaluations.toLocaleString()
+        : "-";
+
     userCard.hidden = false;
 }
+
+function setUserMenuOpen(open) {
+    userMenuPanel.hidden = !open;
+    userMenuButton.setAttribute("aria-expanded", String(open));
+}
+
+userMenuButton.addEventListener("click", () => {
+    setUserMenuOpen(userMenuPanel.hidden);
+});
+
+document.addEventListener("click", (event) => {
+    if (!userCard.hidden && !userCard.contains(event.target)) {
+        setUserMenuOpen(false);
+    }
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        setUserMenuOpen(false);
+    }
+});
 
 async function loadStrategies() {
     const response = await fetch("/api/strategies");
