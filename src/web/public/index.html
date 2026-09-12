@@ -69,17 +69,7 @@
             </section>
 
             <section class="panel">
-                <div class="section-heading split-heading">
-                    <div>
-                        <h2>Account & execution</h2>
-                        <p>Defaults can be saved in this browser for the current strategy.</p>
-                    </div>
-                    <div class="detail-actions">
-                        <button id="save-defaults-button" type="button" class="secondary-button">Save as my defaults</button>
-                        <button id="reset-defaults-button" type="button" class="secondary-button">Reset saved defaults</button>
-                    </div>
-                </div>
-                <p id="defaults-status" class="estimate-note" aria-live="polite"></p>
+                <h2>Account & execution</h2>
                 <div class="grid grid-3">
                     <label>Initial capital
                         <input id="initial-capital" type="number" value="500" min="1" step="1">
@@ -111,12 +101,17 @@
             </section>
 
             <section class="panel">
-                <div class="section-heading">
+                <div class="section-heading split-heading">
                     <div>
                         <h2>Strategy parameters</h2>
-                        <p>Set a base value and optionally comma-separated sweep values.</p>
+                        <p>Set a base value and optional sweep values, or save the current strategy defaults in this browser.</p>
+                    </div>
+                    <div class="detail-actions">
+                        <button id="save-defaults-button" type="button" class="secondary-button">Save strategy defaults</button>
+                        <button id="reset-defaults-button" type="button" class="secondary-button">Reset strategy defaults</button>
                     </div>
                 </div>
+                <p id="defaults-status" class="estimate-note" aria-live="polite"></p>
                 <div id="strategy-parameters" class="parameter-list"></div>
             </section>            
 
@@ -170,55 +165,63 @@
                     <summary>Filter experiments</summary>
                     <form id="experiment-filter-form">
                         <div class="experiment-filters">
-                            <label>Status
-                                <select id="experiment-filter-status">
-                                    <option value="">All statuses</option>
-                                    <option value="COMPLETED">Completed</option>
-                                    <option value="FAILED">Failed</option>
-                                    <option value="RUNNING">Running</option>
-                                    <option value="PLANNED">Planned</option>
-                                    <option value="QUEUED">Queued</option>
-                                    <option value="CANCELLED">Cancelled</option>
-                                </select>
-                            </label>
-                            <label>Strategy
-                                <select id="experiment-filter-strategy">
-                                    <option value="">All strategies</option>
-                                </select>
-                            </label>
-                            <label>Instrument
-                                <input id="experiment-filter-instrument" placeholder="Any, e.g. EUR_USD">
-                            </label>
-                            <label>Strategy timeframe
-                                <input id="experiment-filter-timeframe" placeholder="Any, e.g. M5">
-                            </label>
-                            <label>Minimum completed runs
-                                <input id="experiment-filter-minimum-runs" type="number" min="0" step="1" placeholder="Any">
-                            </label>
-                            <label>Minimum best return %
-                                <input id="experiment-filter-minimum-return" type="number" step="any" placeholder="Any">
-                            </label>
-                            <label>Created from (UTC)
-                                <input id="experiment-filter-created-from" type="date">
-                            </label>
-                            <label>Created to (UTC)
-                                <input id="experiment-filter-created-to" type="date">
-                            </label>
-                            <label>Experiment search
-                                <input id="experiment-filter-search" type="search" placeholder="Name or experiment ID">
-                            </label>
-                            <label>Sort by
-                                <select id="experiment-filter-sort">
-                                    <option value="NEWEST">Newest first</option>
-                                    <option value="OLDEST">Oldest first</option>
-                                    <option value="BEST_RETURN">Best return first</option>
-                                    <option value="WORST_RETURN">Worst return first</option>
-                                    <option value="MOST_RUNS">Most completed runs</option>
-                                    <option value="LEAST_RUNS">Fewest completed runs</option>
-                                    <option value="FASTEST">Fastest first</option>
-                                    <option value="SLOWEST">Slowest first</option>
-                                </select>
-                            </label>
+                            <fieldset class="filter-group">
+                                <legend>Find experiments</legend>
+                                <div class="filter-pair">
+                                    <label>Search
+                                        <input id="experiment-filter-search" type="search" placeholder="Name or experiment ID">
+                                    </label>
+                                    <label>Status
+                                        <select id="experiment-filter-status">
+                                            <option value="">All statuses</option>
+                                            <option value="COMPLETED">Completed</option>
+                                            <option value="FAILED">Failed</option>
+                                            <option value="RUNNING">Running</option>
+                                            <option value="PLANNED">Planned</option>
+                                            <option value="QUEUED">Queued</option>
+                                            <option value="CANCELLED">Cancelled</option>
+                                        </select>
+                                    </label>
+                                    <label>Strategy
+                                        <select id="experiment-filter-strategy">
+                                            <option value="">All strategies</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="filter-group">
+                                <legend>Market</legend>
+                                <div class="filter-pair">
+                                    <label>Instrument
+                                        <input id="experiment-filter-instrument" placeholder="Any, e.g. EUR_USD">
+                                    </label>
+                                    <label>Strategy timeframe
+                                        <input id="experiment-filter-timeframe" placeholder="Any, e.g. M5">
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="filter-group">
+                                <legend>Performance</legend>
+                                <div class="filter-pair">
+                                    <label>Minimum completed runs
+                                        <input id="experiment-filter-minimum-runs" type="number" min="0" step="1" placeholder="Any">
+                                    </label>
+                                    <label>Minimum best return %
+                                        <input id="experiment-filter-minimum-return" type="number" step="any" placeholder="Any">
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="filter-group">
+                                <legend>Created date (UTC)</legend>
+                                <div class="filter-pair">
+                                    <label>From
+                                        <input id="experiment-filter-created-from" type="date">
+                                    </label>
+                                    <label>To
+                                        <input id="experiment-filter-created-to" type="date">
+                                    </label>
+                                </div>
+                            </fieldset>
                         </div>
                         <div class="actions compact-actions experiment-filter-actions">
                             <button type="submit">Apply filters</button>
@@ -255,6 +258,14 @@
                 <div id="experiment-error-feedback" class="validation-feedback" role="alert" hidden></div>
                 <div id="detail-summary-cards" class="summary-cards"></div>
 
+                <nav class="detail-tabs" role="tablist" aria-label="Experiment detail sections">
+                    <button type="button" class="detail-tab is-active" data-detail-tab="runs" role="tab" aria-selected="true">Runs</button>
+                    <button type="button" class="detail-tab" data-detail-tab="analysis" role="tab" aria-selected="false" disabled>Run analysis</button>
+                    <button type="button" class="detail-tab" data-detail-tab="validation" role="tab" aria-selected="false" disabled>Validation data</button>
+                    <button type="button" class="detail-tab" data-detail-tab="configuration" role="tab" aria-selected="false">Configuration</button>
+                </nav>
+
+                <section data-detail-tab-panel="runs">
                 <h3>Parameter runs</h3>
                 <div class="run-filters" aria-label="Run result filters">
                     <label>Status
@@ -305,18 +316,38 @@
                         <table id="comparison-table"></table>
                     </div>
                 </section>
+                </section>
 
+                <section data-detail-tab-panel="analysis" hidden>
                 <section id="run-detail-panel" class="run-detail" hidden>
                     <div class="section-heading split-heading">
                         <div>
                             <h3 id="run-detail-title">Run details</h3>
                             <p id="run-detail-subtitle"></p>
                         </div>
-                        <button id="detailed-rerun-button" type="button">Run detailed validation</button>
+                        <div class="detail-actions">
+                            <button id="set-run-defaults-button" type="button" class="secondary-button">Set as strategy defaults</button>
+                            <button id="use-run-button" type="button" class="secondary-button">Use in new experiment</button>
+                            <button id="detailed-rerun-button" type="button">Run detailed validation</button>
+                        </div>
                     </div>
                     <p id="detailed-rerun-status" class="estimate-note"></p>
                     <div id="detailed-rerun-feedback" class="validation-feedback" role="alert" hidden></div>
                     <div id="run-summary-grid" class="metric-grid"></div>
+                    <h3>Monthly and yearly summaries</h3>
+                    <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
+                    <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>
+                    <div class="table-wrap">
+                        <table id="run-period-table"></table>
+                    </div>
+                    <details>
+                        <summary>Complete saved run record</summary>
+                        <pre id="run-json"></pre>
+                    </details>
+                </section>
+                </section>
+
+                <section data-detail-tab-panel="validation" hidden>
                     <section id="validation-comparison-panel" hidden>
                         <h3>Original versus detailed rerun</h3>
                         <p class="estimate-note">Matching values confirm that the saved configuration was reproduced against the current stored candle data.</p>
@@ -345,22 +376,17 @@
                             <table id="run-events-table"></table>
                         </div>
                     </section>
-                    <h3>Monthly and yearly summaries</h3>
-                    <div id="period-insight-cards" class="summary-cards period-insight-cards"></div>
-                    <div id="period-chart" class="period-chart" aria-label="Period return chart"></div>
-                    <div class="table-wrap">
-                        <table id="run-period-table"></table>
+                    <div id="validation-tab-empty" class="empty-state">
+                        Select a detailed validation run to view its trades and diagnostic events.
                     </div>
-                    <details>
-                        <summary>Complete saved run record</summary>
-                        <pre id="run-json"></pre>
-                    </details>
                 </section>
 
-                <details>
-                    <summary>Experiment configuration</summary>
+                <section data-detail-tab-panel="configuration" hidden>
+                <details open>
+                    <summary>Complete experiment configuration</summary>
                     <pre id="detail-config-output"></pre>
                 </details>
+                </section>
             </section>
         </section>
 

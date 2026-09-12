@@ -212,9 +212,59 @@ select:focus {
 
 .experiment-filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     margin-top: 16px;
+}
+
+.filter-group {
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #e0e5ee;
+    border-radius: 9px;
+}
+
+.filter-group legend {
+    padding: 0 6px;
+    color: #59657a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.filter-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.detail-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 22px 0 4px;
+    overflow-x: auto;
+    border-bottom: 1px solid #dce2eb;
+}
+
+.detail-tab {
+    flex: 0 0 auto;
+    border-radius: 8px 8px 0 0;
+    padding: 10px 15px;
+    background: transparent;
+    color: #59657a;
+}
+
+.detail-tab.is-active {
+    background: #172033;
+    color: white;
+}
+
+.detail-tab:disabled {
+    cursor: not-allowed;
+}
+
+[data-detail-tab-panel] {
+    padding-top: 12px;
 }
 
 .experiment-filter-actions {
@@ -438,6 +488,14 @@ th {
 
 .history-table-wrap {
     margin-top: 14px;
+    max-height: min(68vh, 760px);
+    overflow: auto;
+}
+
+.table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .history-row {
@@ -628,7 +686,7 @@ th {
     }
 
     .experiment-filters {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
     }
 
     .run-tools,
@@ -663,7 +721,7 @@ th {
 }
 
 @media (max-width: 560px) {
-    .experiment-filters {
+    .filter-pair {
         grid-template-columns: 1fr;
     }
 }
@@ -908,6 +966,24 @@ html[data-ui-theme="terminal"] .experiment-filter-panel {
 }
 
 html[data-ui-theme="terminal"] .experiment-filter-panel > summary {
+    color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] .filter-group,
+html[data-ui-theme="terminal"] .detail-tabs {
+    border-color: #284337;
+}
+
+html[data-ui-theme="terminal"] .filter-group legend {
+    color: #8ea99a;
+}
+
+html[data-ui-theme="terminal"] .detail-tab {
+    color: #8ea99a;
+}
+
+html[data-ui-theme="terminal"] .detail-tab.is-active {
+    background: #123322;
     color: #77ffad;
 }
 

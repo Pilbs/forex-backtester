@@ -24,14 +24,6 @@ let strategies = [];
 let plannedConfig = null;
 
 const RESEARCH_DEFAULTS_STORAGE_KEY = "forexResearchDefaultsV1";
-const BUILT_IN_ACCOUNT_DEFAULTS = Object.freeze({
-    initialCapital: "500",
-    currency: "USD",
-    leverage: "30",
-    sizingType: "CASH",
-    sizingValue: "300",
-    sameCandleConflict: "STOP_FIRST",
-});
 
 let executionTimer = null;
 let executionStartedAt = null;
@@ -228,15 +220,6 @@ function setControlValue(selector, value) {
     control.value = stringValue;
 }
 
-function applyGlobalDefaults(values = {}) {
-    setControlValue("#initial-capital", values.initialCapital);
-    setControlValue("#currency", values.currency);
-    setControlValue("#leverage", values.leverage);
-    setControlValue("#sizing-type", values.sizingType);
-    setControlValue("#sizing-value", values.sizingValue);
-    setControlValue("#same-candle-conflict", values.sameCandleConflict);
-}
-
 function applyStrategyDefaults(strategyId) {
     const saved = readResearchDefaults().strategies?.[strategyId];
 
@@ -268,17 +251,7 @@ function collectCurrentDefaults() {
         target[control.dataset.parameterId] = control.value;
     }
 
-    return {
-        global: {
-            initialCapital: document.querySelector("#initial-capital").value,
-            currency: document.querySelector("#currency").value,
-            leverage: document.querySelector("#leverage").value,
-            sizingType: document.querySelector("#sizing-type").value,
-            sizingValue: document.querySelector("#sizing-value").value,
-            sameCandleConflict: document.querySelector("#same-candle-conflict").value,
-        },
-        strategy: { base, sweep },
-    };
+    return { base, sweep };
 }
 
 function saveCurrentDefaults() {
@@ -289,38 +262,45 @@ function saveCurrentDefaults() {
     }
 
     const current = readResearchDefaults();
-    const snapshot = collectCurrentDefaults();
     const next = {
-        global: snapshot.global,
+        global: current.global ?? {},
         strategies: {
             ...(current.strategies ?? {}),
-            [strategy.id]: snapshot.strategy,
+            [strategy.id]: collectCurrentDefaults(),
         },
     };
 
     try {
         window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify(next));
-        defaultsStatus.textContent = `${strategy.name} and account/execution defaults saved in this browser.`;
+        defaultsStatus.textContent = `${strategy.name} defaults saved in this browser.`;
     } catch {
         defaultsStatus.textContent = "This browser did not allow the defaults to be saved.";
     }
 }
 
 function resetSavedDefaults() {
+    const strategy = selectedStrategy();
+    const current = readResearchDefaults();
+    const strategiesWithoutCurrent = { ...(current.strategies ?? {}) };
+
+    if (strategy) {
+        delete strategiesWithoutCurrent[strategy.id];
+    }
+
     try {
-        window.localStorage.removeItem(RESEARCH_DEFAULTS_STORAGE_KEY);
+        window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify({
+            global: current.global ?? {},
+            strategies: strategiesWithoutCurrent,
+        }));
     } catch {
         // The controls can still be reset even if browser storage is unavailable.
     }
-
-    applyGlobalDefaults(BUILT_IN_ACCOUNT_DEFAULTS);
-    const strategy = selectedStrategy();
 
     if (strategy) {
         renderParameters(strategy);
     }
 
-    defaultsStatus.textContent = "Saved defaults cleared; built-in values restored.";
+    defaultsStatus.textContent = `${strategy?.name ?? "Strategy"} defaults reset to built-in values.`;
 }
 
 function selectedStrategy() {
@@ -525,7 +505,6 @@ async function loadStrategies() {
         historyStrategySelect.append(historyOption);
     }
 
-    applyGlobalDefaults(readResearchDefaults().global);
     renderParameters(strategies[0]);
     applyStrategyDefaults(strategies[0].id);
 }
@@ -848,6 +827,11 @@ const runTradesTable = document.querySelector("#run-trades-table");
 const runEventsTable = document.querySelector("#run-events-table");
 const tradeExportCsvButton = document.querySelector("#trade-export-csv-button");
 const tradeExportJsonButton = document.querySelector("#trade-export-json-button");
+const useRunButton = document.querySelector("#use-run-button");
+const setRunDefaultsButton = document.querySelector("#set-run-defaults-button");
+const validationTabEmpty = document.querySelector("#validation-tab-empty");
+const detailTabButtons = [...document.querySelectorAll("[data-detail-tab]")];
+const detailTabPanels = [...document.querySelectorAll("[data-detail-tab-panel]")];
 const runFilterControls = [
     document.querySelector("#run-filter-status"),
     document.querySelector("#run-filter-minimum-trades"),
@@ -861,11 +845,42 @@ const viewChoices = [...document.querySelectorAll("[data-view-choice]")];
 let historyLoaded = false;
 let loadedExperiments = [];
 let historyNextOffset = null;
+let historySort = "NEWEST";
 let currentExperimentDetail = null;
 let selectedHistoryRunId = null;
 let currentDetailedRunData = null;
 let comparisonRunIds = new Set();
 let runSort = { key: "returnPercent", direction: "desc" };
+
+function setDetailTab(tabName) {
+    const targetButton = detailTabButtons.find(
+        (button) => button.dataset.detailTab === tabName
+    );
+
+    if (!targetButton || targetButton.disabled) {
+        return;
+    }
+
+    for (const button of detailTabButtons) {
+        const active = button === targetButton;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", String(active));
+    }
+
+    for (const panel of detailTabPanels) {
+        panel.hidden = panel.dataset.detailTabPanel !== tabName;
+    }
+}
+
+function setDetailTabEnabled(tabName, enabled) {
+    const button = detailTabButtons.find(
+        (item) => item.dataset.detailTab === tabName
+    );
+
+    if (button) {
+        button.disabled = !enabled;
+    }
+}
 
 function formatDateTime(value) {
     const time = Date.parse(value);
@@ -960,22 +975,43 @@ function setWorkspaceView(view) {
 function renderHistoryTable(experiments) {
     historyTable.replaceChildren();
 
-    const headings = [
-        "Created",
-        "Strategy",
-        "Market",
-        "Period",
-        "Runs",
-        "Best return",
-        "Wall time",
-        "Status",
+    const columns = [
+        { label: "Created", sorts: ["NEWEST", "OLDEST"] },
+        { label: "Strategy" },
+        { label: "Market" },
+        { label: "Period" },
+        { label: "Runs", sorts: ["MOST_RUNS", "LEAST_RUNS"] },
+        { label: "Best return", sorts: ["BEST_RETURN", "WORST_RETURN"] },
+        { label: "Wall time", sorts: ["FASTEST", "SLOWEST"] },
+        { label: "Status" },
     ];
     const head = document.createElement("thead");
     const headingRow = document.createElement("tr");
 
-    for (const heading of headings) {
+    for (const column of columns) {
         const cell = document.createElement("th");
-        cell.textContent = heading;
+
+        if (column.sorts) {
+            const activeIndex = column.sorts.indexOf(historySort);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = column.label + (activeIndex === -1
+                ? ""
+                : historySort === "OLDEST" || historySort === "LEAST_RUNS" || historySort === "WORST_RETURN" || historySort === "FASTEST"
+                    ? " ↑"
+                    : " ↓");
+            button.setAttribute("aria-label", `Sort by ${column.label}`);
+            button.addEventListener("click", () => {
+                historySort = activeIndex === 0 ? column.sorts[1] : column.sorts[0];
+                historyLoaded = false;
+                loadExperimentHistory({ reset: true });
+            });
+            cell.className = "sortable-heading";
+            cell.append(button);
+        } else {
+            cell.textContent = column.label;
+        }
+
         headingRow.append(cell);
     }
 
@@ -1026,7 +1062,7 @@ function createHistoryQuery(offset) {
     const params = new URLSearchParams({
         limit: "25",
         offset: String(offset),
-        sort: document.querySelector("#experiment-filter-sort").value,
+        sort: historySort,
     });
     const createdFrom = document.querySelector("#experiment-filter-created-from").value;
     const createdTo = document.querySelector("#experiment-filter-created-to").value;
@@ -1082,7 +1118,7 @@ function clearExperimentFilters() {
     document.querySelector("#experiment-filter-created-from").value = "";
     document.querySelector("#experiment-filter-created-to").value = "";
     document.querySelector("#experiment-filter-search").value = "";
-    document.querySelector("#experiment-filter-sort").value = "NEWEST";
+    historySort = "NEWEST";
 }
 
 async function loadExperimentHistory({ reset = true } = {}) {
@@ -1682,7 +1718,13 @@ async function loadDetailedRunData(run) {
 
         renderDetailedRunData(body);
         renderValidationComparison(run);
+        validationTabEmpty.hidden = true;
+        setDetailTabEnabled("validation", true);
         detailedRerunStatus.textContent = "Detailed trades and diagnostic events are saved.";
+
+        if (currentExperimentDetail?.experiment?.purpose === "DETAILED_RERUN") {
+            setDetailTab("validation");
+        }
     } catch (error) {
         detailedRerunStatus.textContent = `Unable to load detailed data: ${error.message}`;
     }
@@ -1697,6 +1739,8 @@ function renderRunDetail(run) {
     detailedRerunStatus.textContent = "";
     detailedRerunFeedback.hidden = true;
     detailedRerunFeedback.textContent = "";
+    setDetailTabEnabled("analysis", true);
+    setDetailTab("analysis");
 
     const panel = document.querySelector("#run-detail-panel");
     const summaryGrid = document.querySelector("#run-summary-grid");
@@ -1727,7 +1771,7 @@ function renderRunDetail(run) {
     renderPeriodTable(run.periods ?? []);
     document.querySelector("#run-json").textContent = JSON.stringify(run, null, 2);
     panel.hidden = false;
-    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    historyDetailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 
     if (run.hasTradeDetails) {
         loadDetailedRunData(run);
@@ -1787,6 +1831,10 @@ function renderExperimentDetail(detail) {
     validationComparisonPanel.hidden = true;
     currentDetailedRunData = null;
     comparisonPanel.hidden = true;
+    setDetailTabEnabled("analysis", false);
+    setDetailTabEnabled("validation", false);
+    validationTabEmpty.hidden = false;
+    setDetailTab("runs");
     renderRunsTable();
 
     if (experiment.purpose === "DETAILED_RERUN" && detail.runs.length === 1) {
@@ -1815,6 +1863,10 @@ async function loadExperimentDetail(experimentId) {
 
 for (const button of viewChoices) {
     button.addEventListener("click", () => setWorkspaceView(button.dataset.viewChoice));
+}
+
+for (const button of detailTabButtons) {
+    button.addEventListener("click", () => setDetailTab(button.dataset.detailTab));
 }
 
 refreshHistoryButton.addEventListener("click", () => {
@@ -1869,11 +1921,127 @@ closeComparisonButton.addEventListener("click", () => {
     comparisonPanel.hidden = true;
 });
 
+function selectedSavedRun() {
+    return currentExperimentDetail?.runs?.find(
+        (run) => run.id === selectedHistoryRunId
+    ) ?? null;
+}
+
+function saveRunAsStrategyDefaults(run) {
+    const experiment = currentExperimentDetail?.experiment;
+
+    if (!experiment || !run) {
+        return false;
+    }
+
+    const current = readResearchDefaults();
+    const base = Object.fromEntries(
+        Object.entries(run.strategyConfig ?? {}).map(([name, value]) => [name, String(value)])
+    );
+    const next = {
+        global: current.global ?? {},
+        strategies: {
+            ...(current.strategies ?? {}),
+            [experiment.strategy.id]: { base, sweep: {} },
+        },
+    };
+
+    try {
+        window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify(next));
+        detailedRerunStatus.textContent =
+            `Run ${run.runNumber} is now the browser default for ${experiment.strategy.name}.`;
+        return true;
+    } catch {
+        detailedRerunStatus.textContent = "This browser did not allow the strategy defaults to be saved.";
+        return false;
+    }
+}
+
+function toLocalInputValue(value) {
+    const date = new Date(value);
+
+    if (!Number.isFinite(date.getTime())) {
+        return "";
+    }
+
+    const localTime = date.getTime() - date.getTimezoneOffset() * 60_000;
+    return new Date(localTime).toISOString().slice(0, 16);
+}
+
+function loadRunIntoExperimentForm(run) {
+    const experiment = currentExperimentDetail?.experiment;
+    const strategy = strategies.find((item) => item.id === experiment?.strategy?.id);
+
+    if (!experiment || !run || !strategy) {
+        detailedRerunFeedback.textContent =
+            "This saved run uses a strategy that is not currently available in the form.";
+        detailedRerunFeedback.hidden = false;
+        return;
+    }
+
+    strategySelect.value = strategy.id;
+    renderParameters(strategy);
+    let loadedParameters = 0;
+
+    for (const control of parameterContainer.querySelectorAll('[data-role="sweep"]')) {
+        control.value = "";
+    }
+
+    for (const [parameterId, value] of Object.entries(run.strategyConfig ?? {})) {
+        const control = document.querySelector(
+            `[data-role="base"][data-parameter-id="${parameterId}"]`
+        );
+
+        if (control) {
+            setControlValue(
+                `[data-role="base"][data-parameter-id="${parameterId}"]`,
+                value
+            );
+            loadedParameters++;
+        }
+    }
+
+    const config = experiment.config ?? {};
+    const market = experiment.market ?? {};
+    const account = config.account ?? {};
+    const execution = config.execution ?? {};
+
+    setControlValue("#instrument", market.instrument);
+    setControlValue("#strategy-timeframe", market.strategyTimeframe);
+    setControlValue("#execution-timeframe", market.executionTimeframe);
+    setControlValue("#from", toLocalInputValue(market.from));
+    setControlValue("#to", toLocalInputValue(market.to));
+    setControlValue("#initial-capital", account.initialCapital);
+    setControlValue("#currency", account.currency);
+    setControlValue("#leverage", account.leverage);
+    setControlValue("#sizing-type", account.defaultSizing?.type);
+    setControlValue("#sizing-value", account.defaultSizing?.value);
+    setControlValue("#same-candle-conflict", execution.sameCandleConflict);
+    setControlValue(
+        "#experiment-name",
+        `${experiment.name || strategy.name} follow-up`
+    );
+
+    plannedConfig = null;
+    resultPanel.hidden = true;
+    executionPanel.hidden = true;
+    requestStatus.textContent =
+        `Loaded run ${run.runNumber} with ${loadedParameters} strategy parameters. Review and validate when ready.`;
+    setWorkspaceView("research");
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+setRunDefaultsButton.addEventListener("click", () => {
+    saveRunAsStrategyDefaults(selectedSavedRun());
+});
+
+useRunButton.addEventListener("click", () => {
+    loadRunIntoExperimentForm(selectedSavedRun());
+});
+
 detailedRerunButton.addEventListener("click", async () => {
     const experiment = currentExperimentDetail?.experiment;
-    const run = currentExperimentDetail?.runs?.find(
-        (item) => item.id === selectedHistoryRunId
-    );
+    const run = selectedSavedRun();
 
     if (!experiment || !run || run.status !== "COMPLETED") {
         return;
