@@ -80,20 +80,34 @@ h1 {
     font-size: 14px;
 }
 
-.user-card {
+.user-menu {
+    position: relative;
+    max-width: 390px;
+}
+
+.user-menu[hidden] {
+    display: none;
+}
+
+.user-menu-button {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 360px;
+    width: 100%;
+    max-width: 390px;
     border: 1px solid #d7deea;
     background: white;
+    color: #172033;
     border-radius: 999px;
     padding: 8px 12px;
     font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
 }
 
-.user-card[hidden] {
-    display: none;
+.user-menu-button:hover {
+    opacity: 1;
+    background: #f8fafc;
 }
 
 .user-card-label {
@@ -113,6 +127,72 @@ h1 {
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
+}
+
+.user-menu-chevron {
+    color: #7a8496;
+}
+
+.user-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    width: min(320px, calc(100vw - 32px));
+    border: 1px solid #d7deea;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 12px 32px rgba(24, 39, 75, 0.16);
+    padding: 12px;
+}
+
+.user-menu-panel[hidden] {
+    display: none;
+}
+
+.user-menu-section {
+    padding: 4px 4px 10px;
+}
+
+.user-menu-heading {
+    display: block;
+    margin-bottom: 8px;
+    color: #4b566b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.user-limit-list {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+}
+
+.user-limit-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.user-limit-list dt {
+    color: #6b7588;
+}
+
+.user-limit-list dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.user-signout-link {
+    display: block;
+    border-top: 1px solid #e4e9f0;
+    padding: 10px 4px 2px;
+    color: #9a2d2d;
+    font-weight: 700;
+    text-decoration: none;
 }
 
 .status-dot {
@@ -532,6 +612,26 @@ button:disabled {
 .estimate-note {
     color: #687287;
     font-size: 13px;
+}
+
+.execution-gate-feedback {
+    margin-top: 16px;
+    border: 1px solid #e6b6b6;
+    border-radius: 10px;
+    background: #fff3f3;
+    color: #852525;
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+.execution-gate-feedback strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.execution-gate-feedback ul {
+    margin: 0;
+    padding-left: 20px;
 }
 
 details {
@@ -1322,10 +1422,13 @@ html[data-ui-theme="terminal"] .export-actions {
     border-bottom: 1px solid #1d3027;
 }
 
-html[data-ui-theme="terminal"] .user-card {
+html[data-ui-theme="terminal"] .user-menu-button {
     border-color: #355044;
     border-radius: 1px;
     background: #020504;
+    color: #dbe8df;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    text-transform: none;
 }
 
 html[data-ui-theme="terminal"] .user-card-label {
@@ -1340,4 +1443,32 @@ html[data-ui-theme="terminal"] .user-role {
     border-color: #4fbf7a;
     border-radius: 1px;
     color: #7effac;
+}
+
+html[data-ui-theme="terminal"] .user-menu-panel {
+    border-color: #355044;
+    border-radius: 1px;
+    background: #020504;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+html[data-ui-theme="terminal"] .user-menu-heading,
+html[data-ui-theme="terminal"] .user-limit-list dt {
+    color: #6f887a;
+}
+
+html[data-ui-theme="terminal"] .user-limit-list dd {
+    color: #dbe8df;
+}
+
+html[data-ui-theme="terminal"] .user-signout-link {
+    border-top-color: #284337;
+    color: #ff9898;
+}
+
+html[data-ui-theme="terminal"] .execution-gate-feedback {
+    border-color: #7a2e2e;
+    border-radius: 1px;
+    background: #190707;
+    color: #ff9e9e;
 }
