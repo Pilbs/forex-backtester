@@ -92,7 +92,17 @@
                 </section>
 
                 <section class="panel">
-                    <h2>Account & execution</h2>
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h2>Account & execution</h2>
+                            <p>Configure the simulated trading account. Account defaults are saved in this browser.</p>
+                        </div>
+                        <div class="detail-actions">
+                            <button id="save-account-defaults-button" type="button" class="secondary-button">Save account defaults</button>
+                            <button id="reset-account-defaults-button" type="button" class="secondary-button">Reset account defaults</button>
+                        </div>
+                    </div>
+                    <p id="account-defaults-status" class="estimate-note" aria-live="polite"></p>
                     <div class="grid grid-3">
                         <label>Initial capital
                             <input id="initial-capital" type="number" value="500" min="1" step="1">
