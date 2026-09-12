@@ -387,13 +387,8 @@ select:focus {
     font-weight: 600;
 }
 
-.parameter-row.is-conditionally-disabled {
-    opacity: 0.52;
-}
-
-.parameter-row.is-conditionally-disabled input,
-.parameter-row.is-conditionally-disabled select {
-    cursor: not-allowed;
+.parameter-row[hidden] {
+    display: none;
 }
 
 .fixed-parameter {

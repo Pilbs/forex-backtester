@@ -208,7 +208,8 @@ function updateParameterDependencies(strategy = selectedStrategy()) {
             baseValues,
             sweepValues
         );
-        row.classList.toggle("is-conditionally-disabled", !enabled);
+        row.hidden = !enabled;
+        row.setAttribute("aria-hidden", String(!enabled));
         row.setAttribute("aria-disabled", String(!enabled));
 
         for (const control of row.querySelectorAll("input, select")) {
