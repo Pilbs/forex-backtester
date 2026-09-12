@@ -21,6 +21,9 @@ const runButton = document.querySelector("#run-button");
 const saveDefaultsButton = document.querySelector("#save-defaults-button");
 const resetDefaultsButton = document.querySelector("#reset-defaults-button");
 const defaultsStatus = document.querySelector("#defaults-status");
+const saveAccountDefaultsButton = document.querySelector("#save-account-defaults-button");
+const resetAccountDefaultsButton = document.querySelector("#reset-account-defaults-button");
+const accountDefaultsStatus = document.querySelector("#account-defaults-status");
 const userCard = document.querySelector("#user-card");
 const userEmail = document.querySelector("#user-email");
 const userRole = document.querySelector("#user-role");
@@ -320,6 +323,71 @@ function setControlValue(selector, value) {
     }
 
     control.value = stringValue;
+}
+
+function applyAccountDefaults() {
+    const saved = readResearchDefaults().global?.account;
+
+    if (!saved) {
+        return;
+    }
+
+    setControlValue("#initial-capital", saved.initialCapital);
+    setControlValue("#currency", saved.currency);
+    setControlValue("#leverage", saved.leverage);
+    setControlValue("#sizing-type", saved.sizingType);
+    setControlValue("#sizing-value", saved.sizingValue);
+}
+
+function collectCurrentAccountDefaults() {
+    return {
+        initialCapital: document.querySelector("#initial-capital").value,
+        currency: document.querySelector("#currency").value,
+        leverage: document.querySelector("#leverage").value,
+        sizingType: document.querySelector("#sizing-type").value,
+        sizingValue: document.querySelector("#sizing-value").value,
+    };
+}
+
+function saveCurrentAccountDefaults() {
+    const current = readResearchDefaults();
+    const next = {
+        global: {
+            ...(current.global ?? {}),
+            account: collectCurrentAccountDefaults(),
+        },
+        strategies: current.strategies ?? {},
+    };
+
+    try {
+        window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify(next));
+        accountDefaultsStatus.textContent = "Account defaults saved in this browser.";
+    } catch {
+        accountDefaultsStatus.textContent = "This browser did not allow the account defaults to be saved.";
+    }
+}
+
+function resetSavedAccountDefaults() {
+    const current = readResearchDefaults();
+    const nextGlobal = { ...(current.global ?? {}) };
+    delete nextGlobal.account;
+
+    try {
+        window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify({
+            global: nextGlobal,
+            strategies: current.strategies ?? {},
+        }));
+    } catch {
+        // The controls can still be reset even if browser storage is unavailable.
+    }
+
+    setControlValue("#initial-capital", 500);
+    setControlValue("#currency", "USD");
+    setControlValue("#leverage", 30);
+    setControlValue("#sizing-type", "CASH");
+    setControlValue("#sizing-value", 300);
+
+    accountDefaultsStatus.textContent = "Account defaults reset to built-in values.";
 }
 
 function applyStrategyDefaults(strategyId) {
@@ -674,6 +742,7 @@ async function loadStrategies() {
 
     renderParameters(strategies[0]);
     applyStrategyDefaults(strategies[0].id);
+    applyAccountDefaults();
 }
 
 strategySelect.addEventListener("change", () => {
@@ -685,6 +754,8 @@ strategySelect.addEventListener("change", () => {
 
 saveDefaultsButton.addEventListener("click", saveCurrentDefaults);
 resetDefaultsButton.addEventListener("click", resetSavedDefaults);
+saveAccountDefaultsButton.addEventListener("click", saveCurrentAccountDefaults);
+resetAccountDefaultsButton.addEventListener("click", resetSavedAccountDefaults);
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
