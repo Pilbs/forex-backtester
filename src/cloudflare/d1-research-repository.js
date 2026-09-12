@@ -143,7 +143,7 @@ export function createD1ResearchRepository({
 
     async function getUser(userId) {
         return first(db.prepare(`
-            SELECT id, email, display_name, status, created_at, updated_at
+            SELECT id, email, display_name, status, account_role, created_at, updated_at
             FROM users
             WHERE id = ?
         `).bind(userId));
