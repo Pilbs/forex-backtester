@@ -2540,3 +2540,12 @@ historyExportJsonButton.addEventListener("click", () => {
     const json = createHistoricalJson(currentExperimentDetail);
     downloadBlob(filename, "application/json;charset=utf-8", json);
 });
+
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/service-worker.js").catch(() => {
+            // PWA support is optional; registration failure must not affect the app.
+        });
+    });
+}
