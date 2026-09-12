@@ -273,6 +273,64 @@ export function createD1ResearchRepository({
         return { user, workspace };
     }
 
+    async function listAdminUsers() {
+        const result = await db.prepare(`
+            SELECT
+                u.id,
+                u.email,
+                u.display_name,
+                u.status,
+                u.account_role,
+                u.created_at,
+                u.updated_at,
+                (
+                    SELECT MAX(i.last_seen_at)
+                    FROM user_identities i
+                    WHERE i.user_id = u.id
+                ) AS last_seen_at,
+                (
+                    SELECT COUNT(*)
+                    FROM workspace_members wm
+                    WHERE wm.user_id = u.id
+                ) AS workspace_count,
+                (
+                    SELECT COUNT(*)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                ) AS experiment_count,
+                (
+                    SELECT COALESCE(SUM(e.completed_runs), 0)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                ) AS completed_run_count,
+                (
+                    SELECT COUNT(*)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                      AND e.purpose = 'DETAILED_RERUN'
+                ) AS detailed_rerun_count,
+                (
+                    SELECT COALESCE(SUM(e.dataset_rows), 0)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                ) AS dataset_rows,
+                (
+                    SELECT COALESCE(SUM(e.candle_evaluations), 0)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                ) AS candle_evaluations,
+                (
+                    SELECT MAX(e.created_at)
+                    FROM experiments e
+                    WHERE e.created_by_user_id = u.id
+                ) AS last_experiment_at
+            FROM users u
+            ORDER BY COALESCE(last_seen_at, u.created_at) DESC, u.email ASC
+        `).all();
+
+        return result?.results ?? [];
+    }
+
     async function assertWorkspaceMember(workspaceId, userId) {
         const membership = await first(db.prepare(`
             SELECT role
@@ -1036,6 +1094,7 @@ export function createD1ResearchRepository({
         ensureUser,
         ensurePersonalWorkspace,
         resolveUserContext,
+        listAdminUsers,
         assertWorkspaceMember,
         createExperiment,
         getExperiment,
