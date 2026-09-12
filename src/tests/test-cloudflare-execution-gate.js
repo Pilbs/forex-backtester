@@ -101,7 +101,7 @@ assert.ok(
 );
 
 const tooManyRuns = createOrbConfig();
-tooManyRuns.parameterGrid.stopLossValue = [10, 12];
+tooManyRuns.parameterGrid.stopLossValue = [10,11,12,13,14,15,16,17,18];
 assert.equal(assess(tooManyRuns).allowed, false);
 assert.ok(
     assess(tooManyRuns).reasons.some((reason) =>

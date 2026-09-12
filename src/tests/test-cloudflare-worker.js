@@ -146,24 +146,6 @@ const missingD1 = await readJson(executionWithoutD1);
 assert.equal(executionWithoutD1.status, 503);
 assert.match(missingD1.error, /FOREX_DB/);
 
-const blockedConfig = createConfig();
-blockedConfig.market.executionTimeframe = "M1";
-const blockedResponse = await handleRequest(
-    apiRequest("/api/experiments", {
-        method: "POST",
-        headers: {
-            "content-type": "application/json",
-        },
-        body: JSON.stringify(blockedConfig),
-    }),
-    {},
-    authenticatedDependencies
-);
-const blocked = await readJson(blockedResponse);
-
-assert.equal(blockedResponse.status, 422);
-assert.equal(blocked.executionGate.allowed, false);
-
 const missingResponse = await handleRequest(
     apiRequest("/api/missing"),
     {},
@@ -271,6 +253,32 @@ const repository = {
         };
     },
 };
+
+const blockedConfig = createConfig();
+blockedConfig.market.executionTimeframe = "M1";
+
+const blockedResponse = await handleRequest(
+    apiRequest("/api/experiments", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+        },
+        body: JSON.stringify(blockedConfig),
+    }),
+    {
+        FOREX_DB: { prepare() {} },
+        RESEARCH_DB: { prepare() {} },
+    },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+
+const blocked = await readJson(blockedResponse);
+
+assert.equal(blockedResponse.status, 422);
+assert.equal(blocked.executionGate.allowed, false);
 
 const storedExperiment = {
     id: "experiment-history-1",
