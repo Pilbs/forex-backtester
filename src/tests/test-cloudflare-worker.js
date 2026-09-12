@@ -225,6 +225,26 @@ const repository = {
             diagnosticEvents: [storedDiagnosticEvent],
         };
     },
+    async listAdminUsers() {
+        repositoryCalls.push(["listAdminUsers"]);
+        return [{
+            id: "user-1",
+            email: "danny@example.com",
+            display_name: "Danny",
+            status: "ACTIVE",
+            account_role: "OWNER",
+            created_at: 1_800_000_000_000,
+            updated_at: 1_800_000_000_100,
+            last_seen_at: 1_800_000_000_200,
+            workspace_count: 1,
+            experiment_count: 3,
+            completed_run_count: 8,
+            detailed_rerun_count: 1,
+            dataset_rows: 1200,
+            candle_evaluations: 4000,
+            last_experiment_at: 1_800_000_000_150,
+        }];
+    },
     async listExperiments(input) {
         repositoryCalls.push(["listExperiments", input]);
 
@@ -495,6 +515,23 @@ assert.equal(me.user.id, "user-1");
 assert.equal(me.workspace.id, "workspace-1");
 assert.equal(me.usageLimits.maximumDateRangeDays, 365);
 assert.equal(me.usageLimits.maximumRuns, 20);
+
+const adminResponse = await handleRequest(
+    apiRequest("/api/admin/users"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const admin = await readJson(adminResponse);
+
+assert.equal(adminResponse.status, 200);
+assert.equal(admin.users.length, 1);
+assert.equal(admin.users[0].email, "danny@example.com");
+assert.equal(admin.users[0].workspaceCount, 1);
+assert.equal(admin.users[0].experimentCount, 3);
+assert.equal(admin.users[0].detailedRerunCount, 1);
 
 const historyResponse = await handleRequest(
     apiRequest(
