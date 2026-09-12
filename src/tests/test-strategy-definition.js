@@ -1,5 +1,6 @@
 import {
     createStrategyFromDefinition,
+    getStrategyDefinitionMetadata,
     resolveStrategyConfig,
 } from "../strategies/strategy-definition.js";
 
@@ -21,6 +22,11 @@ const definition = {
         enabled: {
             type: "boolean",
             default: true,
+        },
+        threshold: {
+            type: "number",
+            default: 2,
+            enabledWhen: { parameter: "enabled", equals: true },
         },
     },
     validateConfig(config) {
@@ -63,6 +69,18 @@ if (created.strategy.config.fastLength !== 5) {
     throw new Error("Strategy did not receive the resolved config");
 }
 
+const metadata = getStrategyDefinitionMetadata(definition);
+const thresholdMetadata = metadata.parameters.find(
+    (parameter) => parameter.id === "threshold"
+);
+
+if (
+    thresholdMetadata?.enabledWhen?.parameter !== "enabled"
+    || thresholdMetadata.enabledWhen.equals !== true
+) {
+    throw new Error("Conditional parameter metadata was not exposed correctly");
+}
+
 let unknownRejected = false;
 try {
     resolveStrategyConfig({
@@ -95,6 +113,41 @@ try {
 
 if (!crossValidationRejected) {
     throw new Error("Cross-parameter validation was not enforced");
+}
+
+for (const invalidParameters of [
+    {
+        enabled: { type: "boolean", default: true },
+        value: {
+            type: "number",
+            default: 1,
+            enabledWhen: { parameter: "missing", equals: true },
+        },
+    },
+    {
+        first: {
+            type: "boolean",
+            default: true,
+            enabledWhen: { parameter: "second", equals: true },
+        },
+        second: {
+            type: "boolean",
+            default: true,
+            enabledWhen: { parameter: "first", equals: true },
+        },
+    },
+]) {
+    let dependencyRejected = false;
+
+    try {
+        getStrategyDefinitionMetadata({ ...definition, parameters: invalidParameters });
+    } catch {
+        dependencyRejected = true;
+    }
+
+    if (!dependencyRejected) {
+        throw new Error("Invalid strategy parameter dependency was not rejected");
+    }
 }
 
 console.log("Strategy definition test passed.");

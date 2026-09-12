@@ -56,6 +56,12 @@ const strategyTimeframe = orbMetadata?.parameters.find(
 const executionTimeframe = orbMetadata?.parameters.find(
     (parameter) => parameter.id === "executionTimeframe"
 );
+const breakoutDistanceMode = orbMetadata?.parameters.find(
+    (parameter) => parameter.id === "breakoutDistanceMode"
+);
+const tpProgressTarget = orbMetadata?.parameters.find(
+    (parameter) => parameter.id === "tpProgressTargetPct"
+);
 
 if (!breakoutCondition || breakoutCondition.label !== "Breakout condition") {
     throw new Error("ORB breakout-condition metadata was not exposed correctly");
@@ -79,6 +85,17 @@ if (
 
 if (strategyTimeframe || executionTimeframe) {
     throw new Error("Strategy/execution timeframe must remain platform settings, not ORB parameters");
+}
+
+if (breakoutDistanceMode?.enabledWhen?.parameter !== "breakoutDistanceEntryEnabled") {
+    throw new Error("ORB breakout-distance dependency metadata was not exposed");
+}
+
+if (
+    !Array.isArray(tpProgressTarget?.enabledWhen)
+    || tpProgressTarget.enabledWhen.length !== 2
+) {
+    throw new Error("ORB chained TP-progression dependencies were not exposed");
 }
 
 const serialized = JSON.stringify(metadata);

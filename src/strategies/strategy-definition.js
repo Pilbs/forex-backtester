@@ -12,6 +12,16 @@ function validateOptionalText(value, name) {
     }
 }
 
+function parameterConditions(definition) {
+    if (definition.enabledWhen === undefined) {
+        return [];
+    }
+
+    return Array.isArray(definition.enabledWhen)
+        ? definition.enabledWhen
+        : [definition.enabledWhen];
+}
+
 function validateParameterValue(name, value, definition) {
     if (definition.type === "number" && !Number.isFinite(value)) {
         throw new Error(`${name} must be a finite number`);
@@ -107,6 +117,68 @@ export function validateStrategyDefinition(strategyDefinition) {
         }
     }
 
+    for (const [name, definition] of Object.entries(strategyDefinition.parameters)) {
+        const conditions = parameterConditions(definition);
+
+        if (definition.enabledWhen !== undefined && conditions.length === 0) {
+            throw new Error(`Parameter ${name}.enabledWhen must contain at least one condition`);
+        }
+
+        for (const condition of conditions) {
+            if (!isPlainObject(condition)) {
+                throw new Error(`Parameter ${name}.enabledWhen conditions must be objects`);
+            }
+
+            if (typeof condition.parameter !== "string" || !condition.parameter.trim()) {
+                throw new Error(`Parameter ${name}.enabledWhen.parameter must be a non-empty string`);
+            }
+
+            const controller = strategyDefinition.parameters[condition.parameter];
+
+            if (!controller) {
+                throw new Error(
+                    `Parameter ${name}.enabledWhen references unknown parameter ${condition.parameter}`
+                );
+            }
+
+            if (condition.parameter === name) {
+                throw new Error(`Parameter ${name}.enabledWhen cannot reference itself`);
+            }
+
+            if (!Object.hasOwn(condition, "equals")) {
+                throw new Error(`Parameter ${name}.enabledWhen.equals is required`);
+            }
+
+            validateParameterValue(condition.parameter, condition.equals, controller);
+        }
+    }
+
+    const dependencyState = new Map();
+
+    function visitDependency(name) {
+        const state = dependencyState.get(name);
+
+        if (state === "visiting") {
+            throw new Error(`Strategy parameter dependencies contain a cycle at ${name}`);
+        }
+
+        if (state === "visited") {
+            return;
+        }
+
+        dependencyState.set(name, "visiting");
+
+        for (const condition of parameterConditions(strategyDefinition.parameters[name])) {
+            visitDependency(condition.parameter);
+        }
+
+        dependencyState.set(name, "visited");
+    }
+
+    for (const name of Object.keys(strategyDefinition.parameters)) {
+        visitDependency(name);
+    }
+
     if (
         strategyDefinition.validateConfig !== undefined &&
         typeof strategyDefinition.validateConfig !== "function"
@@ -147,6 +219,16 @@ export function getStrategyDefinitionMetadata(strategyDefinition) {
 
         if (definition.max !== undefined) {
             metadata.max = definition.max;
+        }
+
+        if (definition.enabledWhen !== undefined) {
+            const conditions = parameterConditions(definition).map((condition) => ({
+                parameter: condition.parameter,
+                equals: condition.equals,
+            }));
+            metadata.enabledWhen = Array.isArray(definition.enabledWhen)
+                ? conditions
+                : conditions[0];
         }
 
         return metadata;

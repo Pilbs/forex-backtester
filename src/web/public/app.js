@@ -1,10 +1,12 @@
 import {
     calculatePeriodInsights,
+    createFollowUpName,
     createHistoricalExportBaseName,
     createHistoricalJson,
     createHistoricalRunsCsv,
     createRunComparison,
     filterRuns,
+    isStrategyParameterEnabled,
 } from "./dashboard-analysis.js";
 
 const strategySelect = document.querySelector("#strategy");
@@ -146,12 +148,82 @@ function createBaseControl(parameter) {
     return control;
 }
 
+function conditionsForParameter(parameter) {
+    if (parameter.enabledWhen === undefined) {
+        return [];
+    }
+
+    return Array.isArray(parameter.enabledWhen)
+        ? parameter.enabledWhen
+        : [parameter.enabledWhen];
+}
+
+function readParameterFormValues(strategy) {
+    const baseValues = {};
+    const sweepValues = {};
+
+    for (const parameter of strategy.parameters) {
+        const baseControl = parameterContainer.querySelector(
+            `[data-role="base"][data-parameter-id="${parameter.id}"]`
+        );
+        const sweepControl = parameterContainer.querySelector(
+            `[data-role="sweep"][data-parameter-id="${parameter.id}"]`
+        );
+
+        if (baseControl?.value !== "") {
+            baseValues[parameter.id] = parseTypedValue(baseControl.value, parameter);
+        }
+
+        if (sweepControl?.value.trim()) {
+            sweepValues[parameter.id] = sweepControl.value
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean)
+                .map((value) => parseTypedValue(value, parameter));
+        }
+    }
+
+    return { baseValues, sweepValues };
+}
+
+function updateParameterDependencies(strategy = selectedStrategy()) {
+    if (!strategy) {
+        return;
+    }
+
+    const { baseValues, sweepValues } = readParameterFormValues(strategy);
+
+    for (const parameter of strategy.parameters) {
+        const row = parameterContainer.querySelector(
+            `.parameter-row[data-parameter-id="${parameter.id}"]`
+        );
+
+        if (!row) {
+            continue;
+        }
+
+        const enabled = isStrategyParameterEnabled(
+            strategy,
+            parameter.id,
+            baseValues,
+            sweepValues
+        );
+        row.classList.toggle("is-conditionally-disabled", !enabled);
+        row.setAttribute("aria-disabled", String(!enabled));
+
+        for (const control of row.querySelectorAll("input, select")) {
+            control.disabled = !enabled;
+        }
+    }
+}
+
 function renderParameters(strategy) {
     parameterContainer.replaceChildren();
 
     for (const parameter of strategy.parameters) {
         const row = document.createElement("div");
         row.className = "parameter-row";
+        row.dataset.parameterId = parameter.id;
 
         const description = parameter.description
             ? `<span class="parameter-description">${parameter.description}</span>`
@@ -160,6 +232,20 @@ function renderParameters(strategy) {
         const label = document.createElement("div");
         label.className = "parameter-name";
         label.innerHTML = `<strong>${parameter.label}</strong>${description}`;
+
+        const conditions = conditionsForParameter(parameter);
+
+        if (conditions.length > 0) {
+            const dependency = document.createElement("span");
+            dependency.className = "parameter-dependency";
+            dependency.textContent = "Available when " + conditions.map((condition) => {
+                const controller = strategy.parameters.find(
+                    (candidate) => candidate.id === condition.parameter
+                );
+                return `${controller?.label ?? condition.parameter} = ${condition.equals}`;
+            }).join(" and ");
+            label.append(dependency);
+        }
 
         const baseWrap = document.createElement("label");
         baseWrap.innerHTML = "<span>Base</span>";
@@ -188,7 +274,12 @@ function renderParameters(strategy) {
 
         parameterContainer.append(row);
     }
+
+    updateParameterDependencies(strategy);
 }
+
+parameterContainer.addEventListener("input", () => updateParameterDependencies());
+parameterContainer.addEventListener("change", () => updateParameterDependencies());
 
 function readResearchDefaults() {
     try {
@@ -240,6 +331,8 @@ function applyStrategyDefaults(strategyId) {
             value
         );
     }
+
+    updateParameterDependencies();
 }
 
 function collectCurrentDefaults() {
@@ -325,7 +418,7 @@ function buildConfig() {
             `[data-role="sweep"][data-parameter-id="${parameter.id}"]`
         );
 
-        if (sweepControl?.value.trim()) {
+        if (sweepControl?.value.trim() && !sweepControl.disabled) {
             parameterGrid[parameter.id] = sweepControl.value
                 .split(",")
                 .map((value) => value.trim())
@@ -418,6 +511,7 @@ function renderExecution(response) {
     historyLoaded = false;
     lastExecutionResponse = response;
     exportActions.hidden = false;
+    viewExperimentButton.hidden = !response.experimentId;
     const { execution, result } = response;
     const d1 = execution.d1;
 
@@ -631,6 +725,7 @@ applyUiTheme(savedTheme === "terminal" ? "terminal" : "contemporary");
 
 // === RESULTS EXPORT PATCH ===
 const exportActions = document.querySelector("#export-actions");
+const viewExperimentButton = document.querySelector("#view-experiment-button");
 const exportCsvButton = document.querySelector("#export-csv-button");
 const exportJsonButton = document.querySelector("#export-json-button");
 
@@ -791,6 +886,19 @@ exportJsonButton.addEventListener("click", () => {
     const filename = createExportBaseName(lastExecutionResponse) + ".json";
     const json = JSON.stringify(lastExecutionResponse, null, 2);
     downloadBlob(filename, "application/json;charset=utf-8", json);
+});
+
+viewExperimentButton.addEventListener("click", async () => {
+    const experimentId = lastExecutionResponse?.experimentId;
+
+    if (!experimentId) {
+        return;
+    }
+
+    historyLoaded = true;
+    setWorkspaceView("history");
+    historyLoaded = false;
+    await loadExperimentDetail(experimentId);
 });
 
 
@@ -1896,7 +2004,23 @@ backToHistoryButton.addEventListener("click", () => {
     currentExperimentDetail = null;
     selectedHistoryRunId = null;
     comparisonRunIds = new Set();
+
+    if (!historyLoaded) {
+        loadExperimentHistory({ reset: true });
+    }
 });
+
+const backToTopButton = document.querySelector("#back-to-top-button");
+
+function updateBackToTopVisibility() {
+    backToTopButton.hidden = window.scrollY < 500;
+}
+
+window.addEventListener("scroll", updateBackToTopVisibility, { passive: true });
+backToTopButton.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+});
+updateBackToTopVisibility();
 
 for (const control of runFilterControls) {
     control.addEventListener(control.tagName === "SELECT" ? "change" : "input", () => {
@@ -2019,8 +2143,10 @@ function loadRunIntoExperimentForm(run) {
     setControlValue("#same-candle-conflict", execution.sameCandleConflict);
     setControlValue(
         "#experiment-name",
-        `${experiment.name || strategy.name} follow-up`
+        createFollowUpName(experiment.name, strategy.name)
     );
+
+    updateParameterDependencies(strategy);
 
     plannedConfig = null;
     resultPanel.hidden = true;

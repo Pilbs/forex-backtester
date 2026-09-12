@@ -2,12 +2,56 @@ import assert from "node:assert/strict";
 
 import {
     calculatePeriodInsights,
+    createFollowUpName,
     createHistoricalExportBaseName,
     createHistoricalJson,
     createHistoricalRunsCsv,
     createRunComparison,
     filterRuns,
+    isStrategyParameterEnabled,
 } from "../web/public/dashboard-analysis.js";
+
+const conditionalStrategy = {
+    parameters: [
+        { id: "enabled" },
+        { id: "mode", enabledWhen: { parameter: "enabled", equals: true } },
+        {
+            id: "value",
+            enabledWhen: [
+                { parameter: "enabled", equals: true },
+                { parameter: "mode", equals: "ATR" },
+            ],
+        },
+    ],
+};
+
+assert.equal(
+    isStrategyParameterEnabled(conditionalStrategy, "value", { enabled: false, mode: "ATR" }),
+    false
+);
+assert.equal(
+    isStrategyParameterEnabled(conditionalStrategy, "value", { enabled: true, mode: "ATR" }),
+    true
+);
+assert.equal(
+    isStrategyParameterEnabled(
+        conditionalStrategy,
+        "value",
+        { enabled: false, mode: "ATR" },
+        { enabled: [false, true] }
+    ),
+    true
+);
+
+assert.equal(createFollowUpName("ORB optimisation", "ORB"), "ORB optimisation – follow-up 1");
+assert.equal(
+    createFollowUpName("ORB optimisation – follow-up 1", "ORB"),
+    "ORB optimisation – follow-up 2"
+);
+assert.equal(
+    createFollowUpName("ORB optimisation follow-up follow-up", "ORB"),
+    "ORB optimisation – follow-up 3"
+);
 
 const runs = [
     {

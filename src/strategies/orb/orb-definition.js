@@ -73,6 +73,7 @@ export const orbDefinition = {
             description: "Unit used for the early-entry breakout distance.",
             default: "ATR",
             options: ["ATR", "PIPS", "UNITS", "RANGE_PERCENT"],
+            enabledWhen: { parameter: "breakoutDistanceEntryEnabled", equals: true },
         },
 
         breakoutDistanceValue: {
@@ -81,6 +82,7 @@ export const orbDefinition = {
             description: "Breakout distance threshold in the selected mode.",
             default: 1,
             min: 0,
+            enabledWhen: { parameter: "breakoutDistanceEntryEnabled", equals: true },
         },
 
         maxOrbRangeEnabled: {
@@ -96,6 +98,7 @@ export const orbDefinition = {
             description: "Unit used for the maximum completed ORB size.",
             default: "PIPS",
             options: ["ATR", "PIPS", "UNITS"],
+            enabledWhen: { parameter: "maxOrbRangeEnabled", equals: true },
         },
 
         maxOrbRangeValue: {
@@ -104,6 +107,7 @@ export const orbDefinition = {
             description: "Maximum completed ORB size in the selected mode.",
             default: 30,
             min: 0.00001,
+            enabledWhen: { parameter: "maxOrbRangeEnabled", equals: true },
         },
 
         atrLength: {
@@ -159,6 +163,7 @@ export const orbDefinition = {
             description: "Trigger level as a percentage of the original take-profit distance.",
             default: 90,
             min: 0.1,
+            enabledWhen: { parameter: "tpProgressEnabled", equals: true },
         },
 
         tpProgressStopPct: {
@@ -167,6 +172,7 @@ export const orbDefinition = {
             description: "New stop level measured from entry as a percentage of the original take-profit distance.",
             default: 75,
             min: 0,
+            enabledWhen: { parameter: "tpProgressEnabled", equals: true },
         },
 
         tpProgressExtendTarget: {
@@ -174,6 +180,7 @@ export const orbDefinition = {
             label: "Extend take profit",
             description: "Extend the take-profit target when TP progression triggers.",
             default: true,
+            enabledWhen: { parameter: "tpProgressEnabled", equals: true },
         },
 
         tpProgressTargetPct: {
@@ -182,6 +189,10 @@ export const orbDefinition = {
             description: "Extended target measured from entry as a percentage of the original take-profit distance.",
             default: 125,
             min: 0.1,
+            enabledWhen: [
+                { parameter: "tpProgressEnabled", equals: true },
+                { parameter: "tpProgressExtendTarget", equals: true },
+            ],
         },
 
         tpProgressRepeat: {
@@ -189,6 +200,7 @@ export const orbDefinition = {
             label: "Repeat TP progression",
             description: "Repeat TP progression in percentage steps while price continues in favour.",
             default: true,
+            enabledWhen: { parameter: "tpProgressEnabled", equals: true },
         },
 
         tpProgressStepPct: {
@@ -197,6 +209,10 @@ export const orbDefinition = {
             description: "Percentage-point step added to trigger/stop/target levels for each repeated stage.",
             default: 25,
             min: 0.1,
+            enabledWhen: [
+                { parameter: "tpProgressEnabled", equals: true },
+                { parameter: "tpProgressRepeat", equals: true },
+            ],
         },
 
         closeAtNextORB: {
@@ -220,6 +236,7 @@ export const orbDefinition = {
             default: 12,
             min: 0,
             max: 23,
+            enabledWhen: { parameter: "latestEntryEnabled", equals: true },
         },
 
         latestEntryMinute: {
@@ -229,6 +246,7 @@ export const orbDefinition = {
             default: 15,
             min: 0,
             max: 59,
+            enabledWhen: { parameter: "latestEntryEnabled", equals: true },
         },
 
         skipFridayEntries: {
@@ -252,6 +270,7 @@ export const orbDefinition = {
             default: 17,
             min: 0,
             max: 23,
+            enabledWhen: { parameter: "profitExitWindowEnabled", equals: true },
         },
 
         profitExitStartMinute: {
@@ -261,6 +280,7 @@ export const orbDefinition = {
             default: 0,
             min: 0,
             max: 59,
+            enabledWhen: { parameter: "profitExitWindowEnabled", equals: true },
         },
 
         profitExitEndHour: {
@@ -270,6 +290,7 @@ export const orbDefinition = {
             default: 18,
             min: 0,
             max: 23,
+            enabledWhen: { parameter: "profitExitWindowEnabled", equals: true },
         },
 
         profitExitEndMinute: {
@@ -279,6 +300,7 @@ export const orbDefinition = {
             default: 0,
             min: 0,
             max: 59,
+            enabledWhen: { parameter: "profitExitWindowEnabled", equals: true },
         },
     },
 

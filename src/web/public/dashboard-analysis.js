@@ -12,6 +12,77 @@ function hasMaximum(value, maximum) {
         || (isFiniteNumber(value) && value <= Number(maximum));
 }
 
+function conditionsFor(parameter) {
+    if (parameter?.enabledWhen === undefined) {
+        return [];
+    }
+
+    return Array.isArray(parameter.enabledWhen)
+        ? parameter.enabledWhen
+        : [parameter.enabledWhen];
+}
+
+export function isStrategyParameterEnabled(
+    strategy,
+    parameterId,
+    baseValues = {},
+    sweepValues = {}
+) {
+    const parameters = new Map(
+        (strategy?.parameters ?? []).map((parameter) => [parameter.id, parameter])
+    );
+    const resolving = new Set();
+
+    function isEnabled(id) {
+        if (resolving.has(id)) {
+            return false;
+        }
+
+        const parameter = parameters.get(id);
+
+        if (!parameter) {
+            return false;
+        }
+
+        resolving.add(id);
+        const enabled = conditionsFor(parameter).every((condition) => {
+            if (!isEnabled(condition.parameter)) {
+                return false;
+            }
+
+            const swept = sweepValues[condition.parameter];
+            const candidates = Array.isArray(swept) && swept.length > 0
+                ? swept
+                : [baseValues[condition.parameter]];
+
+            return candidates.some((value) => Object.is(value, condition.equals));
+        });
+        resolving.delete(id);
+        return enabled;
+    }
+
+    return isEnabled(parameterId);
+}
+
+export function createFollowUpName(name, fallback = "Experiment") {
+    let base = String(name ?? "").trim() || fallback;
+    let lastNumber = 0;
+    const suffix = /^(.*?)\s*(?:[-–—]\s*)?follow-up(?:\s+(\d+))?\s*$/i;
+
+    while (true) {
+        const match = base.match(suffix);
+
+        if (!match || !match[1].trim()) {
+            break;
+        }
+
+        lastNumber = Math.max(lastNumber, match[2] ? Number(match[2]) : lastNumber + 1);
+        base = match[1].trim();
+    }
+
+    return `${base} – follow-up ${lastNumber + 1}`;
+}
+
 export function filterRuns(runs, filters = {}) {
     const search = String(filters.parameterSearch ?? "").trim().toLowerCase();
 

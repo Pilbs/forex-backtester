@@ -379,6 +379,23 @@ select:focus {
     font-size: 13px;
 }
 
+.parameter-dependency {
+    display: block;
+    margin-top: 5px;
+    color: #53627a;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.parameter-row.is-conditionally-disabled {
+    opacity: 0.52;
+}
+
+.parameter-row.is-conditionally-disabled input,
+.parameter-row.is-conditionally-disabled select {
+    cursor: not-allowed;
+}
+
 .fixed-parameter {
     align-self: center;
     color: #8992a4;
@@ -400,6 +417,21 @@ button {
     background: #172033;
     color: white;
     cursor: pointer;
+}
+
+.back-to-top-button {
+    position: fixed;
+    right: max(18px, calc((100vw - 1180px) / 2));
+    bottom: 20px;
+    z-index: 20;
+    min-width: auto;
+    padding: 10px 14px;
+    border: 1px solid #cfd7e5;
+    box-shadow: 0 8px 24px rgba(24, 39, 75, 0.2);
+}
+
+.back-to-top-button[hidden] {
+    display: none;
 }
 
 button:hover:not(:disabled) {
@@ -917,6 +949,17 @@ html[data-ui-theme="terminal"] .parameter-name strong {
 html[data-ui-theme="terminal"] .parameter-description,
 html[data-ui-theme="terminal"] .fixed-parameter {
     color: #6f887a;
+}
+
+html[data-ui-theme="terminal"] .parameter-dependency {
+    color: #6f9a80;
+}
+
+html[data-ui-theme="terminal"] .back-to-top-button {
+    border-color: #4fbf7a;
+    background: #07140c;
+    color: #7effac;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 html[data-ui-theme="terminal"] button:not(.theme-choice) {
