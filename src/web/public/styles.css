@@ -1436,3 +1436,13 @@ html[data-ui-theme="terminal"] .execution-gate-feedback {
 html[data-ui-theme="terminal"] .user-theme-section {
     border-top-color: #284337;
 }
+
+
+#admin-users-table th:first-child,
+#admin-users-table td:first-child {
+    text-align: left;
+}
+
+#admin-users-table td {
+    font-variant-numeric: tabular-nums;
+}
