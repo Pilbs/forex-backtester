@@ -303,10 +303,15 @@ function executionMetrics({ result, usageTracker, wallTimeMs }) {
     };
 }
 
-function planExecution(config) {
+function planExecution(config, accountRole = "OWNER") {
     const plan = planResearch(config);
     const usageEstimate = estimateResearchUsage(config, plan);
-    const executionGate = assessResearchExecution(config, plan, usageEstimate);
+    const executionGate = assessResearchExecution(
+        config,
+        plan,
+        usageEstimate,
+        accountRole
+    );
 
     return {
         plan,
@@ -393,7 +398,10 @@ async function executeDetailedRerun({
     }
 
     const config = createDetailedRerunConfig(source.experiment, source.run);
-    const { plan, usageEstimate, executionGate } = planExecution(config);
+    const { plan, usageEstimate, executionGate } = planExecution(
+        config,
+        userContext.user.account_role
+    );
 
     if (!executionGate.allowed) {
         return jsonResponse({
@@ -551,17 +559,6 @@ async function executeResearch(config, request, env, identity, {
     createResearchRepository,
     runResearchJob,
 }) {
-    const { plan, usageEstimate, executionGate } = planExecution(config);
-
-    if (!executionGate.allowed) {
-        return jsonResponse({
-            error: "Execution blocked by cloud commissioning limits",
-            plan: summarizePlan(plan),
-            usageEstimate,
-            executionGate,
-        }, 422);
-    }
-
     if (!env.FOREX_DB?.prepare) {
         return jsonResponse({
             error: "FOREX_DB D1 binding is unavailable",
@@ -585,6 +582,20 @@ async function executeResearch(config, request, env, identity, {
 
     try {
         userContext = await repository.resolveUserContext(identity);
+        const { plan, usageEstimate, executionGate } = planExecution(
+            config,
+            userContext.user.account_role
+        );
+
+        if (!executionGate.allowed) {
+            return jsonResponse({
+                error: "Execution blocked by account usage limits",
+                plan: summarizePlan(plan),
+                usageEstimate,
+                executionGate,
+            }, 422);
+        }
+
         experiment = await repository.createExperiment({
             workspaceId: userContext.workspace.id,
             createdByUserId: userContext.user.id,
@@ -976,7 +987,18 @@ export async function handleRequest(request, env = {}, {
 
         if (request.method === "POST" && url.pathname === "/api/plan") {
             const config = await readJson(request);
-            const { plan, usageEstimate, executionGate } = planExecution(config);
+            let accountRole = "OWNER";
+
+            if (env.RESEARCH_DB?.prepare) {
+                const repository = createResearchRepository({ db: env.RESEARCH_DB });
+                const context = await repository.resolveUserContext(identity);
+                accountRole = context.user.account_role;
+            }
+
+            const { plan, usageEstimate, executionGate } = planExecution(
+                config,
+                accountRole
+            );
 
             return jsonResponse({
                 plan: summarizePlan(plan),
