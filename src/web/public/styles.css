@@ -235,6 +235,17 @@ select:focus {
     border-top: 1px solid #e0e5ee;
 }
 
+.validation-feedback {
+    margin: 14px 0;
+    padding: 12px 14px;
+    border: 1px solid #d14343;
+    border-radius: 9px;
+    background: #fff2f2;
+    color: #8d1f1f;
+    font-weight: 700;
+    white-space: pre-wrap;
+}
+
 #run-trades-table details,
 #run-events-table details {
     min-width: 110px;
@@ -903,6 +914,13 @@ html[data-ui-theme="terminal"] .experiment-filter-panel > summary {
 html[data-ui-theme="terminal"] #validation-comparison-panel,
 html[data-ui-theme="terminal"] #detailed-data-panel {
     border-color: #284337;
+}
+
+html[data-ui-theme="terminal"] .validation-feedback {
+    border-color: #a94a4a;
+    border-radius: 1px;
+    background: #190707;
+    color: #ff9e9e;
 }
 
 html[data-ui-theme="terminal"] #history-runs-table input[type="checkbox"] {

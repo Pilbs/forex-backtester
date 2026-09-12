@@ -44,6 +44,9 @@
             <section class="panel">
                 <h2>Market</h2>
                 <div class="grid grid-3">
+                    <label>Experiment name / tag
+                        <input id="experiment-name" maxlength="100" placeholder="Optional, e.g. ORB baseline September">
+                    </label>
                     <label>Strategy
                         <select id="strategy"></select>
                     </label>
@@ -66,7 +69,17 @@
             </section>
 
             <section class="panel">
-                <h2>Account & execution</h2>
+                <div class="section-heading split-heading">
+                    <div>
+                        <h2>Account & execution</h2>
+                        <p>Defaults can be saved in this browser for the current strategy.</p>
+                    </div>
+                    <div class="detail-actions">
+                        <button id="save-defaults-button" type="button" class="secondary-button">Save as my defaults</button>
+                        <button id="reset-defaults-button" type="button" class="secondary-button">Reset saved defaults</button>
+                    </div>
+                </div>
+                <p id="defaults-status" class="estimate-note" aria-live="polite"></p>
                 <div class="grid grid-3">
                     <label>Initial capital
                         <input id="initial-capital" type="number" value="500" min="1" step="1">
@@ -239,6 +252,7 @@
                     <h2 id="detail-title">Experiment</h2>
                     <p id="detail-subtitle"></p>
                 </div>
+                <div id="experiment-error-feedback" class="validation-feedback" role="alert" hidden></div>
                 <div id="detail-summary-cards" class="summary-cards"></div>
 
                 <h3>Parameter runs</h3>
@@ -301,6 +315,7 @@
                         <button id="detailed-rerun-button" type="button">Run detailed validation</button>
                     </div>
                     <p id="detailed-rerun-status" class="estimate-note"></p>
+                    <div id="detailed-rerun-feedback" class="validation-feedback" role="alert" hidden></div>
                     <div id="run-summary-grid" class="metric-grid"></div>
                     <section id="validation-comparison-panel" hidden>
                         <h3>Original versus detailed rerun</h3>

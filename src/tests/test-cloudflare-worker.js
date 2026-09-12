@@ -36,6 +36,7 @@ async function readJson(response) {
 
 function createConfig() {
     return {
+        name: "ORB validation baseline",
         strategy: "orb",
         market: {
             instrument: "EUR_USD",
@@ -438,6 +439,10 @@ assert.equal(
     repositoryCalls.find(([name]) => name === "createExperiment")[1]
         .createdByUserId,
     "user-1"
+);
+assert.equal(
+    repositoryCalls.find(([name]) => name === "createExperiment")[1].name,
+    "ORB validation baseline"
 );
 assert.deepEqual(
     repositoryCalls

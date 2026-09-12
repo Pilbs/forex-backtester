@@ -427,6 +427,34 @@ assert.deepEqual(
     ["MONTH", "YEAR"]
 );
 
+const secondPersistedRun = await repository.saveExperimentRun({
+    experimentId: experiment.id,
+    run: {
+        runId: "run-2",
+        runNumber: 2,
+        status: "COMPLETED",
+        parameterValues: { smaLength: 20 },
+        strategyConfig: { smaLength: 20 },
+        summary: { totalTrades: 1 },
+    },
+});
+
+await repository.saveRunTrades({
+    runId: secondPersistedRun.id,
+    trades: [{
+        id: "trade-1",
+        side: "LONG",
+        entryTime: Date.parse("2026-01-03T08:00:00Z"),
+        exitTime: Date.parse("2026-01-03T09:00:00Z"),
+    }],
+});
+
+const persistedTradeIds = database.prepare(`
+    SELECT id FROM run_trades ORDER BY run_id
+`).all().map((row) => row.id);
+
+assert.deepEqual(persistedTradeIds, ["run-1-trade-1", "run-2-trade-1"]);
+
 const inaccessibleDetail = await repository.getExperimentDetail({
     workspaceId: "another-workspace",
     experimentId: experiment.id,

@@ -16,9 +16,22 @@ const errorPanel = document.querySelector("#error-panel");
 const requestStatus = document.querySelector("#request-status");
 const executionStatus = document.querySelector("#execution-status");
 const runButton = document.querySelector("#run-button");
+const saveDefaultsButton = document.querySelector("#save-defaults-button");
+const resetDefaultsButton = document.querySelector("#reset-defaults-button");
+const defaultsStatus = document.querySelector("#defaults-status");
 
 let strategies = [];
 let plannedConfig = null;
+
+const RESEARCH_DEFAULTS_STORAGE_KEY = "forexResearchDefaultsV1";
+const BUILT_IN_ACCOUNT_DEFAULTS = Object.freeze({
+    initialCapital: "500",
+    currency: "USD",
+    leverage: "30",
+    sizingType: "CASH",
+    sizingValue: "300",
+    sameCandleConflict: "STOP_FIRST",
+});
 
 let executionTimer = null;
 let executionStartedAt = null;
@@ -49,6 +62,24 @@ function stopExecutionTimer(message) {
 
     executionStartedAt = null;
     executionStatus.textContent = `${message} ${formatElapsed(elapsed)}`;
+}
+
+async function readJsonResponse(response) {
+    const text = await response.text();
+
+    try {
+        return text ? JSON.parse(text) : {};
+    } catch {
+        const readableText = text
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 240);
+        throw new Error(
+            `Server returned HTTP ${response.status} ${response.statusText || ""}`.trim()
+            + (readableText ? `: ${readableText}` : " without a readable response")
+        );
+    }
 }
 
 function toIso(localDateTime) {
@@ -167,6 +198,131 @@ function renderParameters(strategy) {
     }
 }
 
+function readResearchDefaults() {
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(RESEARCH_DEFAULTS_STORAGE_KEY));
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : { global: {}, strategies: {} };
+    } catch {
+        return { global: {}, strategies: {} };
+    }
+}
+
+function setControlValue(selector, value) {
+    const control = document.querySelector(selector);
+
+    if (!control || value === undefined || value === null) {
+        return;
+    }
+
+    const stringValue = String(value);
+
+    if (
+        control.tagName === "SELECT"
+        && ![...control.options].some((option) => option.value === stringValue)
+    ) {
+        return;
+    }
+
+    control.value = stringValue;
+}
+
+function applyGlobalDefaults(values = {}) {
+    setControlValue("#initial-capital", values.initialCapital);
+    setControlValue("#currency", values.currency);
+    setControlValue("#leverage", values.leverage);
+    setControlValue("#sizing-type", values.sizingType);
+    setControlValue("#sizing-value", values.sizingValue);
+    setControlValue("#same-candle-conflict", values.sameCandleConflict);
+}
+
+function applyStrategyDefaults(strategyId) {
+    const saved = readResearchDefaults().strategies?.[strategyId];
+
+    if (!saved) {
+        return;
+    }
+
+    for (const [parameterId, value] of Object.entries(saved.base ?? {})) {
+        setControlValue(
+            `[data-role="base"][data-parameter-id="${parameterId}"]`,
+            value
+        );
+    }
+
+    for (const [parameterId, value] of Object.entries(saved.sweep ?? {})) {
+        setControlValue(
+            `[data-role="sweep"][data-parameter-id="${parameterId}"]`,
+            value
+        );
+    }
+}
+
+function collectCurrentDefaults() {
+    const base = {};
+    const sweep = {};
+
+    for (const control of parameterContainer.querySelectorAll("[data-parameter-id]")) {
+        const target = control.dataset.role === "sweep" ? sweep : base;
+        target[control.dataset.parameterId] = control.value;
+    }
+
+    return {
+        global: {
+            initialCapital: document.querySelector("#initial-capital").value,
+            currency: document.querySelector("#currency").value,
+            leverage: document.querySelector("#leverage").value,
+            sizingType: document.querySelector("#sizing-type").value,
+            sizingValue: document.querySelector("#sizing-value").value,
+            sameCandleConflict: document.querySelector("#same-candle-conflict").value,
+        },
+        strategy: { base, sweep },
+    };
+}
+
+function saveCurrentDefaults() {
+    const strategy = selectedStrategy();
+
+    if (!strategy) {
+        return;
+    }
+
+    const current = readResearchDefaults();
+    const snapshot = collectCurrentDefaults();
+    const next = {
+        global: snapshot.global,
+        strategies: {
+            ...(current.strategies ?? {}),
+            [strategy.id]: snapshot.strategy,
+        },
+    };
+
+    try {
+        window.localStorage.setItem(RESEARCH_DEFAULTS_STORAGE_KEY, JSON.stringify(next));
+        defaultsStatus.textContent = `${strategy.name} and account/execution defaults saved in this browser.`;
+    } catch {
+        defaultsStatus.textContent = "This browser did not allow the defaults to be saved.";
+    }
+}
+
+function resetSavedDefaults() {
+    try {
+        window.localStorage.removeItem(RESEARCH_DEFAULTS_STORAGE_KEY);
+    } catch {
+        // The controls can still be reset even if browser storage is unavailable.
+    }
+
+    applyGlobalDefaults(BUILT_IN_ACCOUNT_DEFAULTS);
+    const strategy = selectedStrategy();
+
+    if (strategy) {
+        renderParameters(strategy);
+    }
+
+    defaultsStatus.textContent = "Saved defaults cleared; built-in values restored.";
+}
+
 function selectedStrategy() {
     return strategies.find((strategy) => strategy.id === strategySelect.value);
 }
@@ -199,6 +355,7 @@ function buildConfig() {
     }
 
     return {
+        name: document.querySelector("#experiment-name").value.trim() || undefined,
         strategy: strategy.id,
         market: {
             instrument: document.querySelector("#instrument").value.trim(),
@@ -247,6 +404,7 @@ function renderResult(config, response) {
     const { plan, usageEstimate, executionGate } = response;
 
     document.querySelector("#summary-cards").innerHTML = [
+        summaryCard("Experiment", config.name || "Untagged"),
         summaryCard("Strategy", plan.strategy.name),
         summaryCard("Requested runs", plan.research.requestedCombinations),
         summaryCard("Valid runs", plan.research.validCombinations),
@@ -367,12 +525,20 @@ async function loadStrategies() {
         historyStrategySelect.append(historyOption);
     }
 
+    applyGlobalDefaults(readResearchDefaults().global);
     renderParameters(strategies[0]);
+    applyStrategyDefaults(strategies[0].id);
 }
 
 strategySelect.addEventListener("change", () => {
-    renderParameters(selectedStrategy());
+    const strategy = selectedStrategy();
+    renderParameters(strategy);
+    applyStrategyDefaults(strategy.id);
+    defaultsStatus.textContent = "";
 });
+
+saveDefaultsButton.addEventListener("click", saveCurrentDefaults);
+resetDefaultsButton.addEventListener("click", resetSavedDefaults);
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -665,6 +831,7 @@ const loadMoreExperimentsButton = document.querySelector("#load-more-experiments
 const backToHistoryButton = document.querySelector("#back-to-history-button");
 const historyExportCsvButton = document.querySelector("#history-export-csv-button");
 const historyExportJsonButton = document.querySelector("#history-export-json-button");
+const experimentErrorFeedback = document.querySelector("#experiment-error-feedback");
 const compareRunsButton = document.querySelector("#compare-runs-button");
 const clearComparisonButton = document.querySelector("#clear-comparison-button");
 const closeComparisonButton = document.querySelector("#close-comparison-button");
@@ -673,6 +840,7 @@ const comparisonPanel = document.querySelector("#comparison-panel");
 const comparisonTable = document.querySelector("#comparison-table");
 const detailedRerunButton = document.querySelector("#detailed-rerun-button");
 const detailedRerunStatus = document.querySelector("#detailed-rerun-status");
+const detailedRerunFeedback = document.querySelector("#detailed-rerun-feedback");
 const detailedDataPanel = document.querySelector("#detailed-data-panel");
 const validationComparisonPanel = document.querySelector("#validation-comparison-panel");
 const validationComparisonTable = document.querySelector("#validation-comparison-table");
@@ -1502,7 +1670,7 @@ async function loadDetailedRunData(run) {
 
     try {
         const response = await fetch(`/api/runs/${encodeURIComponent(run.id)}/details`);
-        const body = await response.json();
+        const body = await readJsonResponse(response);
 
         if (!response.ok) {
             throw new Error(body.error ?? "Unable to load detailed run data");
@@ -1527,6 +1695,8 @@ function renderRunDetail(run) {
     detailedDataPanel.hidden = true;
     validationComparisonPanel.hidden = true;
     detailedRerunStatus.textContent = "";
+    detailedRerunFeedback.hidden = true;
+    detailedRerunFeedback.textContent = "";
 
     const panel = document.querySelector("#run-detail-panel");
     const summaryGrid = document.querySelector("#run-summary-grid");
@@ -1589,6 +1759,11 @@ function renderExperimentDetail(detail) {
     const status = document.querySelector("#detail-status");
     status.textContent = experiment.status;
     status.dataset.status = experiment.status;
+    const experimentError = experiment.error?.message ?? experiment.error?.name ?? null;
+    experimentErrorFeedback.textContent = experimentError
+        ? `Saved failure: ${experimentError}`
+        : "";
+    experimentErrorFeedback.hidden = !experimentError;
 
     renderDashboardCards(
         document.querySelector("#detail-summary-cards"),
@@ -1712,13 +1887,15 @@ detailedRerunButton.addEventListener("click", async () => {
 
     detailedRerunButton.disabled = true;
     detailedRerunStatus.textContent = "Running detailed cloud validation…";
+    detailedRerunFeedback.hidden = true;
+    detailedRerunFeedback.textContent = "";
 
     try {
         const response = await fetch(
             `/api/experiments/${encodeURIComponent(experiment.id)}/runs/${encodeURIComponent(run.id)}/detailed-rerun`,
             { method: "POST" }
         );
-        const body = await response.json();
+        const body = await readJsonResponse(response);
 
         if (!response.ok) {
             const reasons = body.executionGate?.reasons?.join("; ");
@@ -1728,7 +1905,11 @@ detailedRerunButton.addEventListener("click", async () => {
         historyLoaded = false;
         await loadExperimentDetail(body.experimentId);
     } catch (error) {
-        detailedRerunStatus.textContent = `Detailed validation failed: ${error.message}`;
+        historyLoaded = false;
+        detailedRerunStatus.textContent = "Detailed validation failed.";
+        detailedRerunFeedback.textContent = error.message;
+        detailedRerunFeedback.hidden = false;
+        detailedRerunFeedback.scrollIntoView({ behavior: "smooth", block: "nearest" });
         detailedRerunButton.disabled = false;
     }
 });

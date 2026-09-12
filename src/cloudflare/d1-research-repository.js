@@ -803,7 +803,7 @@ export function createD1ResearchRepository({
                 created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-            trade.id ?? `${runId}-trade-${index + 1}`,
+            `${runId}-trade-${index + 1}`,
             runId,
             index + 1,
             trade.side ?? null,
