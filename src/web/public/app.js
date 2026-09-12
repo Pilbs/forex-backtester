@@ -34,6 +34,13 @@ const userLimitRuns = document.querySelector("#user-limit-runs");
 const userLimitRows = document.querySelector("#user-limit-rows");
 const userLimitEvaluations = document.querySelector("#user-limit-evaluations");
 const executionGateFeedback = document.querySelector("#execution-gate-feedback");
+const adminNavButton = document.querySelector("#admin-nav-button");
+const adminView = document.querySelector("#admin-view");
+const adminUsersTable = document.querySelector("#admin-users-table");
+const adminSummaryCards = document.querySelector("#admin-summary-cards");
+const adminStatus = document.querySelector("#admin-status");
+const adminEmpty = document.querySelector("#admin-empty");
+const refreshAdminButton = document.querySelector("#refresh-admin-button");
 
 let strategies = [];
 let plannedConfig = null;
@@ -42,6 +49,8 @@ const RESEARCH_DEFAULTS_STORAGE_KEY = "forexResearchDefaultsV1";
 
 let executionTimer = null;
 let executionStartedAt = null;
+let currentUser = null;
+let adminLoaded = false;
 
 function formatElapsed(ms) {
     return `${(ms / 1000).toFixed(1)} s`;
@@ -670,8 +679,10 @@ async function loadCurrentUser() {
         throw new Error(body.error ?? "Unable to load signed-in user");
     }
 
+    currentUser = body.user ?? null;
     userEmail.textContent = body.user?.email ?? "Unknown user";
     userRole.textContent = body.user?.account_role ?? "";
+    adminNavButton.hidden = body.user?.account_role !== "OWNER";
 
     const limits = body.usageLimits ?? {};
     userLimitDateRange.textContent = Number.isFinite(limits.maximumDateRangeDays)
@@ -1213,8 +1224,15 @@ function createTextCell(value) {
 
 function setWorkspaceView(view) {
     const showHistory = view === "history";
-    researchView.hidden = showHistory;
-    historyView.hidden = !showHistory;
+    const showAdmin = view === "admin";
+
+    if (showAdmin && currentUser?.account_role !== "OWNER") {
+        view = "research";
+    }
+
+    researchView.hidden = view !== "research";
+    historyView.hidden = view !== "history";
+    adminView.hidden = view !== "admin";
     errorPanel.hidden = true;
 
     for (const button of viewChoices) {
@@ -1226,7 +1244,109 @@ function setWorkspaceView(view) {
     if (showHistory && !historyLoaded) {
         loadExperimentHistory();
     }
+
+    if (view === "admin" && !adminLoaded) {
+        loadAdminUsers();
+    }
 }
+
+
+function renderAdminUsers(users) {
+    adminUsersTable.replaceChildren();
+
+    const headings = [
+        "User",
+        "Role",
+        "Status",
+        "Last seen",
+        "Workspaces",
+        "Experiments",
+        "Runs",
+        "Detailed reruns",
+        "Dataset rows",
+        "Candle evals",
+    ];
+    const head = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+
+    for (const heading of headings) {
+        const cell = document.createElement("th");
+        cell.textContent = heading;
+        headingRow.append(cell);
+    }
+
+    head.append(headingRow);
+    adminUsersTable.append(head);
+
+    const body = document.createElement("tbody");
+
+    for (const user of users) {
+        const row = document.createElement("tr");
+        row.append(
+            createTextCell(user.email),
+            createTextCell(user.accountRole),
+            createTextCell(user.status),
+            createTextCell(formatDateTime(user.lastSeenAt)),
+            createTextCell(user.workspaceCount),
+            createTextCell(user.experimentCount),
+            createTextCell(user.completedRunCount),
+            createTextCell(user.detailedRerunCount),
+            createTextCell(user.datasetRows?.toLocaleString?.() ?? user.datasetRows),
+            createTextCell(user.candleEvaluations?.toLocaleString?.() ?? user.candleEvaluations)
+        );
+        body.append(row);
+    }
+
+    adminUsersTable.append(body);
+    adminUsersTable.hidden = users.length === 0;
+    adminEmpty.hidden = users.length !== 0;
+
+    const activeUsers = users.filter((user) => user.status === "ACTIVE").length;
+    const memberUsers = users.filter((user) => user.accountRole === "MEMBER").length;
+    const experiments = users.reduce((sum, user) => sum + (user.experimentCount ?? 0), 0);
+    const detailedReruns = users.reduce((sum, user) => sum + (user.detailedRerunCount ?? 0), 0);
+
+    renderDashboardCards(adminSummaryCards, [
+        ["Users", users.length],
+        ["Active", activeUsers],
+        ["Members", memberUsers],
+        ["Experiments", experiments],
+        ["Detailed reruns", detailedReruns],
+    ]);
+}
+
+async function loadAdminUsers() {
+    if (currentUser?.account_role !== "OWNER") {
+        return;
+    }
+
+    adminStatus.textContent = "Loading users…";
+    refreshAdminButton.disabled = true;
+
+    try {
+        const response = await fetch("/api/admin/users");
+        const body = await readJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(body.error ?? "Unable to load admin users");
+        }
+
+        const users = body.users ?? [];
+        renderAdminUsers(users);
+        adminStatus.textContent = `${users.length} user${users.length === 1 ? "" : "s"} loaded`;
+        adminLoaded = true;
+    } catch (error) {
+        adminStatus.textContent = `Unable to load users: ${error.message}`;
+        adminLoaded = false;
+    } finally {
+        refreshAdminButton.disabled = false;
+    }
+}
+
+refreshAdminButton.addEventListener("click", () => {
+    adminLoaded = false;
+    loadAdminUsers();
+});
 
 function renderHistoryTable(experiments) {
     historyTable.replaceChildren();
