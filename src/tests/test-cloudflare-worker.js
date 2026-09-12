@@ -493,6 +493,8 @@ const me = await readJson(meResponse);
 assert.equal(meResponse.status, 200);
 assert.equal(me.user.id, "user-1");
 assert.equal(me.workspace.id, "workspace-1");
+assert.equal(me.usageLimits.maximumDateRangeDays, 365);
+assert.equal(me.usageLimits.maximumRuns, 20);
 
 const historyResponse = await handleRequest(
     apiRequest(
