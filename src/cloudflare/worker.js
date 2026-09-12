@@ -9,7 +9,10 @@ import {
     createD1UsageTracker,
 } from "./d1-dataset-loader.js";
 import { createD1ResearchRepository } from "./d1-research-repository.js";
-import { assessResearchExecution } from "./research-execution-gate.js";
+import {
+    assessResearchExecution,
+    getAccountUsageLimits,
+} from "./research-execution-gate.js";
 import { estimateResearchUsage } from "./research-usage-estimate.js";
 
 
@@ -771,8 +774,15 @@ export async function handleRequest(request, env = {}, {
 
             const repository = createResearchRepository({ db: env.RESEARCH_DB });
             const context = await repository.resolveUserContext(identity);
+            const usageLimits = getAccountUsageLimits(context.user.account_role);
 
-            return jsonResponse(context);
+            return jsonResponse({
+                ...context,
+                usageLimits: {
+                    ...usageLimits,
+                    strategies: [...usageLimits.strategies],
+                },
+            });
         }
 
         if (request.method === "GET" && url.pathname === "/api/experiments") {
