@@ -112,4 +112,75 @@ for (const run of result.runs) {
     assert.equal(run.status, "COMPLETED");
 }
 
+const genericResearchConfig = {
+    strategy: "generic",
+
+    strategySpec: {
+        version: 1,
+        name: "RSI research strategy",
+        side: "LONG",
+        entry: {
+            logic: "AND",
+            conditions: [
+                {
+                    type: "RSI_THRESHOLD",
+                    period: 14,
+                    operator: "BELOW",
+                    value: 30,
+                },
+            ],
+        },
+    },
+
+    market: researchConfig.market,
+    account: researchConfig.account,
+    execution: researchConfig.execution,
+};
+
+const genericPlan = planResearch(genericResearchConfig);
+
+assert.equal(genericPlan.strategy.id, "generic");
+assert.equal(genericPlan.strategy.name, "RSI research strategy");
+assert.equal(genericPlan.research.requestedCombinations, 1);
+assert.equal(genericPlan.research.validCombinations, 1);
+assert.equal(genericPlan.allowed, true);
+
+let genericRunCount = 0;
+
+const genericResult = await runResearch(genericResearchConfig, {
+    experimentId: "generic-strategy-research-test",
+
+    datasetLoader: async () => dataset,
+
+    runWithDataset: async ({ strategy }) => {
+        genericRunCount++;
+        assert.equal(strategy.name, "RSI research strategy");
+        assert.equal(typeof strategy.onCandle, "function");
+
+        return {
+            summary: {
+                totalTrades: 0,
+                winRate: 0,
+                totalPnlPips: 0,
+                netPnlAccount: 0,
+                returnPercent: 0,
+                profitFactor: null,
+                profitFactorAccount: null,
+                maxDrawdownPercent: 0,
+                expectancyPips: 0,
+            },
+            trades: [],
+            data: dataset.data,
+            config: genericResearchConfig.market,
+        };
+    },
+});
+
+assert.equal(genericRunCount, 1);
+assert.equal(genericResult.experiment.strategy.id, "generic");
+assert.equal(genericResult.experiment.strategy.name, "RSI research strategy");
+assert.equal(genericResult.runs.length, 1);
+assert.equal(genericResult.totals.completedRuns, 1);
+assert.equal(genericResult.totals.failedRuns, 0);
+
 console.log("Generic research runner test passed.");
