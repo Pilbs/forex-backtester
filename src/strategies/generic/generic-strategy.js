@@ -1,6 +1,6 @@
 import { createConditionGroup } from "./condition-evaluator.js";
 
-function validateDefinition(definition) {
+export function validateGenericStrategyDefinition(definition) {
     if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
         throw new Error("generic strategy definition must be an object");
     }
@@ -19,6 +19,13 @@ function validateDefinition(definition) {
         throw new Error("generic strategy side must be LONG or SHORT");
     }
 
+    // Build the condition groups once during validation so unsupported or
+    // malformed conditions fail before an experiment is planned.
+    createConditionGroup(definition.entry);
+    if (definition.exit) {
+        createConditionGroup(definition.exit);
+    }
+
     return {
         ...definition,
         side,
@@ -26,7 +33,7 @@ function validateDefinition(definition) {
 }
 
 export function createGenericStrategy({ definition } = {}) {
-    const config = validateDefinition(definition);
+    const config = validateGenericStrategyDefinition(definition);
     const entry = createConditionGroup(config.entry);
     const exit = config.exit ? createConditionGroup(config.exit) : null;
 
