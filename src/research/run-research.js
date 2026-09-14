@@ -8,12 +8,15 @@ import {
 } from "./research-config.js";
 
 import {
-    getStrategyDefinition,
-} from "../strategies/strategy-registry.js";
+    resolveResearchStrategyDefinition,
+} from "./research-strategy.js";
 
 function createBacktestExperimentConfig(config) {
     const normalizedConfig = normalizeResearchConfig(config);
-    const strategyDefinition = getStrategyDefinition(normalizedConfig.strategy);
+    const strategyDefinition = resolveResearchStrategyDefinition({
+        strategy: normalizedConfig.strategy,
+        strategySpec: normalizedConfig.strategySpec,
+    });
 
     return {
         strategyDefinition,
