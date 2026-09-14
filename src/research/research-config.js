@@ -1,4 +1,4 @@
-import { getStrategyDefinition } from "../strategies/strategy-registry.js";
+import { resolveResearchStrategyDefinition } from "./research-strategy.js";
 
 function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -62,7 +62,12 @@ export function normalizeResearchConfig(config) {
         throw new Error("strategy is required");
     }
 
-    const strategyDefinition = getStrategyDefinition(config.strategy);
+    const strategyId = config.strategy.trim();
+    const strategySpec = config.strategySpec;
+    const strategyDefinition = resolveResearchStrategyDefinition({
+        strategy: strategyId,
+        strategySpec,
+    });
     const market = copyObjectSection(config, "market", { required: true });
     const account = copyObjectSection(config, "account");
     const execution = copyObjectSection(config, "execution");
@@ -86,6 +91,9 @@ export function normalizeResearchConfig(config) {
 
     return {
         strategy: strategyDefinition.id,
+        strategySpec: strategyDefinition.id === "generic"
+            ? strategySpec
+            : undefined,
         market,
         account,
         execution,
