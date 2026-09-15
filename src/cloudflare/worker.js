@@ -2,6 +2,8 @@ import { planResearch, runResearch } from "../research/run-research.js";
 import { listStrategyMetadata } from "../strategies/strategy-registry.js";
 import { getGenericStrategyBuilderMetadata } from "../strategies/generic/generic-strategy-builder-metadata.js";
 import { validateGenericStrategySpecTemplate } from "../strategies/generic/generic-strategy-spec.js";
+import { resolveResearchStrategyDefinition } from "../research/research-strategy.js";
+import { validateStrategyDefinition } from "../strategies/strategy-definition.js";
 import {
     AuthenticationError,
     resolveCloudflareAccessIdentity,
@@ -281,6 +283,16 @@ function summarizeResearchResult(result) {
             error: run.error ?? null,
         })),
     };
+}
+
+function validateSavedStrategySpec(spec) {
+    validateGenericStrategySpecTemplate(spec);
+    const strategyDefinition = resolveResearchStrategyDefinition({
+        strategy: "generic",
+        strategySpec: spec,
+    });
+    validateStrategyDefinition(strategyDefinition);
+    return spec;
 }
 
 function serializeError(error) {
@@ -1073,7 +1085,7 @@ export async function handleRequest(request, env = {}, {
                 throw new Error("name is required");
             }
 
-            validateGenericStrategySpecTemplate(input.spec);
+            validateSavedStrategySpec(input.spec);
 
             const created = await repository.createSavedStrategy({
                 workspaceId: context.workspace.id,
@@ -1131,7 +1143,7 @@ export async function handleRequest(request, env = {}, {
             const input = await readJson(request);
 
             if (input.spec !== undefined) {
-                validateGenericStrategySpecTemplate(input.spec);
+                validateSavedStrategySpec(input.spec);
             }
 
             const updated = await repository.updateSavedStrategy({
