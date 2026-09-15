@@ -123,6 +123,51 @@ assert.ok(
     )
 );
 
+
+const savedStrategiesResponse = await handleRequest(
+    apiRequest("/api/saved-strategies"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const savedStrategiesBody = await readJson(savedStrategiesResponse);
+assert.equal(savedStrategiesResponse.status, 200);
+assert.equal(savedStrategiesBody.strategies[0].name, "RSI pullback");
+
+const createSavedStrategyResponse = await handleRequest(
+    apiRequest("/api/saved-strategies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            name: "New RSI strategy",
+            spec: {
+                version: 1,
+                name: "New RSI strategy",
+                side: "LONG",
+                entry: {
+                    logic: "AND",
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 14,
+                        operator: "BELOW",
+                        value: 30,
+                    }],
+                },
+            },
+        }),
+    }),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const createdSavedStrategy = await readJson(createSavedStrategyResponse);
+assert.equal(createSavedStrategyResponse.status, 201);
+assert.equal(createdSavedStrategy.strategy.name, "New RSI strategy");
+
 const config = createConfig();
 const planResponse = await handleRequest(
     apiRequest("/api/plan", {
@@ -238,6 +283,83 @@ const repository = {
             trades: [storedTrade],
             diagnosticEvents: [storedDiagnosticEvent],
         };
+    },
+    async listSavedStrategies(input) {
+        repositoryCalls.push(["listSavedStrategies", input]);
+        return [{
+            id: "strategy-1",
+            workspace_id: "workspace-1",
+            created_by_user_id: "user-1",
+            name: "RSI pullback",
+            description: "Saved strategy",
+            strategy_type: "GENERIC",
+            version: 1,
+            spec_json: JSON.stringify({
+                version: 1,
+                name: "RSI pullback",
+                side: "LONG",
+                entry: {
+                    logic: "AND",
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 14,
+                        operator: "BELOW",
+                        value: 30,
+                    }],
+                },
+            }),
+            created_at: 1_800_000_000_000,
+            updated_at: 1_800_000_000_100,
+        }];
+    },
+    async getSavedStrategy(input) {
+        repositoryCalls.push(["getSavedStrategy", input]);
+        return (await this.listSavedStrategies(input))[0];
+    },
+    async createSavedStrategy(input) {
+        repositoryCalls.push(["createSavedStrategy", input]);
+        return {
+            id: "strategy-created",
+            workspace_id: input.workspaceId,
+            created_by_user_id: input.createdByUserId,
+            name: input.name,
+            description: input.description ?? null,
+            strategy_type: "GENERIC",
+            version: 1,
+            spec_json: JSON.stringify(input.spec),
+            created_at: 1_800_000_000_000,
+            updated_at: 1_800_000_000_000,
+        };
+    },
+    async updateSavedStrategy(input) {
+        repositoryCalls.push(["updateSavedStrategy", input]);
+        return {
+            id: input.strategyId,
+            workspace_id: input.workspaceId,
+            created_by_user_id: "user-1",
+            name: input.name ?? "RSI pullback",
+            description: input.description ?? null,
+            strategy_type: "GENERIC",
+            version: 2,
+            spec_json: JSON.stringify(input.spec ?? {
+                version: 1,
+                side: "LONG",
+                entry: {
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 14,
+                        operator: "BELOW",
+                        value: 30,
+                    }],
+                },
+            }),
+            created_at: 1_800_000_000_000,
+            updated_at: 1_800_000_000_200,
+        };
+    },
+    async deleteSavedStrategy(input) {
+        repositoryCalls.push(["deleteSavedStrategy", input]);
+        return true;
     },
     async listAdminUsers() {
         repositoryCalls.push(["listAdminUsers"]);
