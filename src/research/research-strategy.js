@@ -6,6 +6,7 @@ import {
 import {
     getGenericStrategyParameters,
     resolveGenericStrategySpec,
+    validateGenericStrategySpecTemplate,
 } from "../strategies/generic/generic-strategy-spec.js";
 
 import { getStrategyDefinition } from "../strategies/strategy-registry.js";
@@ -30,14 +31,7 @@ export function resolveResearchStrategyDefinition({
         throw new Error("strategySpec is required when strategy is generic");
     }
 
-    if (strategySpec.version !== 1) {
-        throw new Error("generic strategy definition version must be 1");
-    }
-
-    if (!strategySpec.entry) {
-        throw new Error("generic strategy definition entry is required");
-    }
-
+    validateGenericStrategySpecTemplate(strategySpec);
     const parameters = getGenericStrategyParameters(strategySpec);
 
     return {
