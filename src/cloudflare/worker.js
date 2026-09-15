@@ -1,6 +1,7 @@
 import { planResearch, runResearch } from "../research/run-research.js";
 import { listStrategyMetadata } from "../strategies/strategy-registry.js";
 import { getGenericStrategyBuilderMetadata } from "../strategies/generic/generic-strategy-builder-metadata.js";
+import { validateGenericStrategySpecTemplate } from "../strategies/generic/generic-strategy-spec.js";
 import {
     AuthenticationError,
     resolveCloudflareAccessIdentity,
@@ -95,6 +96,21 @@ function serializeStoredExperiment(row, { includeConfig = false } = {}) {
     }
 
     return experiment;
+}
+
+function serializeSavedStrategy(row) {
+    return {
+        id: row.id,
+        workspaceId: row.workspace_id,
+        createdByUserId: row.created_by_user_id,
+        name: row.name,
+        description: row.description ?? null,
+        type: row.strategy_type,
+        version: row.version,
+        spec: parseStoredJson(row.spec_json, {}),
+        createdAt: toIsoTimestamp(row.created_at),
+        updatedAt: toIsoTimestamp(row.updated_at),
+    };
 }
 
 function serializeStoredRun(row, periods = []) {
@@ -1025,6 +1041,110 @@ export async function handleRequest(request, env = {}, {
                     ? serializeStoredRun(detail.sourceRun)
                     : null,
             });
+        }
+
+        if (
+            ["GET", "POST"].includes(request.method)
+            && url.pathname === "/api/saved-strategies"
+        ) {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "RESEARCH_DB D1 binding is unavailable",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+
+            if (request.method === "GET") {
+                const savedStrategies = await repository.listSavedStrategies({
+                    workspaceId: context.workspace.id,
+                });
+
+                return jsonResponse({
+                    strategies: savedStrategies.map(serializeSavedStrategy),
+                });
+            }
+
+            const input = await readJson(request);
+            const name = parseOptionalQueryText(input.name ?? null, "name");
+
+            if (!name) {
+                throw new Error("name is required");
+            }
+
+            validateGenericStrategySpecTemplate(input.spec);
+
+            const created = await repository.createSavedStrategy({
+                workspaceId: context.workspace.id,
+                createdByUserId: context.user.id,
+                name,
+                description: input.description,
+                spec: input.spec,
+            });
+
+            return jsonResponse({
+                strategy: serializeSavedStrategy(created),
+            }, 201);
+        }
+
+        const savedStrategyMatch = url.pathname.match(
+            /^\/api\/saved-strategies\/([^/]+)$/
+        );
+
+        if (
+            savedStrategyMatch
+            && ["GET", "PUT", "DELETE"].includes(request.method)
+        ) {
+            if (!env.RESEARCH_DB?.prepare) {
+                return jsonResponse({
+                    error: "RESEARCH_DB D1 binding is unavailable",
+                }, 503);
+            }
+
+            const repository = createResearchRepository({ db: env.RESEARCH_DB });
+            const context = await repository.resolveUserContext(identity);
+            const strategyId = decodeURIComponent(savedStrategyMatch[1]);
+
+            if (request.method === "GET") {
+                const strategy = await repository.getSavedStrategy({
+                    workspaceId: context.workspace.id,
+                    strategyId,
+                });
+
+                return strategy
+                    ? jsonResponse({ strategy: serializeSavedStrategy(strategy) })
+                    : jsonResponse({ error: "Saved strategy not found" }, 404);
+            }
+
+            if (request.method === "DELETE") {
+                const deleted = await repository.deleteSavedStrategy({
+                    workspaceId: context.workspace.id,
+                    strategyId,
+                });
+
+                return deleted
+                    ? jsonResponse({ deleted: true })
+                    : jsonResponse({ error: "Saved strategy not found" }, 404);
+            }
+
+            const input = await readJson(request);
+
+            if (input.spec !== undefined) {
+                validateGenericStrategySpecTemplate(input.spec);
+            }
+
+            const updated = await repository.updateSavedStrategy({
+                workspaceId: context.workspace.id,
+                strategyId,
+                name: input.name,
+                description: input.description,
+                spec: input.spec,
+            });
+
+            return updated
+                ? jsonResponse({ strategy: serializeSavedStrategy(updated) })
+                : jsonResponse({ error: "Saved strategy not found" }, 404);
         }
 
         if (request.method === "GET" && url.pathname === "/api/strategies") {
