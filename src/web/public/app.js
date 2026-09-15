@@ -25,6 +25,7 @@ const backToStrategiesButton = document.querySelector("#back-to-strategies-butto
 const strategyBuilderTitle = document.querySelector("#strategy-builder-title");
 const strategyBuilderStatus = document.querySelector("#strategy-builder-status");
 const builderName = document.querySelector("#builder-name");
+const builderNameError = document.querySelector("#builder-name-error");
 const builderDescription = document.querySelector("#builder-description");
 const builderDirectionControls = [...document.querySelectorAll('input[name="builder-direction"]')];
 const builderShortModeControls = [...document.querySelectorAll('input[name="builder-short-mode"]')];
@@ -982,7 +983,7 @@ function describeBuilderPosition(side, position, parameters) {
 
 function updateBuilderSummary() {
     try {
-        const { spec } = collectBuilderStrategy();
+        const { spec } = collectBuilderStrategy({ requireName: false });
         const lines = [];
 
         if (spec.positions.long) {
@@ -1221,10 +1222,10 @@ function sharedBuilderRisk() {
     return Object.keys(risk).length ? risk : undefined;
 }
 
-function collectBuilderStrategy() {
+function collectBuilderStrategy({ requireName = true } = {}) {
     const name = builderName.value.trim();
 
-    if (!name) throw new Error("Strategy name is required");
+    if (!name && requireName) throw new Error("Strategy name is required");
 
     const direction = currentBuilderDirection();
     const parameters = {};
@@ -1280,7 +1281,7 @@ function collectBuilderStrategy() {
         description: builderDescription.value.trim() || undefined,
         spec: {
             version: 2,
-            name,
+            name: name || "Untitled strategy",
             builderMode,
             parameters,
             positions,
@@ -1532,7 +1533,29 @@ function useSavedStrategyInExperiment(saved) {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function clearBuilderValidation() {
+    builderName.removeAttribute("aria-invalid");
+    builderName.classList.remove("is-invalid");
+    if (builderNameError) builderNameError.textContent = "";
+    strategyBuilderStatus.classList.remove("is-error");
+}
+
+function showBuilderError(error) {
+    const message = error?.message ?? String(error);
+    strategyBuilderStatus.textContent = message;
+    strategyBuilderStatus.classList.add("is-error");
+
+    if (message === "Strategy name is required") {
+        builderName.setAttribute("aria-invalid", "true");
+        builderName.classList.add("is-invalid");
+        if (builderNameError) builderNameError.textContent = "Give this strategy a name before saving.";
+        builderName.focus();
+        builderName.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+}
+
 async function saveBuilderStrategy({ runAfterSave = false, duplicate = false } = {}) {
+    clearBuilderValidation();
     const payload = collectBuilderStrategy();
     saveStrategyButton.disabled = true;
     saveAndRunStrategyButton.disabled = true;
@@ -1574,6 +1597,7 @@ async function saveBuilderStrategy({ runAfterSave = false, duplicate = false } =
             ? `saved:${body.strategy.id}`
             : undefined);
 
+        strategyBuilderStatus.classList.remove("is-error");
         strategyBuilderStatus.textContent = "Strategy saved. Ready to research.";
 
         if (runAfterSave && body.strategy) {
@@ -1593,7 +1617,10 @@ addEntryConditionButton.addEventListener("click", () => createBuilderConditionCa
 addExitConditionButton.addEventListener("click", () => createBuilderConditionCard("exit"));
 addShortEntryConditionButton.addEventListener("click", () => createBuilderConditionCard("short-entry"));
 addShortExitConditionButton.addEventListener("click", () => createBuilderConditionCard("short-exit"));
-builderName.addEventListener("input", updateBuilderSummary);
+builderName.addEventListener("input", () => {
+    if (builderName.value.trim()) clearBuilderValidation();
+    updateBuilderSummary();
+});
 builderEntryLogic.addEventListener("change", updateBuilderSummary);
 builderExitLogic.addEventListener("change", updateBuilderSummary);
 builderShortEntryLogic.addEventListener("change", updateBuilderSummary);
@@ -1613,7 +1640,7 @@ saveStrategyButton.addEventListener("click", async () => {
     try {
         await saveBuilderStrategy();
     } catch (error) {
-        strategyBuilderStatus.textContent = error.message;
+        showBuilderError(error);
     }
 });
 
@@ -1621,7 +1648,7 @@ saveAndRunStrategyButton.addEventListener("click", async () => {
     try {
         await saveBuilderStrategy({ runAfterSave: true });
     } catch (error) {
-        strategyBuilderStatus.textContent = error.message;
+        showBuilderError(error);
     }
 });
 
@@ -1629,7 +1656,7 @@ duplicateStrategyButton.addEventListener("click", async () => {
     try {
         await saveBuilderStrategy({ duplicate: true });
     } catch (error) {
-        strategyBuilderStatus.textContent = error.message;
+        showBuilderError(error);
     }
 });
 
