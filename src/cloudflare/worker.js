@@ -1,5 +1,6 @@
 import { planResearch, runResearch } from "../research/run-research.js";
 import { listStrategyMetadata } from "../strategies/strategy-registry.js";
+import { getGenericStrategyBuilderMetadata } from "../strategies/generic/generic-strategy-builder-metadata.js";
 import {
     AuthenticationError,
     resolveCloudflareAccessIdentity,
@@ -1029,6 +1030,7 @@ export async function handleRequest(request, env = {}, {
         if (request.method === "GET" && url.pathname === "/api/strategies") {
             return jsonResponse({
                 strategies: listStrategyMetadata(),
+                genericBuilder: getGenericStrategyBuilderMetadata(),
             });
         }
 
