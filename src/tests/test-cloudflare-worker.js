@@ -124,50 +124,6 @@ assert.ok(
 );
 
 
-const savedStrategiesResponse = await handleRequest(
-    apiRequest("/api/saved-strategies"),
-    { RESEARCH_DB: { prepare() {} } },
-    {
-        ...authenticatedDependencies,
-        createResearchRepository: () => repository,
-    }
-);
-const savedStrategiesBody = await readJson(savedStrategiesResponse);
-assert.equal(savedStrategiesResponse.status, 200);
-assert.equal(savedStrategiesBody.strategies[0].name, "RSI pullback");
-
-const createSavedStrategyResponse = await handleRequest(
-    apiRequest("/api/saved-strategies", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-            name: "New RSI strategy",
-            spec: {
-                version: 1,
-                name: "New RSI strategy",
-                side: "LONG",
-                entry: {
-                    logic: "AND",
-                    conditions: [{
-                        type: "RSI_THRESHOLD",
-                        period: 14,
-                        operator: "BELOW",
-                        value: 30,
-                    }],
-                },
-            },
-        }),
-    }),
-    { RESEARCH_DB: { prepare() {} } },
-    {
-        ...authenticatedDependencies,
-        createResearchRepository: () => repository,
-    }
-);
-const createdSavedStrategy = await readJson(createSavedStrategyResponse);
-assert.equal(createSavedStrategyResponse.status, 201);
-assert.equal(createdSavedStrategy.strategy.name, "New RSI strategy");
-
 const config = createConfig();
 const planResponse = await handleRequest(
     apiRequest("/api/plan", {
@@ -409,6 +365,51 @@ const repository = {
         };
     },
 };
+
+const savedStrategiesResponse = await handleRequest(
+    apiRequest("/api/saved-strategies"),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const savedStrategiesBody = await readJson(savedStrategiesResponse);
+assert.equal(savedStrategiesResponse.status, 200);
+assert.equal(savedStrategiesBody.strategies[0].name, "RSI pullback");
+
+const createSavedStrategyResponse = await handleRequest(
+    apiRequest("/api/saved-strategies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            name: "New RSI strategy",
+            spec: {
+                version: 1,
+                name: "New RSI strategy",
+                side: "LONG",
+                entry: {
+                    logic: "AND",
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 14,
+                        operator: "BELOW",
+                        value: 30,
+                    }],
+                },
+            },
+        }),
+    }),
+    { RESEARCH_DB: { prepare() {} } },
+    {
+        ...authenticatedDependencies,
+        createResearchRepository: () => repository,
+    }
+);
+const createdSavedStrategy = await readJson(createSavedStrategyResponse);
+assert.equal(createSavedStrategyResponse.status, 201);
+assert.equal(createdSavedStrategy.strategy.name, "New RSI strategy");
+
 
 const blockedConfig = createConfig();
 blockedConfig.market.executionTimeframe = "M1";
