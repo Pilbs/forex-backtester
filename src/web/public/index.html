@@ -99,7 +99,8 @@
 
                 <div class="grid grid-3">
                     <label>Strategy name
-                        <input id="builder-name" maxlength="100" placeholder="e.g. RSI EMA pullback" required>
+                        <input id="builder-name" maxlength="100" placeholder="e.g. RSI EMA pullback" required aria-describedby="builder-name-error">
+                        <span id="builder-name-error" class="field-error" aria-live="polite"></span>
                     </label>
                     <fieldset class="builder-direction-picker">
                         <legend>Which directions should this strategy use?</legend>
@@ -127,8 +128,8 @@
                         </div>
                         <label class="compact-control">Match
                             <select id="builder-entry-logic">
-                                <option value="AND">AND</option>
-                                <option value="OR">OR</option>
+                                <option value="AND">All conditions</option>
+                                <option value="OR">Any condition</option>
                             </select>
                         </label>
                     </div>
@@ -142,10 +143,10 @@
                             <h3 id="builder-primary-exit-title">When to exit</h3>
                             <p>Optional rules for closing a trade. Stop loss and take profit can also close it.</p>
                         </div>
-                        <label class="compact-control">Combine
+                        <label class="compact-control">Match
                             <select id="builder-exit-logic">
-                                <option value="AND">AND</option>
-                                <option value="OR">OR</option>
+                                <option value="AND">All conditions</option>
+                                <option value="OR">Any condition</option>
                             </select>
                         </label>
                     </div>
@@ -168,10 +169,10 @@
                                 <h3>Short entry</h3>
                                 <p>These rules must match before a short trade opens.</p>
                             </div>
-                            <label class="compact-control">Combine
+                            <label class="compact-control">Match
                                 <select id="builder-short-entry-logic">
-                                    <option value="AND">AND</option>
-                                    <option value="OR">OR</option>
+                                    <option value="AND">All conditions</option>
+                                    <option value="OR">Any condition</option>
                                 </select>
                             </label>
                         </div>
@@ -185,10 +186,10 @@
                                 <h3>Short exit</h3>
                                 <p>Optional rules for closing a short trade.</p>
                             </div>
-                            <label class="compact-control">Combine
+                            <label class="compact-control">Match
                                 <select id="builder-short-exit-logic">
-                                    <option value="AND">AND</option>
-                                    <option value="OR">OR</option>
+                                    <option value="AND">All conditions</option>
+                                    <option value="OR">Any condition</option>
                                 </select>
                             </label>
                         </div>
