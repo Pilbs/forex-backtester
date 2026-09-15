@@ -78,8 +78,30 @@
                     </div>
                     <button id="new-strategy-button" type="button">+ Build new strategy</button>
                 </div>
-                <p id="strategies-status" class="estimate-note"></p>
-                <div id="saved-strategy-grid" class="strategy-card-grid"></div>
+                <div class="strategy-list-toolbar">
+                    <p id="strategies-status" class="estimate-note"></p>
+                    <div class="view-switch" role="group" aria-label="Strategy list view">
+                        <button id="strategy-table-view-button" type="button" class="view-switch-button is-active"
+                            aria-pressed="true" title="Table view">Table</button>
+                        <button id="strategy-card-view-button" type="button" class="view-switch-button"
+                            aria-pressed="false" title="Card view">Cards</button>
+                    </div>
+                </div>
+                <div id="saved-strategy-table-wrap" class="strategy-table-wrap">
+                    <table id="saved-strategy-table" class="strategy-table">
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>Direction</th>
+                                <th>Entry rules</th>
+                                <th>Version</th>
+                                <th class="strategy-table-actions-heading">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="saved-strategy-grid" class="strategy-card-grid" hidden></div>
                 <div id="strategies-empty" class="empty-state" hidden>
                     No saved strategies yet. Build your first strategy to define the rules you want to research.
                 </div>
