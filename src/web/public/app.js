@@ -213,6 +213,56 @@ function conditionsForParameter(parameter) {
         : [parameter.enabledWhen];
 }
 
+function currentTestMode() {
+    return testModeControls.find((control) => control.checked)?.value ?? "single";
+}
+
+function updateTestModeVisibility() {
+    const researchMode = currentTestMode() === "research";
+
+    for (const row of parameterContainer.querySelectorAll(".parameter-row")) {
+        const sweepWrap = row.querySelector(".parameter-sweep");
+        if (sweepWrap) {
+            sweepWrap.hidden = !researchMode;
+        }
+    }
+
+    if (strategyParameterHelp) {
+        strategyParameterHelp.textContent = researchMode
+            ? "Choose base values and optional sweep values. You will review run count and usage before execution."
+            : "Set the base values used for a single backtest.";
+    }
+}
+
+function parameterMetadataFromSpec(spec) {
+    return Object.entries(spec.parameters ?? {}).map(([id, definition]) => ({
+        id,
+        type: definition.type,
+        label: definition.label ?? id,
+        description: definition.description,
+        required: definition.required === true,
+        sweepable: definition.sweepable !== false,
+        default: definition.default,
+        options: definition.options,
+        min: definition.min,
+        max: definition.max,
+    }));
+}
+
+function savedStrategyAsResearchStrategy(saved) {
+    return {
+        id: `saved:${saved.id}`,
+        executionStrategy: "generic",
+        savedStrategyId: saved.id,
+        name: saved.name,
+        description: saved.description,
+        version: saved.version,
+        parameters: parameterMetadataFromSpec(saved.spec),
+        strategySpec: saved.spec,
+        source: "saved",
+    };
+}
+
 function readParameterFormValues(strategy) {
     const baseValues = {};
     const sweepValues = {};
@@ -311,6 +361,7 @@ function renderParameters(strategy) {
 
         if (parameter.sweepable) {
             const sweepWrap = document.createElement("label");
+            sweepWrap.className = "parameter-sweep";
             sweepWrap.innerHTML = "<span>Sweep values</span>";
 
             const sweepInput = document.createElement("input");
@@ -332,6 +383,11 @@ function renderParameters(strategy) {
     }
 
     updateParameterDependencies(strategy);
+    updateTestModeVisibility();
+}
+
+for (const control of testModeControls) {
+    control.addEventListener("change", updateTestModeVisibility);
 }
 
 parameterContainer.addEventListener("input", () => updateParameterDependencies());
@@ -525,6 +581,7 @@ function buildConfig() {
     const strategy = selectedStrategy();
     const strategyConfig = {};
     const parameterGrid = {};
+    const researchMode = currentTestMode() === "research";
 
     for (const parameter of strategy.parameters) {
         const baseControl = document.querySelector(
@@ -539,7 +596,11 @@ function buildConfig() {
             `[data-role="sweep"][data-parameter-id="${parameter.id}"]`
         );
 
-        if (sweepControl?.value.trim() && !sweepControl.disabled) {
+        if (
+            researchMode
+            && sweepControl?.value.trim()
+            && !sweepControl.disabled
+        ) {
             parameterGrid[parameter.id] = sweepControl.value
                 .split(",")
                 .map((value) => value.trim())
@@ -548,9 +609,9 @@ function buildConfig() {
         }
     }
 
-    return {
+    const config = {
         name: document.querySelector("#experiment-name").value.trim() || undefined,
-        strategy: strategy.id,
+        strategy: strategy.executionStrategy ?? strategy.id,
         market: {
             instrument: document.querySelector("#instrument").value.trim(),
             strategyTimeframe: document.querySelector("#strategy-timeframe").value.trim(),
@@ -578,8 +639,16 @@ function buildConfig() {
             closeOpenTradesAtEnd: true,
         },
         strategyConfig,
-        parameterGrid,       
+        parameterGrid,
     };
+
+    if (strategy.strategySpec) {
+        config.strategySpec = strategy.strategySpec;
+        config.savedStrategyId = strategy.savedStrategyId;
+        config.savedStrategyVersion = strategy.version;
+    }
+
+    return config;
 }
 
 function summaryCard(label, value) {
