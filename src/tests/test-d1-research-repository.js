@@ -55,6 +55,7 @@ const migrations = await Promise.all([
     "0001_research_foundation.sql",
     "0002_detailed_run_events.sql",
     "0003_account_roles.sql",
+    "0004_saved_strategies.sql",
 ].map((filename) => readFile(
     new URL(`../../migrations/research/${filename}`, import.meta.url),
     "utf8"
@@ -93,6 +94,56 @@ assert.equal(secondContext.workspace.id, firstContext.workspace.id);
 assert.equal(database.prepare("SELECT COUNT(*) AS count FROM users").get().count, 1);
 assert.equal(database.prepare("SELECT COUNT(*) AS count FROM workspaces").get().count, 1);
 assert.equal(database.prepare("SELECT COUNT(*) AS count FROM workspace_members").get().count, 1);
+
+const savedStrategy = await repository.createSavedStrategy({
+    workspaceId: firstContext.workspace.id,
+    createdByUserId: firstContext.user.id,
+    name: "RSI pullback",
+    description: "Simple saved generic strategy",
+    spec: {
+        version: 1,
+        side: "LONG",
+        entry: {
+            logic: "AND",
+            conditions: [{
+                type: "RSI_THRESHOLD",
+                period: 14,
+                operator: "BELOW",
+                value: 30,
+            }],
+        },
+    },
+});
+
+assert.equal(savedStrategy.name, "RSI pullback");
+assert.equal(savedStrategy.version, 1);
+
+const savedStrategies = await repository.listSavedStrategies({
+    workspaceId: firstContext.workspace.id,
+});
+assert.equal(savedStrategies.length, 1);
+
+const updatedSavedStrategy = await repository.updateSavedStrategy({
+    workspaceId: firstContext.workspace.id,
+    strategyId: savedStrategy.id,
+    name: "RSI pullback v2",
+    spec: {
+        version: 1,
+        side: "LONG",
+        entry: {
+            logic: "AND",
+            conditions: [{
+                type: "RSI_THRESHOLD",
+                period: 14,
+                operator: "BELOW",
+                value: 25,
+            }],
+        },
+    },
+});
+
+assert.equal(updatedSavedStrategy.name, "RSI pullback v2");
+assert.equal(updatedSavedStrategy.version, 2);
 
 const experiment = await repository.createExperiment({
     id: "experiment-1",
