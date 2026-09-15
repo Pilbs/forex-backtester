@@ -1978,3 +1978,88 @@ html[data-ui-theme="terminal"] .builder-side-badge {
     grid-column: 1 / -1;
     order: 3;
 }
+
+
+/* === STRATEGY BUILDER POLISH === */
+.field-error {
+    min-height: 16px;
+    color: #a33a3a;
+    font-size: 12px;
+}
+
+input.is-invalid,
+input[aria-invalid="true"] {
+    border-color: #c34b4b;
+    box-shadow: 0 0 0 2px rgba(195, 75, 75, 0.1);
+}
+
+#strategy-builder-status {
+    min-height: 18px;
+    padding: 2px 0;
+}
+
+#strategy-builder-status.is-error {
+    color: #a33a3a;
+    font-weight: 700;
+}
+
+.builder-condition-head {
+    grid-template-columns: auto minmax(190px, 280px) 1fr auto;
+}
+
+.builder-condition-head .small-button {
+    justify-self: end;
+    min-width: auto;
+    padding: 7px 10px;
+}
+
+.builder-condition-head::before {
+    min-width: 58px;
+}
+
+.builder-section .compact-control {
+    min-width: 160px;
+    max-width: 180px;
+    flex-basis: 180px;
+}
+
+.builder-summary h3 {
+    margin-top: 0;
+}
+
+.builder-summary {
+    padding: 16px 18px;
+}
+
+#strategy-builder-panel > .actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin: 18px -20px -18px;
+    padding: 12px 20px;
+    border-top: 1px solid #dde3ed;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+}
+
+html[data-ui-theme="terminal"] #strategy-builder-panel > .actions {
+    border-top-color: #284337;
+    background: rgba(2, 5, 4, 0.96);
+}
+
+@media (max-width: 760px) {
+    #strategy-builder-panel > .actions {
+        margin-left: -14px;
+        margin-right: -14px;
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .builder-condition-head {
+        grid-template-columns: 1fr;
+    }
+
+    .builder-condition-head .small-button {
+        justify-self: start;
+    }
+}
