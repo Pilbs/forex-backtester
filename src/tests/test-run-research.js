@@ -172,16 +172,10 @@ const genericResult = await runResearch(genericResearchConfig, {
 
     datasetLoader: async () => dataset,
 
-    runWithDataset: async ({
-        strategy,
-        strategyConfig,
-        parameterValues,
-    }) => {
+    runWithDataset: async ({ strategy }) => {
         genericRunCount++;
         assert.equal(strategy.name, "Sweepable RSI research strategy");
         assert.equal(typeof strategy.onCandle, "function");
-        assert.equal(strategyConfig.rsiThreshold, parameterValues.rsiThreshold);
-        assert.equal(strategyConfig.rsiPeriod, parameterValues.rsiPeriod);
 
         return {
             summary: {
@@ -219,6 +213,18 @@ assert.equal(genericResult.experiment.strategy.name, "Sweepable RSI research str
 assert.equal(genericResult.runs.length, 4);
 assert.equal(genericResult.totals.completedRuns, 4);
 assert.equal(genericResult.totals.failedRuns, 0);
+
+for (const run of genericResult.runs) {
+    assert.equal(run.status, "COMPLETED");
+    assert.equal(
+        run.strategyConfig.rsiThreshold,
+        run.parameterValues.rsiThreshold
+    );
+    assert.equal(
+        run.strategyConfig.rsiPeriod,
+        run.parameterValues.rsiPeriod
+    );
+}
 
 const sweptValues = new Set(
     genericResult.runs.map((run) => JSON.stringify(run.parameterValues))
