@@ -60,11 +60,118 @@
         <nav class="workspace-nav" aria-label="Research workspace">
             <button type="button" class="workspace-nav-button is-active" data-view-choice="research"
                 aria-pressed="true">New experiment</button>
+            <button type="button" class="workspace-nav-button" data-view-choice="strategies"
+                aria-pressed="false">Strategies</button>
             <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research
                 history</button>
             <button id="admin-nav-button" type="button" class="workspace-nav-button" data-view-choice="admin"
                 aria-pressed="false" hidden>Admin</button>
         </nav>
+
+        <section id="strategies-view" hidden>
+            <section id="strategies-list-panel" class="panel">
+                <div class="section-heading split-heading">
+                    <div>
+                        <h2>Strategies</h2>
+                        <p>Build, save and reuse your own strategy logic. Run a single backtest first, then research parameter variations when you are ready.</p>
+                    </div>
+                    <button id="new-strategy-button" type="button">+ New strategy</button>
+                </div>
+                <p id="strategies-status" class="estimate-note"></p>
+                <div id="saved-strategy-grid" class="strategy-card-grid"></div>
+                <div id="strategies-empty" class="empty-state" hidden>
+                    No saved strategies yet. Create one to start testing your own rules.
+                </div>
+            </section>
+
+            <section id="strategy-builder-panel" class="panel" hidden>
+                <div class="detail-toolbar">
+                    <button id="back-to-strategies-button" type="button" class="secondary-button">← Back to strategies</button>
+                    <span id="strategy-builder-status" class="estimate-note"></span>
+                </div>
+
+                <div class="section-heading">
+                    <h2 id="strategy-builder-title">New strategy</h2>
+                    <p>Define exactly what should trigger an entry and exit. Research parameters can be varied later in an experiment.</p>
+                </div>
+
+                <div class="grid grid-3">
+                    <label>Strategy name
+                        <input id="builder-name" maxlength="100" placeholder="e.g. RSI EMA pullback" required>
+                    </label>
+                    <label>Direction
+                        <select id="builder-side">
+                            <option value="LONG">Long</option>
+                            <option value="SHORT">Short</option>
+                        </select>
+                    </label>
+                    <label>Description
+                        <input id="builder-description" maxlength="240" placeholder="Optional note">
+                    </label>
+                </div>
+
+                <section class="builder-section">
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h3>When to enter</h3>
+                            <p>All conditions are evaluated on the strategy timeframe.</p>
+                        </div>
+                        <label class="compact-control">Combine
+                            <select id="builder-entry-logic">
+                                <option value="AND">AND</option>
+                                <option value="OR">OR</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="builder-entry-conditions" class="builder-condition-list"></div>
+                    <button id="add-entry-condition-button" type="button" class="secondary-button">+ Add entry condition</button>
+                </section>
+
+                <section class="builder-section">
+                    <div class="section-heading split-heading">
+                        <div>
+                            <h3>When to exit</h3>
+                            <p>Optional. If no exit condition is added, exits can still be driven by stop loss, take profit or end-of-test rules.</p>
+                        </div>
+                        <label class="compact-control">Combine
+                            <select id="builder-exit-logic">
+                                <option value="AND">AND</option>
+                                <option value="OR">OR</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="builder-exit-conditions" class="builder-condition-list"></div>
+                    <button id="add-exit-condition-button" type="button" class="secondary-button">+ Add exit condition</button>
+                </section>
+
+                <section class="builder-section">
+                    <div class="section-heading">
+                        <h3>Risk & trade management</h3>
+                        <p>Keep this simple for now: optional fixed stop loss and take profit in pips.</p>
+                    </div>
+                    <div class="grid grid-3">
+                        <label>Stop loss (pips)
+                            <input id="builder-stop-loss" type="number" min="0" step="any" placeholder="Optional">
+                        </label>
+                        <label>Take profit (pips)
+                            <input id="builder-take-profit" type="number" min="0" step="any" placeholder="Optional">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="builder-summary">
+                    <h3>Strategy summary</h3>
+                    <div id="builder-summary-text" class="strategy-summary-text"></div>
+                </section>
+
+                <div class="actions">
+                    <button id="save-strategy-button" type="button">Save strategy</button>
+                    <button id="save-and-run-strategy-button" type="button" class="secondary-button">Save & run test</button>
+                    <button id="duplicate-strategy-button" type="button" class="secondary-button" hidden>Duplicate</button>
+                    <button id="delete-strategy-button" type="button" class="danger-button" hidden>Delete</button>
+                </div>
+            </section>
+        </section>
 
         <section id="research-view">
             <form id="research-form">
@@ -150,11 +257,27 @@
                 </section>
 
                 <section class="panel">
+                    <div class="section-heading">
+                        <h2>Test type</h2>
+                        <p>Start with a single backtest. Parameter research runs multiple variations and consumes more of your plan allowance.</p>
+                    </div>
+                    <div class="test-mode-options" role="radiogroup" aria-label="Test type">
+                        <label class="test-mode-card">
+                            <input type="radio" name="test-mode" value="single" checked>
+                            <span><strong>Single backtest</strong><small>Run the strategy once with the base values below.</small></span>
+                        </label>
+                        <label class="test-mode-card">
+                            <input type="radio" name="test-mode" value="research">
+                            <span><strong>Parameter research</strong><small>Test multiple parameter values. You must review estimated usage before running.</small></span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="panel">
                     <div class="section-heading split-heading">
                         <div>
                             <h2>Strategy parameters</h2>
-                            <p>Set a base value and optional sweep values, or save the current strategy defaults in this
-                                browser.</p>
+                            <p id="strategy-parameter-help">Set the base values used for a single backtest.</p>
                         </div>
                         <div class="detail-actions">
                             <button id="save-defaults-button" type="button" class="secondary-button">Save strategy
@@ -168,13 +291,14 @@
                 </section>
 
                 <div class="actions">
-                    <button id="plan-button" type="submit">Validate experiment plan</button>
+                    <button id="plan-button" type="submit">Review experiment</button>
                     <span id="request-status"></span>
                 </div>
             </form>
 
             <section id="result-panel" class="panel result-panel" hidden>
-                <h2>Experiment preview</h2>
+                <h2>Experiment review</h2>
+                <p id="review-intro" class="estimate-note"></p>
                 <div id="summary-cards" class="summary-cards"></div>
                 <h3>Estimated cloud workload</h3>
                 <div id="usage-cards" class="summary-cards"></div>
