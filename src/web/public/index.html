@@ -112,10 +112,16 @@
                     </label>
                 </div>
 
-                <section class="builder-section">
+                <div id="builder-both-options" class="builder-both-options" hidden>
+                    <strong>Long & short strategy</strong>
+                    <label><input type="radio" name="builder-short-mode" value="MIRRORED" checked> Mirror long rules</label>
+                    <label><input type="radio" name="builder-short-mode" value="INDEPENDENT"> Define short rules separately</label>
+                </div>
+
+                <section class="builder-section" id="builder-primary-entry-section">
                     <div class="section-heading split-heading">
                         <div>
-                            <h3>When to enter</h3>
+                            <h3 id="builder-primary-entry-title">When to enter</h3>
                             <p>These rules must be true before StratTest opens a trade.</p>
                         </div>
                         <label class="compact-control">Combine
@@ -129,10 +135,10 @@
                     <button id="add-entry-condition-button" type="button" class="secondary-button">+ Add entry condition</button>
                 </section>
 
-                <section class="builder-section">
+                <section class="builder-section" id="builder-primary-exit-section">
                     <div class="section-heading split-heading">
                         <div>
-                            <h3>When to exit</h3>
+                            <h3 id="builder-primary-exit-title">When to exit</h3>
                             <p>Optional rules for closing a trade. Stop loss and take profit can also close it.</p>
                         </div>
                         <label class="compact-control">Combine
@@ -144,6 +150,50 @@
                     </div>
                     <div id="builder-exit-conditions" class="builder-condition-list"></div>
                     <button id="add-exit-condition-button" type="button" class="secondary-button">+ Add exit condition</button>
+                </section>
+
+                <section id="builder-short-rules-panel" class="builder-side-panel" hidden>
+                    <div class="builder-side-heading">
+                        <span class="builder-side-badge">SHORT</span>
+                        <div>
+                            <h3>Short rules</h3>
+                            <p>Define short-side rules separately from the long side.</p>
+                        </div>
+                    </div>
+
+                    <section class="builder-section">
+                        <div class="section-heading split-heading">
+                            <div>
+                                <h3>Short entry</h3>
+                                <p>These rules must match before a short trade opens.</p>
+                            </div>
+                            <label class="compact-control">Combine
+                                <select id="builder-short-entry-logic">
+                                    <option value="AND">AND</option>
+                                    <option value="OR">OR</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div id="builder-short-entry-conditions" class="builder-condition-list"></div>
+                        <button id="add-short-entry-condition-button" type="button" class="secondary-button">+ Add short entry condition</button>
+                    </section>
+
+                    <section class="builder-section">
+                        <div class="section-heading split-heading">
+                            <div>
+                                <h3>Short exit</h3>
+                                <p>Optional rules for closing a short trade.</p>
+                            </div>
+                            <label class="compact-control">Combine
+                                <select id="builder-short-exit-logic">
+                                    <option value="AND">AND</option>
+                                    <option value="OR">OR</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div id="builder-short-exit-conditions" class="builder-condition-list"></div>
+                        <button id="add-short-exit-condition-button" type="button" class="secondary-button">+ Add short exit condition</button>
+                    </section>
                 </section>
 
                 <section class="builder-section">
