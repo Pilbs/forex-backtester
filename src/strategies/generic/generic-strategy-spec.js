@@ -179,6 +179,26 @@ export function validateGenericStrategySpecTemplate(strategySpec) {
         validateConditionGroupTemplate(strategySpec.exit);
     }
 
+    if (strategySpec.risk !== undefined) {
+        if (!isPlainObject(strategySpec.risk)) {
+            throw new Error("generic strategy risk must be an object");
+        }
+
+        if (strategySpec.risk.stopLossPips !== undefined) {
+            requireFiniteNumberOrReference(
+                strategySpec.risk.stopLossPips,
+                "stop loss pips"
+            );
+        }
+
+        if (strategySpec.risk.takeProfitPips !== undefined) {
+            requireFiniteNumberOrReference(
+                strategySpec.risk.takeProfitPips,
+                "take profit pips"
+            );
+        }
+    }
+
     return strategySpec;
 }
 
@@ -195,6 +215,7 @@ export function getGenericStrategyParameters(strategySpec) {
         side: strategySpec.side,
         entry: strategySpec.entry,
         exit: strategySpec.exit,
+        risk: strategySpec.risk,
     });
 
     for (const parameterName of references) {
