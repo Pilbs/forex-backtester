@@ -278,6 +278,7 @@ function summarizeResearchResult(result) {
             parameterValues: run.parameterValues,
             strategyConfig: run.strategyConfig,
             summary: run.summary ?? null,
+            detailCounts: run.detailCounts ?? {},
             rejectionReasons: run.rejectionReasons ?? {},
             elapsedMs: run.elapsedMs,
             error: run.error ?? null,
