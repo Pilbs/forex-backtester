@@ -1,4 +1,13 @@
-import { createGenericStrategy, validateGenericStrategyDefinition } from "../strategies/generic/generic-strategy.js";
+import {
+    createGenericStrategy,
+    validateGenericStrategyDefinition,
+} from "../strategies/generic/generic-strategy.js";
+
+import {
+    getGenericStrategyParameters,
+    resolveGenericStrategySpec,
+} from "../strategies/generic/generic-strategy-spec.js";
+
 import { getStrategyDefinition } from "../strategies/strategy-registry.js";
 
 function isPlainObject(value) {
@@ -21,18 +30,45 @@ export function resolveResearchStrategyDefinition({
         throw new Error("strategySpec is required when strategy is generic");
     }
 
-    const validatedSpec = validateGenericStrategyDefinition(strategySpec);
+    if (strategySpec.version !== 1) {
+        throw new Error("generic strategy definition version must be 1");
+    }
+
+    if (!strategySpec.entry) {
+        throw new Error("generic strategy definition entry is required");
+    }
+
+    const parameters = getGenericStrategyParameters(strategySpec);
 
     return {
         id: "generic",
-        name: validatedSpec.name ?? "Generic Strategy",
-        version: validatedSpec.version,
+        name: strategySpec.name ?? "Generic Strategy",
+        version: strategySpec.version,
         description: "Data-defined generic strategy",
-        parameters: {},
+        parameters,
 
-        createStrategy() {
+        validateConfig(strategyConfig) {
+            try {
+                const resolvedSpec = resolveGenericStrategySpec(
+                    strategySpec,
+                    strategyConfig
+                );
+
+                validateGenericStrategyDefinition(resolvedSpec);
+                return [];
+            } catch (error) {
+                return [error.message];
+            }
+        },
+
+        createStrategy(strategyConfig) {
+            const resolvedSpec = resolveGenericStrategySpec(
+                strategySpec,
+                strategyConfig
+            );
+
             return createGenericStrategy({
-                definition: validatedSpec,
+                definition: resolvedSpec,
             });
         },
     };
