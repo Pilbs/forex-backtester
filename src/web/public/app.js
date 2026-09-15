@@ -665,6 +665,11 @@ function formatMetric(value, digits = 2) {
 
 function renderResult(config, response) {
     const { plan, usageEstimate, executionGate } = response;
+    const researchMode = currentTestMode() === "research";
+
+    reviewIntro.textContent = researchMode
+        ? "Parameter research will only run after this review. Check the requested runs and estimated usage against your plan before confirming."
+        : "Review the single backtest settings before running.";
 
     document.querySelector("#summary-cards").innerHTML = [
         summaryCard("Experiment", config.name || "Untagged"),
@@ -704,6 +709,9 @@ function renderResult(config, response) {
     plannedConfig = executionGate.allowed ? config : null;
     runButton.hidden = !executionGate.allowed;
     runButton.disabled = false;
+    runButton.textContent = researchMode
+        ? "Confirm & run parameter research"
+        : "Run single backtest";
     executionStatus.textContent = "";
     executionPanel.hidden = true;
     errorPanel.hidden = true;
@@ -1959,6 +1967,7 @@ function setWorkspaceView(view) {
     }
 
     researchView.hidden = view !== "research";
+    strategiesView.hidden = view !== "strategies";
     historyView.hidden = view !== "history";
     adminView.hidden = view !== "admin";
     errorPanel.hidden = true;
@@ -1967,6 +1976,10 @@ function setWorkspaceView(view) {
         const active = button.dataset.viewChoice === view;
         button.classList.toggle("is-active", active);
         button.setAttribute("aria-pressed", String(active));
+    }
+
+    if (view === "strategies") {
+        showStrategyList();
     }
 
     if (showHistory && !historyLoaded) {
