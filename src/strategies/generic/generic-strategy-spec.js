@@ -12,9 +12,7 @@ function isParameterReference(value) {
 }
 
 function requirePositiveIntegerOrReference(value, name) {
-    if (isParameterReference(value)) {
-        return;
-    }
+    if (isParameterReference(value)) return;
 
     if (!Number.isInteger(value) || value <= 0) {
         throw new Error(`${name} must be a positive integer or parameter reference`);
@@ -22,9 +20,7 @@ function requirePositiveIntegerOrReference(value, name) {
 }
 
 function requireFiniteNumberOrReference(value, name) {
-    if (isParameterReference(value)) {
-        return;
-    }
+    if (isParameterReference(value)) return;
 
     if (!Number.isFinite(value)) {
         throw new Error(`${name} must be a finite number or parameter reference`);
@@ -38,14 +34,8 @@ function validateConditionTemplate(condition) {
 
     switch (condition.type) {
         case "RSI_THRESHOLD":
-            requirePositiveIntegerOrReference(
-                condition.period ?? 14,
-                "RSI period"
-            );
-            requireFiniteNumberOrReference(
-                condition.value,
-                "RSI threshold"
-            );
+            requirePositiveIntegerOrReference(condition.period ?? 14, "RSI period");
+            requireFiniteNumberOrReference(condition.value, "RSI threshold");
 
             if (!new Set(["BELOW", "ABOVE"]).has(condition.operator)) {
                 throw new Error("RSI_THRESHOLD operator must be BELOW or ABOVE");
@@ -53,14 +43,8 @@ function validateConditionTemplate(condition) {
             break;
 
         case "EMA_CROSS":
-            requirePositiveIntegerOrReference(
-                condition.fastPeriod,
-                "EMA fastPeriod"
-            );
-            requirePositiveIntegerOrReference(
-                condition.slowPeriod,
-                "EMA slowPeriod"
-            );
+            requirePositiveIntegerOrReference(condition.fastPeriod, "EMA fastPeriod");
+            requirePositiveIntegerOrReference(condition.slowPeriod, "EMA slowPeriod");
 
             if (
                 !isParameterReference(condition.fastPeriod)
@@ -76,30 +60,62 @@ function validateConditionTemplate(condition) {
             break;
 
         default:
-            throw new Error(
-                `Unsupported generic condition type: ${condition.type}`
-            );
+            throw new Error(`Unsupported generic condition type: ${condition.type}`);
     }
 }
 
-function validateConditionGroupTemplate(group) {
+function validateConditionGroupTemplate(group, name) {
     if (!isPlainObject(group)) {
-        throw new Error("condition group must be an object");
+        throw new Error(`${name} must be an object`);
     }
 
     const logic = group.logic ?? "AND";
 
     if (!new Set(["AND", "OR"]).has(logic)) {
-        throw new Error("condition group logic must be AND or OR");
+        throw new Error(`${name} logic must be AND or OR`);
     }
 
     if (!Array.isArray(group.conditions) || group.conditions.length === 0) {
-        throw new Error("condition group must contain at least one condition");
+        throw new Error(`${name} must contain at least one condition`);
     }
 
     for (const condition of group.conditions) {
         validateConditionTemplate(condition);
     }
+}
+
+function validateRiskTemplate(risk, name) {
+    if (risk === undefined) return;
+
+    if (!isPlainObject(risk)) {
+        throw new Error(`${name} must be an object`);
+    }
+
+    if (risk.stopLossPips !== undefined) {
+        requireFiniteNumberOrReference(risk.stopLossPips, `${name} stop loss pips`);
+    }
+
+    if (risk.takeProfitPips !== undefined) {
+        requireFiniteNumberOrReference(risk.takeProfitPips, `${name} take profit pips`);
+    }
+}
+
+function validatePositionTemplate(position, sideName) {
+    if (!isPlainObject(position)) {
+        throw new Error(`${sideName} position rules must be an object`);
+    }
+
+    if (!position.entry) {
+        throw new Error(`${sideName} entry rules are required`);
+    }
+
+    validateConditionGroupTemplate(position.entry, `${sideName} entry`);
+
+    if (position.exit !== undefined) {
+        validateConditionGroupTemplate(position.exit, `${sideName} exit`);
+    }
+
+    validateRiskTemplate(position.risk, `${sideName} risk`);
 }
 
 function collectParameterReferences(value, references = new Set()) {
@@ -109,10 +125,7 @@ function collectParameterReferences(value, references = new Set()) {
     }
 
     if (Array.isArray(value)) {
-        for (const item of value) {
-            collectParameterReferences(item, references);
-        }
-
+        for (const item of value) collectParameterReferences(item, references);
         return references;
     }
 
@@ -154,49 +167,66 @@ function resolveValue(value, strategyConfig) {
     return value;
 }
 
-export function validateGenericStrategySpecTemplate(strategySpec) {
+export function normalizeGenericStrategySpecShape(strategySpec) {
     if (!isPlainObject(strategySpec)) {
         throw new Error("generic strategy specification must be an object");
     }
 
-    if (strategySpec.version !== 1) {
-        throw new Error("generic strategy definition version must be 1");
+    if (strategySpec.version === 2) {
+        return strategySpec;
     }
 
-    const side = strategySpec.side ?? "LONG";
+    if (strategySpec.version === 1) {
+        const side = strategySpec.side ?? "LONG";
 
-    if (!new Set(["LONG", "SHORT"]).has(side)) {
-        throw new Error("generic strategy side must be LONG or SHORT");
-    }
-
-    if (!strategySpec.entry) {
-        throw new Error("generic strategy definition entry is required");
-    }
-
-    validateConditionGroupTemplate(strategySpec.entry);
-
-    if (strategySpec.exit !== undefined) {
-        validateConditionGroupTemplate(strategySpec.exit);
-    }
-
-    if (strategySpec.risk !== undefined) {
-        if (!isPlainObject(strategySpec.risk)) {
-            throw new Error("generic strategy risk must be an object");
+        if (!new Set(["LONG", "SHORT"]).has(side)) {
+            throw new Error("generic strategy side must be LONG or SHORT");
         }
 
-        if (strategySpec.risk.stopLossPips !== undefined) {
-            requireFiniteNumberOrReference(
-                strategySpec.risk.stopLossPips,
-                "stop loss pips"
-            );
-        }
+        return {
+            ...strategySpec,
+            version: 2,
+            positions: {
+                [side.toLowerCase()]: {
+                    entry: strategySpec.entry,
+                    exit: strategySpec.exit,
+                    risk: strategySpec.risk,
+                },
+            },
+            side: undefined,
+            entry: undefined,
+            exit: undefined,
+            risk: undefined,
+        };
+    }
 
-        if (strategySpec.risk.takeProfitPips !== undefined) {
-            requireFiniteNumberOrReference(
-                strategySpec.risk.takeProfitPips,
-                "take profit pips"
-            );
-        }
+    throw new Error("generic strategy definition version must be 1 or 2");
+}
+
+export function validateGenericStrategySpecTemplate(strategySpec) {
+    const normalized = normalizeGenericStrategySpecShape(strategySpec);
+
+    if (!isPlainObject(normalized.positions)) {
+        throw new Error("generic strategy positions must be an object");
+    }
+
+    const long = normalized.positions.long;
+    const short = normalized.positions.short;
+
+    if (!long && !short) {
+        throw new Error("generic strategy must define long rules, short rules, or both");
+    }
+
+    if (long) validatePositionTemplate(long, "long");
+    if (short) validatePositionTemplate(short, "short");
+
+    if (normalized.builderMode !== undefined && !new Set([
+        "LONG_ONLY",
+        "SHORT_ONLY",
+        "BOTH_MIRRORED",
+        "BOTH_INDEPENDENT",
+    ]).has(normalized.builderMode)) {
+        throw new Error("generic strategy builderMode is invalid");
     }
 
     return strategySpec;
@@ -204,19 +234,14 @@ export function validateGenericStrategySpecTemplate(strategySpec) {
 
 export function getGenericStrategyParameters(strategySpec) {
     validateGenericStrategySpecTemplate(strategySpec);
-
-    const parameters = strategySpec.parameters ?? {};
+    const normalized = normalizeGenericStrategySpecShape(strategySpec);
+    const parameters = normalized.parameters ?? {};
 
     if (!isPlainObject(parameters)) {
         throw new Error("generic strategy parameters must be an object");
     }
 
-    const references = collectParameterReferences({
-        side: strategySpec.side,
-        entry: strategySpec.entry,
-        exit: strategySpec.exit,
-        risk: strategySpec.risk,
-    });
+    const references = collectParameterReferences(normalized.positions);
 
     for (const parameterName of references) {
         if (!Object.hasOwn(parameters, parameterName)) {
@@ -239,11 +264,12 @@ export function getGenericStrategyParameters(strategySpec) {
 
 export function resolveGenericStrategySpec(strategySpec, strategyConfig = {}) {
     getGenericStrategyParameters(strategySpec);
+    const normalized = normalizeGenericStrategySpecShape(strategySpec);
 
     const {
         parameters,
         ...runtimeSpec
-    } = strategySpec;
+    } = normalized;
 
     return resolveValue(runtimeSpec, strategyConfig);
 }
