@@ -730,13 +730,27 @@ function renderExecution(response) {
     const { execution, result } = response;
     const d1 = execution.d1;
 
+    const firstRun = result.runs?.[0] ?? {};
+    const datasetLoadMs = Number(result.experiment.datasetLoadElapsedMs ?? 0);
+    const runElapsedMs = Number(firstRun.elapsedMs ?? 0);
+    const otherElapsedMs = Math.max(
+        0,
+        Number(execution.wallTimeMs ?? 0) - datasetLoadMs - runElapsedMs
+    );
+
     document.querySelector("#execution-cards").innerHTML = [
         summaryCard("Completed runs", result.totals.completedRuns),
         summaryCard("Failed runs", result.totals.failedRuns),
-        summaryCard("Actual D1 rows read", d1.rowsRead.toLocaleString()),
+        summaryCard("Dataset load", `${datasetLoadMs.toLocaleString()} ms`),
+        summaryCard("Backtest run", `${runElapsedMs.toLocaleString()} ms`),
+        summaryCard("Persistence / other", `${otherElapsedMs.toLocaleString()} ms`),
         summaryCard("Wall time", `${execution.wallTimeMs.toLocaleString()} ms`),
+        summaryCard("Actual D1 rows read", d1.rowsRead.toLocaleString()),
         summaryCard("D1 queries", d1.queryCount),
         summaryCard("D1 duration", `${formatMetric(d1.d1DurationMs, 1)} ms`),
+        summaryCard("Signals", firstRun.detailCounts?.signals ?? "-"),
+        summaryCard("Orders", firstRun.detailCounts?.orders ?? "-"),
+        summaryCard("Trades", firstRun.summary?.totalTrades ?? "-"),
         summaryCard("Dataset candles", result.experiment.dataset?.strategyCandleCount ?? "-"),
         summaryCard("Execution mode", execution.mode),
     ].join("");
@@ -780,7 +794,7 @@ function renderExecution(response) {
     `;
 
     document.querySelector("#execution-note").textContent =
-        "D1 rows read are actual Cloudflare query metadata. Worker CPU time is measured separately in Cloudflare Worker logs/metrics.";
+        "Timing breakdown: dataset load is candle retrieval, backtest run is strategy/engine execution, and persistence / other is the remaining request time including saved-result writes and request setup.";
 
     executionPanel.hidden = false;
 }
