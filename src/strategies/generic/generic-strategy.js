@@ -1,58 +1,85 @@
 import { createConditionGroup } from "./condition-evaluator.js";
+import { normalizeGenericStrategySpecShape } from "./generic-strategy-spec.js";
+
+function validatePosition(position, side) {
+    if (!position?.entry) {
+        throw new Error(side + " entry rules are required");
+    }
+
+    createConditionGroup(position.entry);
+
+    if (position.exit) {
+        createConditionGroup(position.exit);
+    }
+}
 
 export function validateGenericStrategyDefinition(definition) {
     if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
         throw new Error("generic strategy definition must be an object");
     }
 
-    if (definition.version !== 1) {
-        throw new Error("generic strategy definition version must be 1");
+    const config = normalizeGenericStrategySpecShape(definition);
+    const long = config.positions?.long;
+    const short = config.positions?.short;
+
+    if (!long && !short) {
+        throw new Error("generic strategy must define long rules, short rules, or both");
     }
 
-    if (!definition.entry) {
-        throw new Error("generic strategy definition entry is required");
-    }
+    if (long) validatePosition(long, "long");
+    if (short) validatePosition(short, "short");
 
-    const side = definition.side ?? "LONG";
+    return config;
+}
 
-    if (!new Set(["LONG", "SHORT"]).has(side)) {
-        throw new Error("generic strategy side must be LONG or SHORT");
-    }
+function createPositionRuntime(position, side) {
+    if (!position) return null;
 
-    // Build the condition groups once during validation so unsupported or
-    // malformed conditions fail before an experiment is planned.
-    createConditionGroup(definition.entry);
-    if (definition.exit) {
-        createConditionGroup(definition.exit);
-    }
+    const entry = createConditionGroup(position.entry);
+    const exit = position.exit ? createConditionGroup(position.exit) : null;
 
     return {
-        ...definition,
         side,
+        entry,
+        exit,
+        risk: position.risk ?? {},
+        reset() {
+            entry.reset();
+            exit?.reset();
+        },
     };
 }
 
 export function createGenericStrategy({ definition } = {}) {
     const config = validateGenericStrategyDefinition(definition);
-    const entry = createConditionGroup(config.entry);
-    const exit = config.exit ? createConditionGroup(config.exit) : null;
+    const runtimes = [
+        createPositionRuntime(config.positions.long, "LONG"),
+        createPositionRuntime(config.positions.short, "SHORT"),
+    ].filter(Boolean);
 
     function reset() {
-        entry.reset();
-        exit?.reset();
+        for (const runtime of runtimes) {
+            runtime.reset();
+        }
     }
 
     function onCandle(context) {
-        const matchingTradeOpen = context.openTrades.some(
-            (trade) => trade.side === config.side
+        const evaluations = runtimes.map((runtime) => ({
+            runtime,
+            entryResult: runtime.entry.next(context),
+            exitResult: runtime.exit?.next(context) ?? null,
+            matchingTradeOpen: context.openTrades.some(
+                (trade) => trade.side === runtime.side
+            ),
+        }));
+
+        const openEvaluation = evaluations.find(
+            (evaluation) => evaluation.matchingTradeOpen
         );
 
-        // Stateful indicators must advance on every strategy candle, even when
-        // their signal is not currently actionable.
-        const entryResult = entry.next(context);
-        const exitResult = exit?.next(context) ?? null;
+        if (openEvaluation) {
+            const { runtime, exitResult } = openEvaluation;
 
-        if (matchingTradeOpen) {
             if (!exitResult?.ready || !exitResult.matched) {
                 return null;
             }
@@ -61,42 +88,53 @@ export function createGenericStrategy({ definition } = {}) {
                 action: "EXIT",
                 target: {
                     type: "SIDE",
-                    value: config.side,
+                    value: runtime.side,
                 },
                 reason: "GENERIC_EXIT_CONDITIONS",
                 metadata: {
                     strategy: "GENERIC",
                     definitionName: config.name ?? null,
+                    side: runtime.side,
                     conditions: exitResult.results.map((result) => result.metadata ?? null),
                 },
             };
         }
 
-        if (context.openTrades.length > 0 || !entryResult.ready || !entryResult.matched) {
+        if (context.openTrades.length > 0) {
             return null;
         }
 
+        const matchingEntries = evaluations.filter(
+            ({ entryResult }) => entryResult.ready && entryResult.matched
+        );
+
+        if (matchingEntries.length !== 1) {
+            return null;
+        }
+
+        const { runtime, entryResult } = matchingEntries[0];
         const signal = {
             action: "ENTER",
-            side: config.side,
+            side: runtime.side,
             metadata: {
                 strategy: "GENERIC",
                 definitionName: config.name ?? null,
+                side: runtime.side,
                 conditions: entryResult.results.map((result) => result.metadata ?? null),
             },
         };
 
-        if (Number.isFinite(config.risk?.stopLossPips)) {
+        if (Number.isFinite(runtime.risk?.stopLossPips)) {
             signal.stopLoss = {
                 type: "PIPS",
-                value: config.risk.stopLossPips,
+                value: runtime.risk.stopLossPips,
             };
         }
 
-        if (Number.isFinite(config.risk?.takeProfitPips)) {
+        if (Number.isFinite(runtime.risk?.takeProfitPips)) {
             signal.takeProfit = {
                 type: "PIPS",
-                value: config.risk.takeProfitPips,
+                value: runtime.risk.takeProfitPips,
             };
         }
 
