@@ -76,7 +76,7 @@ export function createGenericStrategy({ definition } = {}) {
             return null;
         }
 
-        return {
+        const signal = {
             action: "ENTER",
             side: config.side,
             metadata: {
@@ -85,6 +85,22 @@ export function createGenericStrategy({ definition } = {}) {
                 conditions: entryResult.results.map((result) => result.metadata ?? null),
             },
         };
+
+        if (Number.isFinite(config.risk?.stopLossPips)) {
+            signal.stopLoss = {
+                type: "PIPS",
+                value: config.risk.stopLossPips,
+            };
+        }
+
+        if (Number.isFinite(config.risk?.takeProfitPips)) {
+            signal.takeProfit = {
+                type: "PIPS",
+                value: config.risk.takeProfitPips,
+            };
+        }
+
+        return signal;
     }
 
     return {
