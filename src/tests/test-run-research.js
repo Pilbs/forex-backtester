@@ -202,7 +202,18 @@ const genericResult = await runResearch(genericResearchConfig, {
     },
 });
 
-assert.equal(genericRunCount, 4);
+if (genericRunCount !== 4) {
+    const failures = genericResult.runs
+        .filter((run) => run.status === "FAILED")
+        .map((run) => ({
+            parameterValues: run.parameterValues,
+            error: run.error,
+        }));
+
+    throw new Error(
+        `Expected 4 generic runs to execute, but ${genericRunCount} reached runWithDataset. Failures: ${JSON.stringify(failures)}`
+    );
+}
 assert.equal(genericResult.experiment.strategy.id, "generic");
 assert.equal(genericResult.experiment.strategy.name, "Sweepable RSI research strategy");
 assert.equal(genericResult.runs.length, 4);
