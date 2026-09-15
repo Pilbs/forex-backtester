@@ -72,9 +72,30 @@ function assess(config, accountRole = "OWNER") {
     return assessResearchExecution(config, plan, usageEstimate, accountRole);
 }
 
-assert.deepEqual(COMMISSIONING_LIMITS.strategies, ["simple-sma", "orb"]);
+assert.deepEqual(COMMISSIONING_LIMITS.strategies, ["simple-sma", "orb", "generic"]);
 assert.equal(assess(createOrbConfig()).allowed, true);
 assert.equal(assess(createSimpleSmaConfig()).allowed, true);
+const genericConfig = {
+    ...createOrbConfig(),
+    strategy: "generic",
+    strategySpec: {
+        version: 1,
+        name: "RSI test",
+        side: "LONG",
+        entry: {
+            logic: "AND",
+            conditions: [{
+                type: "RSI_THRESHOLD",
+                period: 14,
+                operator: "BELOW",
+                value: 30,
+            }],
+        },
+    },
+    strategyConfig: {},
+    parameterGrid: {},
+};
+assert.equal(assess(genericConfig).allowed, true);
 assert.equal(ACCOUNT_USAGE_LIMITS.MEMBER.maximumDateRangeDays, 30);
 assert.equal(ACCOUNT_USAGE_LIMITS.MEMBER.maximumRuns, 4);
 
