@@ -162,6 +162,50 @@ assert.equal(riskEntry?.stopLoss?.value, 12);
 assert.equal(riskEntry?.takeProfit?.type, "PIPS");
 assert.equal(riskEntry?.takeProfit?.value, 24);
 
+const dualStrategy = createGenericStrategy({
+    definition: {
+        version: 2,
+        name: "Dual RSI",
+        positions: {
+            long: {
+                entry: {
+                    logic: "AND",
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 2,
+                        operator: "BELOW",
+                        value: 30,
+                    }],
+                },
+            },
+            short: {
+                entry: {
+                    logic: "AND",
+                    conditions: [{
+                        type: "RSI_THRESHOLD",
+                        period: 2,
+                        operator: "ABOVE",
+                        value: 70,
+                    }],
+                },
+            },
+        },
+    },
+});
+
+validateStrategy(dualStrategy);
+dualStrategy.reset();
+dualStrategy.onCandle(context(100));
+dualStrategy.onCandle(context(99));
+const dualLongEntry = dualStrategy.onCandle(context(98));
+assert.equal(dualLongEntry?.side, "LONG");
+
+dualStrategy.reset();
+dualStrategy.onCandle(context(100));
+dualStrategy.onCandle(context(101));
+const dualShortEntry = dualStrategy.onCandle(context(102));
+assert.equal(dualShortEntry?.side, "SHORT");
+
 assert.throws(
     () => createGenericStrategy({
         definition: {
