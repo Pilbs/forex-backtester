@@ -1,5 +1,5 @@
 const SHARED_LIMITS = Object.freeze({
-    strategies: Object.freeze(["simple-sma", "orb"]),
+    strategies: Object.freeze(["simple-sma", "orb", "generic"]),
     instrument: "EUR_USD",
     strategyTimeframe: "M5",
     executionTimeframe: "M5",
