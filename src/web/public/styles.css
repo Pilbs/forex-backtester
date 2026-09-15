@@ -1589,3 +1589,98 @@ html[data-ui-theme="terminal"] .user-theme-section {
         max-width: none;
     }
 }
+
+
+/* === WORKFLOW CLARITY === */
+.workflow-intro {
+    margin-bottom: 16px;
+}
+
+.workflow-kicker {
+    margin: 0 0 6px;
+    color: #687287;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.workflow-intro h2,
+#strategies-list-panel .section-heading h2,
+#strategy-builder-panel .section-heading h2 {
+    margin-top: 0;
+}
+
+.test-mode-card {
+    position: relative;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.test-mode-card:hover {
+    border-color: #aeb9c9;
+    background: #fafbfd;
+}
+
+.test-mode-card:has(input:checked) {
+    border-color: #172033;
+    background: #f4f7fb;
+    box-shadow: 0 0 0 1px #172033;
+}
+
+.test-mode-card:has(input:checked) strong {
+    color: #172033;
+}
+
+.strategy-card {
+    display: flex;
+    min-height: 180px;
+    flex-direction: column;
+}
+
+.strategy-card .actions {
+    margin-top: auto;
+}
+
+.builder-condition-card {
+    position: relative;
+}
+
+.builder-condition-head::before {
+    content: "Condition";
+    color: #687287;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.builder-condition-head select {
+    margin-right: auto;
+}
+
+.builder-summary {
+    border-left: 4px solid #172033;
+}
+
+html[data-ui-theme="terminal"] .workflow-kicker {
+    color: #6f9a80;
+}
+
+html[data-ui-theme="terminal"] .test-mode-card:hover {
+    border-color: #4b6f5c;
+    background: #07100b;
+}
+
+html[data-ui-theme="terminal"] .test-mode-card:has(input:checked) {
+    border-color: #4fbf7a;
+    background: #07150d;
+    box-shadow: 0 0 0 1px #4fbf7a;
+}
+
+html[data-ui-theme="terminal"] .test-mode-card:has(input:checked) strong {
+    color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] .builder-summary {
+    border-left-color: #4fbf7a;
+}
