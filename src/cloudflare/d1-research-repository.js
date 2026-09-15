@@ -1090,6 +1090,151 @@ export function createD1ResearchRepository({
         `).bind(batchId));
     }
 
+    async function listSavedStrategies({ workspaceId }) {
+        const normalizedWorkspaceId = requiredText(workspaceId, "workspaceId");
+        const result = await db.prepare(`
+            SELECT *
+            FROM saved_strategies
+            WHERE workspace_id = ?
+            ORDER BY updated_at DESC, name COLLATE NOCASE ASC
+        `).bind(normalizedWorkspaceId).all();
+
+        return result?.results ?? [];
+    }
+
+    async function getSavedStrategy({ workspaceId, strategyId }) {
+        return first(db.prepare(`
+            SELECT *
+            FROM saved_strategies
+            WHERE workspace_id = ? AND id = ?
+        `).bind(
+            requiredText(workspaceId, "workspaceId"),
+            requiredText(strategyId, "strategyId")
+        ));
+    }
+
+    async function createSavedStrategy({
+        workspaceId,
+        createdByUserId,
+        name,
+        description,
+        spec,
+    }) {
+        const normalizedWorkspaceId = requiredText(workspaceId, "workspaceId");
+        const normalizedUserId = requiredText(createdByUserId, "createdByUserId");
+        const normalizedName = requiredText(name, "name");
+
+        await assertWorkspaceMember(normalizedWorkspaceId, normalizedUserId);
+
+        const strategyId = createIdentifier("strategy", createId);
+        const timestamp = now();
+
+        await db.prepare(`
+            INSERT INTO saved_strategies (
+                id,
+                workspace_id,
+                created_by_user_id,
+                name,
+                description,
+                strategy_type,
+                version,
+                spec_json,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'GENERIC', 1, ?, ?, ?)
+        `).bind(
+            strategyId,
+            normalizedWorkspaceId,
+            normalizedUserId,
+            normalizedName,
+            optionalText(description, "description"),
+            json(spec, "strategy spec"),
+            timestamp,
+            timestamp
+        ).run();
+
+        return getSavedStrategy({
+            workspaceId: normalizedWorkspaceId,
+            strategyId,
+        });
+    }
+
+    async function updateSavedStrategy({
+        workspaceId,
+        strategyId,
+        name,
+        description,
+        spec,
+    }) {
+        const normalizedWorkspaceId = requiredText(workspaceId, "workspaceId");
+        const normalizedStrategyId = requiredText(strategyId, "strategyId");
+        const existing = await getSavedStrategy({
+            workspaceId: normalizedWorkspaceId,
+            strategyId: normalizedStrategyId,
+        });
+
+        if (!existing) {
+            return null;
+        }
+
+        const nextName = name === undefined
+            ? existing.name
+            : requiredText(name, "name");
+        const nextDescription = description === undefined
+            ? existing.description
+            : optionalText(description, "description");
+        const nextSpec = spec === undefined
+            ? existing.spec_json
+            : json(spec, "strategy spec");
+        const nextVersion = spec === undefined
+            ? existing.version
+            : existing.version + 1;
+        const timestamp = now();
+
+        await db.prepare(`
+            UPDATE saved_strategies
+            SET name = ?,
+                description = ?,
+                version = ?,
+                spec_json = ?,
+                updated_at = ?
+            WHERE workspace_id = ? AND id = ?
+        `).bind(
+            nextName,
+            nextDescription,
+            nextVersion,
+            nextSpec,
+            timestamp,
+            normalizedWorkspaceId,
+            normalizedStrategyId
+        ).run();
+
+        return getSavedStrategy({
+            workspaceId: normalizedWorkspaceId,
+            strategyId: normalizedStrategyId,
+        });
+    }
+
+    async function deleteSavedStrategy({ workspaceId, strategyId }) {
+        const normalizedWorkspaceId = requiredText(workspaceId, "workspaceId");
+        const normalizedStrategyId = requiredText(strategyId, "strategyId");
+        const existing = await getSavedStrategy({
+            workspaceId: normalizedWorkspaceId,
+            strategyId: normalizedStrategyId,
+        });
+
+        if (!existing) {
+            return false;
+        }
+
+        await db.prepare(`
+            DELETE FROM saved_strategies
+            WHERE workspace_id = ? AND id = ?
+        `).bind(normalizedWorkspaceId, normalizedStrategyId).run();
+
+        return true;
+    }
+
     return {
         ensureUser,
         ensurePersonalWorkspace,
@@ -1109,5 +1254,10 @@ export function createD1ResearchRepository({
         getRunDetails,
         createExperimentBatch,
         updateExperimentBatch,
+        listSavedStrategies,
+        getSavedStrategy,
+        createSavedStrategy,
+        updateSavedStrategy,
+        deleteSavedStrategy,
     };
 }
