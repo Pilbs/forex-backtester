@@ -264,12 +264,11 @@ export function getGenericStrategyParameters(strategySpec) {
 
 export function resolveGenericStrategySpec(strategySpec, strategyConfig = {}) {
     getGenericStrategyParameters(strategySpec);
-    const normalized = normalizeGenericStrategySpecShape(strategySpec);
 
     const {
         parameters,
         ...runtimeSpec
-    } = normalized;
+    } = strategySpec;
 
     return resolveValue(runtimeSpec, strategyConfig);
 }
