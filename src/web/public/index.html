@@ -101,7 +101,12 @@
                     <label>Strategy name
                         <input id="builder-name" maxlength="100" placeholder="e.g. RSI EMA pullback" required>
                     </label>
-                    <div class="builder-direction-placeholder"></div>
+                    <fieldset class="builder-direction-picker">
+                        <legend>Trade direction</legend>
+                        <label><input type="radio" name="builder-direction" value="LONG_ONLY" checked> Long only</label>
+                        <label><input type="radio" name="builder-direction" value="SHORT_ONLY"> Short only</label>
+                        <label><input type="radio" name="builder-direction" value="BOTH"> Long & short</label>
+                    </fieldset>
                     <label>Description
                         <input id="builder-description" maxlength="240" placeholder="Optional note">
                     </label>
