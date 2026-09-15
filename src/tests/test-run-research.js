@@ -117,16 +117,31 @@ const genericResearchConfig = {
 
     strategySpec: {
         version: 1,
-        name: "RSI research strategy",
+        name: "Sweepable RSI research strategy",
         side: "LONG",
+
+        parameters: {
+            rsiThreshold: {
+                type: "number",
+                default: 30,
+                min: 0,
+                max: 100,
+            },
+            rsiPeriod: {
+                type: "integer",
+                default: 14,
+                min: 2,
+            },
+        },
+
         entry: {
             logic: "AND",
             conditions: [
                 {
                     type: "RSI_THRESHOLD",
-                    period: 14,
+                    period: { parameter: "rsiPeriod" },
                     operator: "BELOW",
-                    value: 30,
+                    value: { parameter: "rsiThreshold" },
                 },
             ],
         },
@@ -135,14 +150,19 @@ const genericResearchConfig = {
     market: researchConfig.market,
     account: researchConfig.account,
     execution: researchConfig.execution,
+
+    parameterGrid: {
+        rsiThreshold: [20, 30],
+        rsiPeriod: [10, 14],
+    },
 };
 
 const genericPlan = planResearch(genericResearchConfig);
 
 assert.equal(genericPlan.strategy.id, "generic");
-assert.equal(genericPlan.strategy.name, "RSI research strategy");
-assert.equal(genericPlan.research.requestedCombinations, 1);
-assert.equal(genericPlan.research.validCombinations, 1);
+assert.equal(genericPlan.strategy.name, "Sweepable RSI research strategy");
+assert.equal(genericPlan.research.requestedCombinations, 4);
+assert.equal(genericPlan.research.validCombinations, 4);
 assert.equal(genericPlan.allowed, true);
 
 let genericRunCount = 0;
@@ -152,10 +172,16 @@ const genericResult = await runResearch(genericResearchConfig, {
 
     datasetLoader: async () => dataset,
 
-    runWithDataset: async ({ strategy }) => {
+    runWithDataset: async ({
+        strategy,
+        strategyConfig,
+        parameterValues,
+    }) => {
         genericRunCount++;
-        assert.equal(strategy.name, "RSI research strategy");
+        assert.equal(strategy.name, "Sweepable RSI research strategy");
         assert.equal(typeof strategy.onCandle, "function");
+        assert.equal(strategyConfig.rsiThreshold, parameterValues.rsiThreshold);
+        assert.equal(strategyConfig.rsiPeriod, parameterValues.rsiPeriod);
 
         return {
             summary: {
@@ -176,11 +202,17 @@ const genericResult = await runResearch(genericResearchConfig, {
     },
 });
 
-assert.equal(genericRunCount, 1);
+assert.equal(genericRunCount, 4);
 assert.equal(genericResult.experiment.strategy.id, "generic");
-assert.equal(genericResult.experiment.strategy.name, "RSI research strategy");
-assert.equal(genericResult.runs.length, 1);
-assert.equal(genericResult.totals.completedRuns, 1);
+assert.equal(genericResult.experiment.strategy.name, "Sweepable RSI research strategy");
+assert.equal(genericResult.runs.length, 4);
+assert.equal(genericResult.totals.completedRuns, 4);
 assert.equal(genericResult.totals.failedRuns, 0);
+
+const sweptValues = new Set(
+    genericResult.runs.map((run) => JSON.stringify(run.parameterValues))
+);
+
+assert.equal(sweptValues.size, 4);
 
 console.log("Generic research runner test passed.");
