@@ -109,6 +109,20 @@ const orbMetadata = strategies.strategies.find((strategy) => strategy.id === "or
 assert.ok(orbMetadata.parameters.some((parameter) => parameter.id === "breakoutCondition"));
 assert.ok(!orbMetadata.parameters.some((parameter) => parameter.id === "entryMode"));
 
+assert.equal(strategies.genericBuilder.id, "generic");
+assert.equal(strategies.genericBuilder.kind, "GENERIC_BUILDER");
+assert.deepEqual(strategies.genericBuilder.sides, ["LONG", "SHORT"]);
+assert.ok(
+    strategies.genericBuilder.conditions.some(
+        (condition) => condition.type === "RSI_THRESHOLD"
+    )
+);
+assert.ok(
+    strategies.genericBuilder.conditions.some(
+        (condition) => condition.type === "EMA_CROSS"
+    )
+);
+
 const config = createConfig();
 const planResponse = await handleRequest(
     apiRequest("/api/plan", {
