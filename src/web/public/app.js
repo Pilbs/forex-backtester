@@ -1429,6 +1429,7 @@ function renderSavedStrategies() {
     strategiesEmpty.hidden = savedStrategies.length !== 0;
 
     for (const saved of savedStrategies) {
+        const spec = normalizedBuilderSpec(saved.spec);
         const card = document.createElement("article");
         card.className = "strategy-card";
 
@@ -1436,15 +1437,21 @@ function renderSavedStrategies() {
         title.textContent = saved.name;
 
         const meta = document.createElement("p");
-        const entryCount = saved.spec.entry?.conditions?.length ?? 0;
-        const exitCount = saved.spec.exit?.conditions?.length ?? 0;
+        const hasLong = Boolean(spec.positions.long);
+        const hasShort = Boolean(spec.positions.short);
+        const direction = hasLong && hasShort
+            ? "LONG & SHORT"
+            : hasShort ? "SHORT" : "LONG";
+        const entryCount = (spec.positions.long?.entry?.conditions?.length ?? 0)
+            + (spec.positions.short?.entry?.conditions?.length ?? 0);
         meta.className = "estimate-note";
-        meta.textContent = `${saved.spec.side ?? "LONG"} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · ${exitCount} exit condition${exitCount === 1 ? "" : "s"} · v${saved.version}`;
+        meta.textContent = `${direction} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · v${saved.version}`;
 
+        const firstPosition = spec.positions.long ?? spec.positions.short;
         const summary = document.createElement("p");
         summary.textContent = saved.description || formatConditionSummary(
-            saved.spec.entry.conditions[0],
-            saved.spec.parameters ?? {}
+            firstPosition.entry.conditions[0],
+            spec.parameters ?? {}
         );
 
         const actions = document.createElement("div");
@@ -1583,12 +1590,23 @@ newStrategyButton.addEventListener("click", () => openStrategyBuilder());
 backToStrategiesButton.addEventListener("click", showStrategyList);
 addEntryConditionButton.addEventListener("click", () => createBuilderConditionCard("entry"));
 addExitConditionButton.addEventListener("click", () => createBuilderConditionCard("exit"));
+addShortEntryConditionButton.addEventListener("click", () => createBuilderConditionCard("short-entry"));
+addShortExitConditionButton.addEventListener("click", () => createBuilderConditionCard("short-exit"));
 builderName.addEventListener("input", updateBuilderSummary);
-builderSide.addEventListener("change", updateBuilderSummary);
 builderEntryLogic.addEventListener("change", updateBuilderSummary);
 builderExitLogic.addEventListener("change", updateBuilderSummary);
+builderShortEntryLogic.addEventListener("change", updateBuilderSummary);
+builderShortExitLogic.addEventListener("change", updateBuilderSummary);
 builderStopLoss.addEventListener("input", updateBuilderSummary);
 builderTakeProfit.addEventListener("input", updateBuilderSummary);
+
+for (const control of builderDirectionControls) {
+    control.addEventListener("change", updateBuilderDirectionUi);
+}
+
+for (const control of builderShortModeControls) {
+    control.addEventListener("change", updateBuilderDirectionUi);
+}
 
 saveStrategyButton.addEventListener("click", async () => {
     try {
