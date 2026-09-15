@@ -111,7 +111,7 @@ assert.ok(!orbMetadata.parameters.some((parameter) => parameter.id === "entryMod
 
 assert.equal(strategies.genericBuilder.id, "generic");
 assert.equal(strategies.genericBuilder.kind, "GENERIC_BUILDER");
-assert.deepEqual(strategies.genericBuilder.sides, ["LONG", "SHORT"]);
+assert.deepEqual(strategies.genericBuilder.directionModes, ["LONG_ONLY", "SHORT_ONLY", "BOTH_MIRRORED", "BOTH_INDEPENDENT"]);
 assert.ok(
     strategies.genericBuilder.conditions.some(
         (condition) => condition.type === "RSI_THRESHOLD"
