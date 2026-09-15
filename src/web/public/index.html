@@ -58,41 +58,43 @@
         </header>
 
         <nav class="workspace-nav" aria-label="Research workspace">
-            <button type="button" class="workspace-nav-button is-active" data-view-choice="research"
-                aria-pressed="true">New experiment</button>
-            <button type="button" class="workspace-nav-button" data-view-choice="strategies"
-                aria-pressed="false">Strategies</button>
+            <button type="button" class="workspace-nav-button is-active" data-view-choice="strategies"
+                aria-pressed="true">Strategy builder</button>
+            <button type="button" class="workspace-nav-button" data-view-choice="research"
+                aria-pressed="false">Research strategy</button>
             <button type="button" class="workspace-nav-button" data-view-choice="history" aria-pressed="false">Research
                 history</button>
             <button id="admin-nav-button" type="button" class="workspace-nav-button" data-view-choice="admin"
                 aria-pressed="false" hidden>Admin</button>
         </nav>
 
-        <section id="strategies-view" hidden>
+        <section id="strategies-view">
             <section id="strategies-list-panel" class="panel">
                 <div class="section-heading split-heading">
                     <div>
-                        <h2>Strategies</h2>
-                        <p>Build, save and reuse your own strategy logic. Run a single backtest first, then research parameter variations when you are ready.</p>
+                        <p class="workflow-kicker">Step 1 · Define the rules</p>
+                        <h2>Strategy builder</h2>
+                        <p>Build and save the trading rules you want to test. Once saved, send a strategy to Research strategy to backtest it.</p>
                     </div>
-                    <button id="new-strategy-button" type="button">+ New strategy</button>
+                    <button id="new-strategy-button" type="button">+ Build new strategy</button>
                 </div>
                 <p id="strategies-status" class="estimate-note"></p>
                 <div id="saved-strategy-grid" class="strategy-card-grid"></div>
                 <div id="strategies-empty" class="empty-state" hidden>
-                    No saved strategies yet. Create one to start testing your own rules.
+                    No saved strategies yet. Build your first strategy to define the rules you want to research.
                 </div>
             </section>
 
             <section id="strategy-builder-panel" class="panel" hidden>
                 <div class="detail-toolbar">
-                    <button id="back-to-strategies-button" type="button" class="secondary-button">← Back to strategies</button>
+                    <button id="back-to-strategies-button" type="button" class="secondary-button">← Back to strategy builder</button>
                     <span id="strategy-builder-status" class="estimate-note"></span>
                 </div>
 
                 <div class="section-heading">
-                    <h2 id="strategy-builder-title">New strategy</h2>
-                    <p>Define exactly what should trigger an entry and exit. Research parameters can be varied later in an experiment.</p>
+                    <p class="workflow-kicker">Step 1 · Define the rules</p>
+                    <h2 id="strategy-builder-title">Build a strategy</h2>
+                    <p>Define when a trade should open, when it should close and the basic risk rules. Values marked for research can be varied later.</p>
                 </div>
 
                 <div class="grid grid-3">
@@ -114,7 +116,7 @@
                     <div class="section-heading split-heading">
                         <div>
                             <h3>When to enter</h3>
-                            <p>All conditions are evaluated on the strategy timeframe.</p>
+                            <p>These rules must be true before StratTest opens a trade.</p>
                         </div>
                         <label class="compact-control">Combine
                             <select id="builder-entry-logic">
@@ -131,7 +133,7 @@
                     <div class="section-heading split-heading">
                         <div>
                             <h3>When to exit</h3>
-                            <p>Optional. If no exit condition is added, exits can still be driven by stop loss, take profit or end-of-test rules.</p>
+                            <p>Optional rules for closing a trade. Stop loss and take profit can also close it.</p>
                         </div>
                         <label class="compact-control">Combine
                             <select id="builder-exit-logic">
@@ -147,7 +149,7 @@
                 <section class="builder-section">
                     <div class="section-heading">
                         <h3>Risk & trade management</h3>
-                        <p>Keep this simple for now: optional fixed stop loss and take profit in pips.</p>
+                        <p>Optional fixed stop loss and take profit applied to each trade.</p>
                     </div>
                     <div class="grid grid-3">
                         <label>Stop loss (pips)
@@ -166,21 +168,26 @@
 
                 <div class="actions">
                     <button id="save-strategy-button" type="button">Save strategy</button>
-                    <button id="save-and-run-strategy-button" type="button" class="secondary-button">Save & run test</button>
+                    <button id="save-and-run-strategy-button" type="button" class="secondary-button">Save & research</button>
                     <button id="duplicate-strategy-button" type="button" class="secondary-button" hidden>Duplicate</button>
                     <button id="delete-strategy-button" type="button" class="danger-button" hidden>Delete</button>
                 </div>
             </section>
         </section>
 
-        <section id="research-view">
+        <section id="research-view" hidden>
+            <section class="panel workflow-intro">
+                <p class="workflow-kicker">Step 2 · Test the strategy</p>
+                <h2>Research strategy</h2>
+                <p>Choose a saved or built-in strategy, decide where and when to test it, then run one backtest or investigate parameter variations.</p>
+            </section>
             <form id="research-form">
                 <section class="panel">
-                    <h2>Market</h2>
+                    <h2>1. Market & strategy</h2>
                     <div class="grid grid-3">
-                        <label>Experiment name / tag
+                        <label>Research name / tag
                             <input id="experiment-name" maxlength="100"
-                                placeholder="Optional, e.g. ORB baseline September">
+                                placeholder="Optional, e.g. RSI baseline September">
                         </label>
                         <label>Strategy
                             <select id="strategy"></select>
@@ -215,7 +222,7 @@
                 <section class="panel">
                     <div class="section-heading split-heading">
                         <div>
-                            <h2>Account & execution</h2>
+                            <h2>2. Account & execution</h2>
                             <p>Configure the simulated trading account. Account defaults are saved in this browser.</p>
                         </div>
                         <div class="detail-actions">
@@ -258,8 +265,8 @@
 
                 <section class="panel">
                     <div class="section-heading">
-                        <h2>Test type</h2>
-                        <p>Start with a single backtest. Parameter research runs multiple variations and consumes more of your plan allowance.</p>
+                        <h2>3. Choose how to test</h2>
+                        <p>Use a single backtest to validate the strategy first. Parameter research runs multiple variations and uses more of your plan allowance.</p>
                     </div>
                     <div class="test-mode-options" role="radiogroup" aria-label="Test type">
                         <label class="test-mode-card">
@@ -276,7 +283,7 @@
                 <section class="panel">
                     <div class="section-heading split-heading">
                         <div>
-                            <h2>Strategy parameters</h2>
+                            <h2>4. Strategy values</h2>
                             <p id="strategy-parameter-help">Set the base values used for a single backtest.</p>
                         </div>
                         <div class="detail-actions">
@@ -291,13 +298,13 @@
                 </section>
 
                 <div class="actions">
-                    <button id="plan-button" type="submit">Review experiment</button>
+                    <button id="plan-button" type="submit">Review research</button>
                     <span id="request-status"></span>
                 </div>
             </form>
 
             <section id="result-panel" class="panel result-panel" hidden>
-                <h2>Experiment review</h2>
+                <h2>Research review</h2>
                 <p id="review-intro" class="estimate-note"></p>
                 <div id="summary-cards" class="summary-cards"></div>
                 <h3>Estimated cloud workload</h3>
