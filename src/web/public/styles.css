@@ -1968,3 +1968,13 @@ html[data-ui-theme="terminal"] .builder-side-badge {
         flex-direction: column;
     }
 }
+
+
+#strategy-builder-panel > .grid.grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#strategy-builder-panel > .grid.grid-3 > .builder-direction-picker {
+    grid-column: 1 / -1;
+    order: 3;
+}
