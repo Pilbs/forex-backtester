@@ -3071,11 +3071,15 @@ function saveRunAsStrategyDefaults(run) {
     const base = Object.fromEntries(
         Object.entries(run.strategyConfig ?? {}).map(([name, value]) => [name, String(value)])
     );
+    const config = experiment.config ?? {};
+    const strategyStorageId = config.savedStrategyId
+        ? `saved:${config.savedStrategyId}`
+        : experiment.strategy.id;
     const next = {
         global: current.global ?? {},
         strategies: {
             ...(current.strategies ?? {}),
-            [experiment.strategy.id]: { base, sweep: {} },
+            [strategyStorageId]: { base, sweep: {} },
         },
     };
 
@@ -3103,7 +3107,29 @@ function toLocalInputValue(value) {
 
 function loadRunIntoExperimentForm(run) {
     const experiment = currentExperimentDetail?.experiment;
-    const strategy = strategies.find((item) => item.id === experiment?.strategy?.id);
+    const config = experiment?.config ?? {};
+    let strategy = strategies.find((item) => item.id === experiment?.strategy?.id);
+
+    if (config.savedStrategyId) {
+        strategy = strategies.find(
+            (item) => item.id === `saved:${config.savedStrategyId}`
+        ) ?? strategy;
+    }
+
+    if (!strategy && experiment?.strategy?.id === "generic" && config.strategySpec) {
+        strategy = {
+            id: `history:${experiment.id}`,
+            executionStrategy: "generic",
+            savedStrategyId: config.savedStrategyId,
+            name: experiment.strategy.name ?? config.strategySpec.name ?? "Generic strategy",
+            version: config.savedStrategyVersion ?? 1,
+            parameters: parameterMetadataFromSpec(config.strategySpec),
+            strategySpec: config.strategySpec,
+            source: "history",
+        };
+        strategies.push(strategy);
+        populateResearchStrategySelect(strategy.id);
+    }
 
     if (!experiment || !run || !strategy) {
         detailedRerunFeedback.textContent =
@@ -3134,7 +3160,6 @@ function loadRunIntoExperimentForm(run) {
         }
     }
 
-    const config = experiment.config ?? {};
     const market = experiment.market ?? {};
     const account = config.account ?? {};
     const execution = config.execution ?? {};
