@@ -11,6 +11,35 @@ import {
 
 const strategySelect = document.querySelector("#strategy");
 const parameterContainer = document.querySelector("#strategy-parameters");
+const strategyParameterHelp = document.querySelector("#strategy-parameter-help");
+const testModeControls = [...document.querySelectorAll('input[name="test-mode"]')];
+const reviewIntro = document.querySelector("#review-intro");
+const strategiesView = document.querySelector("#strategies-view");
+const strategiesListPanel = document.querySelector("#strategies-list-panel");
+const strategyBuilderPanel = document.querySelector("#strategy-builder-panel");
+const savedStrategyGrid = document.querySelector("#saved-strategy-grid");
+const strategiesEmpty = document.querySelector("#strategies-empty");
+const strategiesStatus = document.querySelector("#strategies-status");
+const newStrategyButton = document.querySelector("#new-strategy-button");
+const backToStrategiesButton = document.querySelector("#back-to-strategies-button");
+const strategyBuilderTitle = document.querySelector("#strategy-builder-title");
+const strategyBuilderStatus = document.querySelector("#strategy-builder-status");
+const builderName = document.querySelector("#builder-name");
+const builderSide = document.querySelector("#builder-side");
+const builderDescription = document.querySelector("#builder-description");
+const builderEntryLogic = document.querySelector("#builder-entry-logic");
+const builderExitLogic = document.querySelector("#builder-exit-logic");
+const builderEntryConditions = document.querySelector("#builder-entry-conditions");
+const builderExitConditions = document.querySelector("#builder-exit-conditions");
+const addEntryConditionButton = document.querySelector("#add-entry-condition-button");
+const addExitConditionButton = document.querySelector("#add-exit-condition-button");
+const builderStopLoss = document.querySelector("#builder-stop-loss");
+const builderTakeProfit = document.querySelector("#builder-take-profit");
+const builderSummaryText = document.querySelector("#builder-summary-text");
+const saveStrategyButton = document.querySelector("#save-strategy-button");
+const saveAndRunStrategyButton = document.querySelector("#save-and-run-strategy-button");
+const duplicateStrategyButton = document.querySelector("#duplicate-strategy-button");
+const deleteStrategyButton = document.querySelector("#delete-strategy-button");
 const form = document.querySelector("#research-form");
 const resultPanel = document.querySelector("#result-panel");
 const executionPanel = document.querySelector("#execution-panel");
@@ -43,6 +72,10 @@ const adminEmpty = document.querySelector("#admin-empty");
 const refreshAdminButton = document.querySelector("#refresh-admin-button");
 
 let strategies = [];
+let builtInStrategies = [];
+let savedStrategies = [];
+let genericBuilder = null;
+let editingSavedStrategyId = null;
 let plannedConfig = null;
 
 const RESEARCH_DEFAULTS_STORAGE_KEY = "forexResearchDefaultsV1";
