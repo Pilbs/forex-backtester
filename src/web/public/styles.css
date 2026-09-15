@@ -1446,3 +1446,146 @@ html[data-ui-theme="terminal"] .user-theme-section {
 #admin-users-table td {
     font-variant-numeric: tabular-nums;
 }
+
+
+/* === STRATEGY BUILDER / TEST MODE === */
+.strategy-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.strategy-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    background: var(--surface);
+}
+
+.strategy-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.35rem;
+}
+
+.builder-section {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.builder-condition-list {
+    display: grid;
+    gap: 0.85rem;
+    margin-bottom: 0.85rem;
+}
+
+.builder-condition-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    background: var(--surface-muted);
+}
+
+.builder-condition-head {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.builder-condition-head select {
+    max-width: 260px;
+}
+
+.builder-condition-fields {
+    margin-top: 0.8rem;
+}
+
+.builder-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.builder-parameter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    opacity: 0.85;
+}
+
+.builder-parameter-toggle input {
+    width: auto;
+}
+
+.builder-summary {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-muted);
+}
+
+.strategy-summary-text {
+    line-height: 1.55;
+}
+
+.test-mode-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.test-mode-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    cursor: pointer;
+}
+
+.test-mode-card input {
+    width: auto;
+    margin-top: 0.2rem;
+}
+
+.test-mode-card span {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.test-mode-card small {
+    opacity: 0.75;
+    line-height: 1.35;
+}
+
+.compact-control {
+    max-width: 180px;
+}
+
+.small-button {
+    padding: 0.45rem 0.7rem;
+}
+
+.danger-button {
+    background: transparent;
+    border-color: #b94a48;
+    color: #b94a48;
+}
+
+@media (max-width: 760px) {
+    .test-mode-options {
+        grid-template-columns: 1fr;
+    }
+
+    .builder-condition-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .builder-condition-head select {
+        max-width: none;
+    }
+}
