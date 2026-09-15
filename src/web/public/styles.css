@@ -6,6 +6,9 @@
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #172033;
     background: #f3f6fb;
+    --border: #dde3ed;
+    --surface: #ffffff;
+    --surface-muted: #fafbfd;
 }
 
 * {
@@ -1683,4 +1686,134 @@ html[data-ui-theme="terminal"] .test-mode-card:has(input:checked) strong {
 
 html[data-ui-theme="terminal"] .builder-summary {
     border-left-color: #4fbf7a;
+}
+
+
+/* === STRATEGY BUILDER LAYOUT TIDY === */
+#strategy-builder-panel > .detail-toolbar {
+    margin-bottom: 20px;
+}
+
+#strategy-builder-panel > .section-heading {
+    margin-bottom: 22px;
+}
+
+#strategy-builder-panel > .section-heading .workflow-kicker {
+    margin-bottom: 8px;
+}
+
+#strategy-builder-panel > .section-heading p:last-child {
+    margin-bottom: 0;
+}
+
+.builder-section {
+    margin-top: 16px;
+    padding: 18px;
+    border: 1px solid #e1e6ee;
+    border-radius: 12px;
+    background: #fafbfd;
+}
+
+.builder-section .section-heading {
+    margin-bottom: 14px;
+}
+
+.builder-section .section-heading h3 {
+    margin: 0 0 6px;
+}
+
+.builder-section .section-heading p {
+    margin: 0;
+}
+
+.builder-section .split-heading {
+    align-items: center;
+}
+
+.builder-section .compact-control {
+    min-width: 120px;
+    max-width: 140px;
+    flex: 0 0 140px;
+}
+
+.builder-condition-list {
+    margin: 0 0 12px;
+}
+
+.builder-condition-card {
+    padding: 14px;
+    border: 1px solid #dbe2ec;
+    background: #ffffff;
+}
+
+.builder-condition-head {
+    display: grid;
+    grid-template-columns: auto minmax(190px, 280px) minmax(12px, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.builder-condition-head::before {
+    align-self: center;
+}
+
+.builder-condition-head select {
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+}
+
+.builder-condition-description {
+    margin: 10px 0 14px;
+}
+
+.builder-condition-fields {
+    margin-top: 0;
+}
+
+.builder-parameter-toggle {
+    margin-top: 2px;
+}
+
+.builder-summary {
+    margin-top: 16px;
+    background: #fafbfd;
+}
+
+#strategy-builder-panel > .actions {
+    margin-top: 16px;
+}
+
+html[data-ui-theme="terminal"] .builder-section {
+    border-color: #24372f;
+    background: #030806;
+}
+
+html[data-ui-theme="terminal"] .builder-condition-card {
+    border-color: #284337;
+    background: #020504;
+}
+
+@media (max-width: 760px) {
+    .builder-section {
+        padding: 14px;
+    }
+
+    .builder-section .split-heading {
+        align-items: stretch;
+    }
+
+    .builder-section .compact-control {
+        min-width: 0;
+        max-width: none;
+        flex-basis: auto;
+    }
+
+    .builder-condition-head {
+        grid-template-columns: 1fr;
+    }
+
+    .builder-condition-head::before {
+        margin-bottom: -4px;
+    }
 }
