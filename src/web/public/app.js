@@ -1445,7 +1445,8 @@ function renderSavedStrategies() {
         const entryCount = (spec.positions.long?.entry?.conditions?.length ?? 0)
             + (spec.positions.short?.entry?.conditions?.length ?? 0);
         meta.className = "estimate-note";
-        meta.textContent = `${direction} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · v${saved.version}`;
+        const modeLabel = spec.builderMode === "BOTH_MIRRORED" ? " · mirrored" : "";
+        meta.textContent = `${direction}${modeLabel} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · v${saved.version}`;
 
         const firstPosition = spec.positions.long ?? spec.positions.short;
         const summary = document.createElement("p");
