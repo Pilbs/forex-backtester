@@ -131,6 +131,37 @@ for (const close of [10, 9, 8, 9, 10, 11]) {
 
 assert.equal(combinedEntry?.action, "ENTER");
 
+const riskStrategy = createGenericStrategy({
+    definition: {
+        version: 1,
+        side: "LONG",
+        risk: {
+            stopLossPips: 12,
+            takeProfitPips: 24,
+        },
+        entry: {
+            logic: "AND",
+            conditions: [
+                {
+                    type: "RSI_THRESHOLD",
+                    period: 2,
+                    operator: "BELOW",
+                    value: 30,
+                },
+            ],
+        },
+    },
+});
+
+riskStrategy.reset();
+riskStrategy.onCandle(context(100));
+riskStrategy.onCandle(context(99));
+const riskEntry = riskStrategy.onCandle(context(98));
+assert.equal(riskEntry?.stopLoss?.type, "PIPS");
+assert.equal(riskEntry?.stopLoss?.value, 12);
+assert.equal(riskEntry?.takeProfit?.type, "PIPS");
+assert.equal(riskEntry?.takeProfit?.value, 24);
+
 assert.throws(
     () => createGenericStrategy({
         definition: {
