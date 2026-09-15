@@ -1497,6 +1497,32 @@ function createStrategyActionButton(label, className, handler) {
     return button;
 }
 
+async function deleteSavedStrategyFromList(saved) {
+    const confirmed = window.confirm(
+        `Delete "${saved.name}"?\n\nThis removes the saved strategy, but existing research history will remain unchanged.`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    strategiesStatus.textContent = `Deleting ${saved.name}…`;
+
+    const response = await fetch(
+        `/api/saved-strategies/${encodeURIComponent(saved.id)}`,
+        { method: "DELETE" }
+    );
+    const body = await readJsonResponse(response);
+
+    if (!response.ok) {
+        strategiesStatus.textContent = body.error ?? "Unable to delete strategy";
+        return;
+    }
+
+    await loadStrategies();
+    strategiesStatus.textContent = `"${saved.name}" deleted.`;
+}
+
 function renderSavedStrategies() {
     savedStrategyGrid.replaceChildren();
     savedStrategyTableBody.replaceChildren();
@@ -1535,6 +1561,11 @@ function renderSavedStrategies() {
                 "Edit",
                 "secondary-button",
                 () => openStrategyBuilder(saved)
+            ),
+            createStrategyActionButton(
+                "Delete",
+                "danger-button strategy-delete-button",
+                () => deleteSavedStrategyFromList(saved)
             )
         );
 
@@ -1575,6 +1606,11 @@ function renderSavedStrategies() {
                 "Edit",
                 "secondary-button",
                 () => openStrategyBuilder(saved)
+            ),
+            createStrategyActionButton(
+                "Delete",
+                "danger-button strategy-delete-button",
+                () => deleteSavedStrategyFromList(saved)
             )
         );
 
