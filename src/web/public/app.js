@@ -824,16 +824,638 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
-async function loadStrategies() {
-    const response = await fetch("/api/strategies");
-    const body = await response.json();
+
+function conditionMetadata(type) {
+    return genericBuilder?.conditions?.find((condition) => condition.type === type) ?? null;
+}
+
+function formatConditionSummary(condition, parameters = {}) {
+    function valueOf(value) {
+        if (value && typeof value === "object" && !Array.isArray(value) && value.parameter) {
+            return parameters[value.parameter]?.default ?? value.parameter;
+        }
+        return value;
+    }
+
+    if (condition.type === "RSI_THRESHOLD") {
+        return `RSI(${valueOf(condition.period)}) is ${condition.operator.toLowerCase()} ${valueOf(condition.value)}`;
+    }
+
+    if (condition.type === "EMA_CROSS") {
+        const direction = condition.direction === "ABOVE" ? "crosses above" : "crosses below";
+        return `EMA(${valueOf(condition.fastPeriod)}) ${direction} EMA(${valueOf(condition.slowPeriod)})`;
+    }
+
+    return condition.type;
+}
+
+function updateBuilderSummary() {
+    try {
+        const { spec } = collectBuilderStrategy();
+        const entry = spec.entry.conditions.map((condition) =>
+            formatConditionSummary(condition, spec.parameters)
+        );
+        const exit = spec.exit?.conditions?.map((condition) =>
+            formatConditionSummary(condition, spec.parameters)
+        ) ?? [];
+
+        const lines = [
+            `<strong>${spec.side}</strong> when:`,
+            ...entry.map((line, index) =>
+                `<div>• ${index > 0 ? spec.entry.logic + " " : ""}${line}</div>`
+            ),
+        ];
+
+        if (exit.length > 0) {
+            lines.push("<br><strong>Exit when:</strong>");
+            lines.push(...exit.map((line, index) =>
+                `<div>• ${index > 0 ? spec.exit.logic + " " : ""}${line}</div>`
+            ));
+        }
+
+        if (spec.risk?.stopLossPips !== undefined || spec.risk?.takeProfitPips !== undefined) {
+            lines.push("<br><strong>Risk:</strong>");
+            if (spec.risk.stopLossPips !== undefined) {
+                lines.push(`<div>• Stop loss: ${spec.risk.stopLossPips} pips</div>`);
+            }
+            if (spec.risk.takeProfitPips !== undefined) {
+                lines.push(`<div>• Take profit: ${spec.risk.takeProfitPips} pips</div>`);
+            }
+        }
+
+        builderSummaryText.innerHTML = lines.join("");
+    } catch {
+        builderSummaryText.textContent = "Add at least one valid entry condition to preview the strategy.";
+    }
+}
+
+function builderParameterId(section, index, fieldId) {
+    return `${section}${index + 1}_${fieldId}`;
+}
+
+function renderBuilderConditionFields(card, type, {
+    section,
+    index,
+    condition = {},
+    parameters = {},
+} = {}) {
+    const metadata = conditionMetadata(type);
+    const fields = card.querySelector(".builder-condition-fields");
+    fields.replaceChildren();
+
+    if (!metadata) {
+        return;
+    }
+
+    for (const field of metadata.fields) {
+        const wrap = document.createElement("label");
+        wrap.className = "builder-field";
+        const title = document.createElement("span");
+        title.textContent = field.label;
+        wrap.append(title);
+
+        let control;
+        if (field.options) {
+            control = document.createElement("select");
+            for (const option of field.options) {
+                const element = document.createElement("option");
+                element.value = option;
+                element.textContent = option === "ABOVE"
+                    ? "Above"
+                    : option === "BELOW"
+                        ? "Below"
+                        : option;
+                control.append(element);
+            }
+        } else {
+            control = document.createElement("input");
+            control.type = field.type === "integer" || field.type === "number"
+                ? "number"
+                : "text";
+            if (field.min !== undefined) control.min = field.min;
+            if (field.max !== undefined) control.max = field.max;
+            control.step = field.type === "integer" ? "1" : "any";
+        }
+
+        control.dataset.builderField = field.id;
+        const existingValue = condition[field.id];
+        let parameterName = null;
+        let displayValue = existingValue;
+
+        if (
+            existingValue
+            && typeof existingValue === "object"
+            && !Array.isArray(existingValue)
+            && existingValue.parameter
+        ) {
+            parameterName = existingValue.parameter;
+            displayValue = parameters[parameterName]?.default;
+        }
+
+        const initialValue = displayValue ?? field.default;
+        if (initialValue !== undefined) {
+            control.value = String(initialValue);
+        }
+
+        wrap.append(control);
+
+        if (field.parameterizable) {
+            const researchWrap = document.createElement("label");
+            researchWrap.className = "builder-parameter-toggle";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.dataset.builderParameter = field.id;
+            checkbox.checked = Boolean(parameterName);
+            const text = document.createElement("span");
+            text.textContent = "Allow parameter research";
+            researchWrap.append(checkbox, text);
+            wrap.append(researchWrap);
+        }
+
+        fields.append(wrap);
+    }
+
+    const description = card.querySelector(".builder-condition-description");
+    description.textContent = metadata.description ?? "";
+    updateBuilderSummary();
+}
+
+function createBuilderConditionCard(section, condition = null, parameters = {}) {
+    const container = section === "entry"
+        ? builderEntryConditions
+        : builderExitConditions;
+    const index = container.children.length;
+    const card = document.createElement("div");
+    card.className = "builder-condition-card";
+    card.dataset.builderSection = section;
+
+    const head = document.createElement("div");
+    head.className = "builder-condition-head";
+
+    const select = document.createElement("select");
+    select.className = "builder-condition-type";
+    for (const metadata of genericBuilder?.conditions ?? []) {
+        const option = document.createElement("option");
+        option.value = metadata.type;
+        option.textContent = metadata.name;
+        select.append(option);
+    }
+
+    if (condition?.type) {
+        select.value = condition.type;
+    }
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary-button small-button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+        card.remove();
+        updateBuilderSummary();
+    });
+
+    head.append(select, remove);
+
+    const description = document.createElement("p");
+    description.className = "builder-condition-description estimate-note";
+
+    const fields = document.createElement("div");
+    fields.className = "builder-condition-fields grid grid-3";
+
+    card.append(head, description, fields);
+    container.append(card);
+
+    const render = () => renderBuilderConditionFields(card, select.value, {
+        section,
+        index: [...container.children].indexOf(card),
+        condition: select.value === condition?.type ? condition : {},
+        parameters,
+    });
+
+    select.addEventListener("change", () => {
+        condition = null;
+        render();
+    });
+    card.addEventListener("input", updateBuilderSummary);
+    card.addEventListener("change", updateBuilderSummary);
+    render();
+
+    return card;
+}
+
+function readBuilderFieldValue(control, fieldMetadata) {
+    if (fieldMetadata.type === "integer") {
+        return Number.parseInt(control.value, 10);
+    }
+    if (fieldMetadata.type === "number") {
+        return Number(control.value);
+    }
+    return control.value;
+}
+
+function collectBuilderGroup(container, logic, section, parameters) {
+    const conditions = [];
+
+    [...container.children].forEach((card, index) => {
+        const type = card.querySelector(".builder-condition-type").value;
+        const metadata = conditionMetadata(type);
+        const condition = { type };
+
+        for (const field of metadata.fields) {
+            const control = card.querySelector(
+                `[data-builder-field="${field.id}"]`
+            );
+            const value = readBuilderFieldValue(control, field);
+            const parameterToggle = card.querySelector(
+                `[data-builder-parameter="${field.id}"]`
+            );
+
+            if (parameterToggle?.checked) {
+                const parameterId = builderParameterId(section, index, field.id);
+                parameters[parameterId] = {
+                    type: field.type,
+                    label: `${section === "entry" ? "Entry" : "Exit"} ${index + 1} · ${field.label}`,
+                    default: value,
+                    min: field.min,
+                    max: field.max,
+                    options: field.options,
+                    sweepable: true,
+                };
+                condition[field.id] = { parameter: parameterId };
+            } else {
+                condition[field.id] = value;
+            }
+        }
+
+        conditions.push(condition);
+    });
+
+    if (conditions.length === 0) {
+        return null;
+    }
+
+    return {
+        logic,
+        conditions,
+    };
+}
+
+function collectBuilderStrategy() {
+    const name = builderName.value.trim();
+
+    if (!name) {
+        throw new Error("Strategy name is required");
+    }
+
+    const parameters = {};
+    const entry = collectBuilderGroup(
+        builderEntryConditions,
+        builderEntryLogic.value,
+        "entry",
+        parameters
+    );
+
+    if (!entry) {
+        throw new Error("Add at least one entry condition");
+    }
+
+    const exit = collectBuilderGroup(
+        builderExitConditions,
+        builderExitLogic.value,
+        "exit",
+        parameters
+    );
+
+    const risk = {};
+    if (builderStopLoss.value !== "") {
+        risk.stopLossPips = Number(builderStopLoss.value);
+    }
+    if (builderTakeProfit.value !== "") {
+        risk.takeProfitPips = Number(builderTakeProfit.value);
+    }
+
+    const spec = {
+        version: 1,
+        name,
+        side: builderSide.value,
+        parameters,
+        entry,
+    };
+
+    if (exit) {
+        spec.exit = exit;
+    }
+
+    if (Object.keys(risk).length > 0) {
+        spec.risk = risk;
+    }
+
+    return {
+        name,
+        description: builderDescription.value.trim() || undefined,
+        spec,
+    };
+}
+
+function resetStrategyBuilder() {
+    editingSavedStrategyId = null;
+    strategyBuilderTitle.textContent = "New strategy";
+    builderName.value = "";
+    builderDescription.value = "";
+    builderSide.value = "LONG";
+    builderEntryLogic.value = "AND";
+    builderExitLogic.value = "AND";
+    builderStopLoss.value = "";
+    builderTakeProfit.value = "";
+    builderEntryConditions.replaceChildren();
+    builderExitConditions.replaceChildren();
+    duplicateStrategyButton.hidden = true;
+    deleteStrategyButton.hidden = true;
+    strategyBuilderStatus.textContent = "";
+    createBuilderConditionCard("entry");
+    updateBuilderSummary();
+}
+
+function openStrategyBuilder(saved = null) {
+    strategiesListPanel.hidden = true;
+    strategyBuilderPanel.hidden = false;
+
+    if (!saved) {
+        resetStrategyBuilder();
+        return;
+    }
+
+    editingSavedStrategyId = saved.id;
+    strategyBuilderTitle.textContent = "Edit strategy";
+    builderName.value = saved.name;
+    builderDescription.value = saved.description ?? "";
+    builderSide.value = saved.spec.side ?? "LONG";
+    builderEntryLogic.value = saved.spec.entry?.logic ?? "AND";
+    builderExitLogic.value = saved.spec.exit?.logic ?? "AND";
+    builderStopLoss.value = saved.spec.risk?.stopLossPips ?? "";
+    builderTakeProfit.value = saved.spec.risk?.takeProfitPips ?? "";
+    builderEntryConditions.replaceChildren();
+    builderExitConditions.replaceChildren();
+
+    for (const condition of saved.spec.entry?.conditions ?? []) {
+        createBuilderConditionCard("entry", condition, saved.spec.parameters ?? {});
+    }
+
+    for (const condition of saved.spec.exit?.conditions ?? []) {
+        createBuilderConditionCard("exit", condition, saved.spec.parameters ?? {});
+    }
+
+    duplicateStrategyButton.hidden = false;
+    deleteStrategyButton.hidden = false;
+    strategyBuilderStatus.textContent = `Saved strategy v${saved.version}`;
+    updateBuilderSummary();
+}
+
+function showStrategyList() {
+    strategyBuilderPanel.hidden = true;
+    strategiesListPanel.hidden = false;
+    editingSavedStrategyId = null;
+}
+
+function renderSavedStrategies() {
+    savedStrategyGrid.replaceChildren();
+    strategiesEmpty.hidden = savedStrategies.length !== 0;
+
+    for (const saved of savedStrategies) {
+        const card = document.createElement("article");
+        card.className = "strategy-card";
+
+        const title = document.createElement("h3");
+        title.textContent = saved.name;
+
+        const meta = document.createElement("p");
+        const entryCount = saved.spec.entry?.conditions?.length ?? 0;
+        const exitCount = saved.spec.exit?.conditions?.length ?? 0;
+        meta.className = "estimate-note";
+        meta.textContent = `${saved.spec.side ?? "LONG"} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · ${exitCount} exit condition${exitCount === 1 ? "" : "s"} · v${saved.version}`;
+
+        const summary = document.createElement("p");
+        summary.textContent = saved.description || formatConditionSummary(
+            saved.spec.entry.conditions[0],
+            saved.spec.parameters ?? {}
+        );
+
+        const actions = document.createElement("div");
+        actions.className = "actions compact-actions";
+
+        const run = document.createElement("button");
+        run.type = "button";
+        run.textContent = "Run test";
+        run.addEventListener("click", () => useSavedStrategyInExperiment(saved));
+
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "secondary-button";
+        edit.textContent = "Edit";
+        edit.addEventListener("click", () => openStrategyBuilder(saved));
+
+        actions.append(run, edit);
+        card.append(title, meta, summary, actions);
+        savedStrategyGrid.append(card);
+    }
+
+    strategiesStatus.textContent = savedStrategies.length
+        ? `${savedStrategies.length} saved strateg${savedStrategies.length === 1 ? "y" : "ies"}`
+        : "";
+}
+
+async function loadSavedStrategies() {
+    const response = await fetch("/api/saved-strategies");
+    const body = await readJsonResponse(response);
 
     if (!response.ok) {
+        throw new Error(body.error ?? "Unable to load saved strategies");
+    }
+
+    savedStrategies = body.strategies ?? [];
+    renderSavedStrategies();
+}
+
+function populateResearchStrategySelect(selectedValue) {
+    strategySelect.replaceChildren();
+
+    for (const strategy of strategies) {
+        const option = document.createElement("option");
+        option.value = strategy.id;
+        option.textContent = strategy.source === "saved"
+            ? `${strategy.name} · My strategy`
+            : strategy.name;
+        strategySelect.append(option);
+    }
+
+    if (
+        selectedValue
+        && [...strategySelect.options].some((option) => option.value === selectedValue)
+    ) {
+        strategySelect.value = selectedValue;
+    }
+}
+
+function useSavedStrategyInExperiment(saved) {
+    const uiStrategy = savedStrategyAsResearchStrategy(saved);
+
+    if (!strategies.some((strategy) => strategy.id === uiStrategy.id)) {
+        strategies.push(uiStrategy);
+        populateResearchStrategySelect(uiStrategy.id);
+    } else {
+        strategySelect.value = uiStrategy.id;
+    }
+
+    setWorkspaceView("research");
+    testModeControls.forEach((control) => {
+        control.checked = control.value === "single";
+    });
+    renderParameters(uiStrategy);
+    applyStrategyDefaults(uiStrategy.id);
+    updateTestModeVisibility();
+    document.querySelector("#experiment-name").value = `${saved.name} test`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function saveBuilderStrategy({ runAfterSave = false, duplicate = false } = {}) {
+    const payload = collectBuilderStrategy();
+    saveStrategyButton.disabled = true;
+    saveAndRunStrategyButton.disabled = true;
+    strategyBuilderStatus.textContent = "Saving…";
+
+    try {
+        let response;
+
+        if (editingSavedStrategyId && !duplicate) {
+            response = await fetch(
+                `/api/saved-strategies/${encodeURIComponent(editingSavedStrategyId)}`,
+                {
+                    method: "PUT",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify(payload),
+                }
+            );
+        } else {
+            if (duplicate) {
+                payload.name = `${payload.name} copy`;
+                payload.spec.name = payload.name;
+            }
+
+            response = await fetch("/api/saved-strategies", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+        }
+
+        const body = await readJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(body.error ?? "Unable to save strategy");
+        }
+
+        await loadSavedStrategies();
+        await loadStrategies(body.strategy?.id
+            ? `saved:${body.strategy.id}`
+            : undefined);
+
+        strategyBuilderStatus.textContent = "Strategy saved";
+
+        if (runAfterSave && body.strategy) {
+            useSavedStrategyInExperiment(body.strategy);
+        } else {
+            showStrategyList();
+        }
+    } finally {
+        saveStrategyButton.disabled = false;
+        saveAndRunStrategyButton.disabled = false;
+    }
+}
+
+newStrategyButton.addEventListener("click", () => openStrategyBuilder());
+backToStrategiesButton.addEventListener("click", showStrategyList);
+addEntryConditionButton.addEventListener("click", () => createBuilderConditionCard("entry"));
+addExitConditionButton.addEventListener("click", () => createBuilderConditionCard("exit"));
+builderName.addEventListener("input", updateBuilderSummary);
+builderSide.addEventListener("change", updateBuilderSummary);
+builderEntryLogic.addEventListener("change", updateBuilderSummary);
+builderExitLogic.addEventListener("change", updateBuilderSummary);
+builderStopLoss.addEventListener("input", updateBuilderSummary);
+builderTakeProfit.addEventListener("input", updateBuilderSummary);
+
+saveStrategyButton.addEventListener("click", async () => {
+    try {
+        await saveBuilderStrategy();
+    } catch (error) {
+        strategyBuilderStatus.textContent = error.message;
+    }
+});
+
+saveAndRunStrategyButton.addEventListener("click", async () => {
+    try {
+        await saveBuilderStrategy({ runAfterSave: true });
+    } catch (error) {
+        strategyBuilderStatus.textContent = error.message;
+    }
+});
+
+duplicateStrategyButton.addEventListener("click", async () => {
+    try {
+        await saveBuilderStrategy({ duplicate: true });
+    } catch (error) {
+        strategyBuilderStatus.textContent = error.message;
+    }
+});
+
+deleteStrategyButton.addEventListener("click", async () => {
+    if (!editingSavedStrategyId || !window.confirm("Delete this saved strategy? Existing experiment history will remain unchanged.")) {
+        return;
+    }
+
+    const response = await fetch(
+        `/api/saved-strategies/${encodeURIComponent(editingSavedStrategyId)}`,
+        { method: "DELETE" }
+    );
+    const body = await readJsonResponse(response);
+
+    if (!response.ok) {
+        strategyBuilderStatus.textContent = body.error ?? "Unable to delete strategy";
+        return;
+    }
+
+    await loadSavedStrategies();
+    await loadStrategies();
+    showStrategyList();
+});
+
+async function loadStrategies(selectedValue) {
+    const [strategyResponse, savedResponse] = await Promise.all([
+        fetch("/api/strategies"),
+        fetch("/api/saved-strategies"),
+    ]);
+    const body = await readJsonResponse(strategyResponse);
+    const savedBody = await readJsonResponse(savedResponse);
+
+    if (!strategyResponse.ok) {
         throw new Error(body.error ?? "Unable to load strategies");
     }
 
-    strategies = body.strategies;
-    strategySelect.replaceChildren();
+    if (!savedResponse.ok) {
+        throw new Error(savedBody.error ?? "Unable to load saved strategies");
+    }
+
+    builtInStrategies = body.strategies ?? [];
+    genericBuilder = body.genericBuilder ?? null;
+    savedStrategies = savedBody.strategies ?? [];
+
+    strategies = [
+        ...builtInStrategies,
+        ...savedStrategies.map(savedStrategyAsResearchStrategy),
+    ];
+
+    populateResearchStrategySelect(selectedValue);
+    renderSavedStrategies();
+
     const historyStrategySelect = document.querySelector("#experiment-filter-strategy");
     historyStrategySelect.replaceChildren();
     const allStrategiesOption = document.createElement("option");
@@ -841,20 +1463,24 @@ async function loadStrategies() {
     allStrategiesOption.textContent = "All strategies";
     historyStrategySelect.append(allStrategiesOption);
 
-    for (const strategy of strategies) {
-        const option = document.createElement("option");
-        option.value = strategy.id;
-        option.textContent = strategy.name;
-        strategySelect.append(option);
-
+    for (const strategy of [
+        ...builtInStrategies,
+        { id: "generic", name: "My strategies" },
+    ]) {
         const historyOption = document.createElement("option");
         historyOption.value = strategy.id;
         historyOption.textContent = strategy.name;
         historyStrategySelect.append(historyOption);
     }
 
-    renderParameters(strategies[0]);
-    applyStrategyDefaults(strategies[0].id);
+    const selected = selectedStrategy() ?? strategies[0];
+
+    if (selected) {
+        strategySelect.value = selected.id;
+        renderParameters(selected);
+        applyStrategyDefaults(selected.id);
+    }
+
     applyAccountDefaults();
 }
 
