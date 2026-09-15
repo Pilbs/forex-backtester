@@ -1,10 +1,10 @@
 export const genericStrategyBuilderMetadata = {
     id: "generic",
     name: "Generic Strategy",
-    version: 1,
+    version: 2,
     description: "Build a strategy from reusable conditions and sweepable parameters.",
     kind: "GENERIC_BUILDER",
-    sides: ["LONG", "SHORT"],
+    directionModes: ["LONG_ONLY", "SHORT_ONLY", "BOTH_MIRRORED", "BOTH_INDEPENDENT"],
     groupLogic: ["AND", "OR"],
     conditions: [
         {
