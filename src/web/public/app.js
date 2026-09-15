@@ -668,11 +668,11 @@ function renderResult(config, response) {
     const researchMode = currentTestMode() === "research";
 
     reviewIntro.textContent = researchMode
-        ? "Parameter research will only run after this review. Check the requested runs and estimated usage against your plan before confirming."
-        : "Review the single backtest settings before running.";
+        ? "Review the number of runs and estimated usage before confirming parameter research."
+        : "Review the market, account and strategy values before running this single backtest.";
 
     document.querySelector("#summary-cards").innerHTML = [
-        summaryCard("Experiment", config.name || "Untagged"),
+        summaryCard("Research", config.name || "Untagged"),
         summaryCard("Strategy", plan.strategy.name),
         summaryCard("Requested runs", plan.research.requestedCombinations),
         summaryCard("Valid runs", plan.research.validCombinations),
@@ -714,7 +714,7 @@ function renderResult(config, response) {
     runButton.hidden = !executionGate.allowed;
     runButton.disabled = false;
     runButton.textContent = researchMode
-        ? "Confirm & run parameter research"
+        ? "Confirm parameter research"
         : "Run single backtest";
     executionStatus.textContent = "";
     executionPanel.hidden = true;
@@ -993,7 +993,7 @@ function renderBuilderConditionFields(card, type, {
             checkbox.dataset.builderParameter = field.id;
             checkbox.checked = Boolean(parameterName);
             const text = document.createElement("span");
-            text.textContent = "Allow parameter research";
+            text.textContent = "Make this value researchable";
             researchWrap.append(checkbox, text);
             wrap.append(researchWrap);
         }
@@ -1185,7 +1185,7 @@ function collectBuilderStrategy() {
 
 function resetStrategyBuilder() {
     editingSavedStrategyId = null;
-    strategyBuilderTitle.textContent = "New strategy";
+    strategyBuilderTitle.textContent = "Build a strategy";
     builderName.value = "";
     builderDescription.value = "";
     builderSide.value = "LONG";
@@ -1271,7 +1271,7 @@ function renderSavedStrategies() {
 
         const run = document.createElement("button");
         run.type = "button";
-        run.textContent = "Run test";
+        run.textContent = "Research strategy";
         run.addEventListener("click", () => useSavedStrategyInExperiment(saved));
 
         const edit = document.createElement("button");
@@ -1385,7 +1385,7 @@ async function saveBuilderStrategy({ runAfterSave = false, duplicate = false } =
             ? `saved:${body.strategy.id}`
             : undefined);
 
-        strategyBuilderStatus.textContent = "Strategy saved";
+        strategyBuilderStatus.textContent = "Strategy saved. Ready to research.";
 
         if (runAfterSave && body.strategy) {
             useSavedStrategyInExperiment(body.strategy);
@@ -1524,7 +1524,7 @@ resetAccountDefaultsButton.addEventListener("click", resetSavedAccountDefaults);
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    requestStatus.textContent = "Planning...";
+    requestStatus.textContent = "Preparing review...";
     resultPanel.hidden = true;
     executionPanel.hidden = true;
     errorPanel.hidden = true;
@@ -1542,15 +1542,15 @@ form.addEventListener("submit", async (event) => {
         const body = await response.json();
 
         if (!response.ok) {
-            throw new Error(body.error ?? "Planning failed");
+            throw new Error(body.error ?? "Review failed");
         }
 
         renderResult(config, body);
-        requestStatus.textContent = "Plan validated";
+        requestStatus.textContent = "Review ready";
     } catch (error) {
         document.querySelector("#error-output").textContent = error.message;
         errorPanel.hidden = false;
-        requestStatus.textContent = "Planning failed";
+        requestStatus.textContent = "Review failed";
     }
 });
 
