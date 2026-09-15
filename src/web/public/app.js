@@ -683,6 +683,10 @@ function renderResult(config, response) {
         summaryCard("Date range", `${usageEstimate.dateRangeDays} days`),
         summaryCard("Estimated dataset rows", usageEstimate.estimatedDatasetRows.toLocaleString()),
         summaryCard("Estimated candle evaluations", usageEstimate.estimatedCandleEvaluations.toLocaleString()),
+        summaryCard(
+            "Run allowance",
+            `${plan.research.requestedCombinations} / ${executionGate.limits.maximumRuns}`
+        ),
         summaryCard("Cloud execution", executionGate.allowed ? "Allowed" : "Blocked"),
     ].join("");
 
@@ -3139,6 +3143,9 @@ function loadRunIntoExperimentForm(run) {
     }
 
     strategySelect.value = strategy.id;
+    testModeControls.forEach((control) => {
+        control.checked = control.value === "single";
+    });
     renderParameters(strategy);
     let loadedParameters = 0;
 
