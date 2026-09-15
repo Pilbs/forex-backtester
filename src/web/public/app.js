@@ -18,6 +18,10 @@ const strategiesView = document.querySelector("#strategies-view");
 const strategiesListPanel = document.querySelector("#strategies-list-panel");
 const strategyBuilderPanel = document.querySelector("#strategy-builder-panel");
 const savedStrategyGrid = document.querySelector("#saved-strategy-grid");
+const savedStrategyTableWrap = document.querySelector("#saved-strategy-table-wrap");
+const savedStrategyTableBody = document.querySelector("#saved-strategy-table tbody");
+const strategyTableViewButton = document.querySelector("#strategy-table-view-button");
+const strategyCardViewButton = document.querySelector("#strategy-card-view-button");
 const strategiesEmpty = document.querySelector("#strategies-empty");
 const strategiesStatus = document.querySelector("#strategies-status");
 const newStrategyButton = document.querySelector("#new-strategy-button");
@@ -91,6 +95,7 @@ let editingSavedStrategyId = null;
 let plannedConfig = null;
 
 const RESEARCH_DEFAULTS_STORAGE_KEY = "forexResearchDefaultsV1";
+const STRATEGY_LIST_VIEW_STORAGE_KEY = "stratTestStrategyListView";
 
 let executionTimer = null;
 let executionStartedAt = null;
@@ -1425,12 +1430,81 @@ function showStrategyList() {
     editingSavedStrategyId = null;
 }
 
+function strategyListView() {
+    const saved = window.localStorage.getItem(STRATEGY_LIST_VIEW_STORAGE_KEY);
+    return saved === "cards" ? "cards" : "table";
+}
+
+function setStrategyListView(view, { persist = true } = {}) {
+    const cards = view === "cards";
+
+    savedStrategyGrid.hidden = !cards;
+    savedStrategyTableWrap.hidden = cards;
+    strategyTableViewButton.classList.toggle("is-active", !cards);
+    strategyCardViewButton.classList.toggle("is-active", cards);
+    strategyTableViewButton.setAttribute("aria-pressed", String(!cards));
+    strategyCardViewButton.setAttribute("aria-pressed", String(cards));
+
+    if (persist) {
+        try {
+            window.localStorage.setItem(
+                STRATEGY_LIST_VIEW_STORAGE_KEY,
+                cards ? "cards" : "table"
+            );
+        } catch {
+            // View preference is non-critical.
+        }
+    }
+}
+
+function savedStrategyDisplayDetails(saved) {
+    const spec = normalizedBuilderSpec(saved.spec);
+    const hasLong = Boolean(spec.positions.long);
+    const hasShort = Boolean(spec.positions.short);
+    const direction = hasLong && hasShort
+        ? "Long & short"
+        : hasShort ? "Short" : "Long";
+    const modeLabel = spec.builderMode === "BOTH_MIRRORED"
+        ? "Mirrored"
+        : null;
+    const entryCount = (spec.positions.long?.entry?.conditions?.length ?? 0)
+        + (spec.positions.short?.entry?.conditions?.length ?? 0);
+    const firstPosition = spec.positions.long ?? spec.positions.short;
+    const summary = saved.description || (
+        firstPosition?.entry?.conditions?.[0]
+            ? formatConditionSummary(
+                firstPosition.entry.conditions[0],
+                spec.parameters ?? {}
+            )
+            : "No entry rule summary"
+    );
+
+    return {
+        spec,
+        direction,
+        modeLabel,
+        entryCount,
+        summary,
+    };
+}
+
+function createStrategyActionButton(label, className, handler) {
+    const button = document.createElement("button");
+    button.type = "button";
+    if (className) button.className = className;
+    button.textContent = label;
+    button.addEventListener("click", handler);
+    return button;
+}
+
 function renderSavedStrategies() {
     savedStrategyGrid.replaceChildren();
+    savedStrategyTableBody.replaceChildren();
     strategiesEmpty.hidden = savedStrategies.length !== 0;
 
     for (const saved of savedStrategies) {
-        const spec = normalizedBuilderSpec(saved.spec);
+        const details = savedStrategyDisplayDetails(saved);
+
         const card = document.createElement("article");
         card.className = "strategy-card";
 
@@ -1438,47 +1512,85 @@ function renderSavedStrategies() {
         title.textContent = saved.name;
 
         const meta = document.createElement("p");
-        const hasLong = Boolean(spec.positions.long);
-        const hasShort = Boolean(spec.positions.short);
-        const direction = hasLong && hasShort
-            ? "LONG & SHORT"
-            : hasShort ? "SHORT" : "LONG";
-        const entryCount = (spec.positions.long?.entry?.conditions?.length ?? 0)
-            + (spec.positions.short?.entry?.conditions?.length ?? 0);
         meta.className = "estimate-note";
-        const modeLabel = spec.builderMode === "BOTH_MIRRORED" ? " · mirrored" : "";
-        meta.textContent = `${direction}${modeLabel} · ${entryCount} entry condition${entryCount === 1 ? "" : "s"} · v${saved.version}`;
+        meta.textContent = [
+            details.direction.toUpperCase(),
+            details.modeLabel,
+            `${details.entryCount} entry condition${details.entryCount === 1 ? "" : "s"}`,
+            `v${saved.version}`,
+        ].filter(Boolean).join(" · ");
 
-        const firstPosition = spec.positions.long ?? spec.positions.short;
         const summary = document.createElement("p");
-        summary.textContent = saved.description || formatConditionSummary(
-            firstPosition.entry.conditions[0],
-            spec.parameters ?? {}
+        summary.textContent = details.summary;
+
+        const cardActions = document.createElement("div");
+        cardActions.className = "actions compact-actions";
+        cardActions.append(
+            createStrategyActionButton(
+                "Research strategy",
+                "",
+                () => useSavedStrategyInExperiment(saved)
+            ),
+            createStrategyActionButton(
+                "Edit",
+                "secondary-button",
+                () => openStrategyBuilder(saved)
+            )
         );
 
-        const actions = document.createElement("div");
-        actions.className = "actions compact-actions";
-
-        const run = document.createElement("button");
-        run.type = "button";
-        run.textContent = "Research strategy";
-        run.addEventListener("click", () => useSavedStrategyInExperiment(saved));
-
-        const edit = document.createElement("button");
-        edit.type = "button";
-        edit.className = "secondary-button";
-        edit.textContent = "Edit";
-        edit.addEventListener("click", () => openStrategyBuilder(saved));
-
-        actions.append(run, edit);
-        card.append(title, meta, summary, actions);
+        card.append(title, meta, summary, cardActions);
         savedStrategyGrid.append(card);
+
+        const row = document.createElement("tr");
+        row.className = "strategy-table-row";
+
+        const nameCell = document.createElement("td");
+        const nameStrong = document.createElement("strong");
+        nameStrong.textContent = saved.name;
+        const nameSummary = document.createElement("span");
+        nameSummary.className = "strategy-table-summary";
+        nameSummary.textContent = details.summary;
+        nameCell.append(nameStrong, nameSummary);
+
+        const directionCell = document.createElement("td");
+        directionCell.textContent = details.modeLabel
+            ? `${details.direction} · ${details.modeLabel.toLowerCase()}`
+            : details.direction;
+
+        const entryCell = document.createElement("td");
+        entryCell.textContent = String(details.entryCount);
+
+        const versionCell = document.createElement("td");
+        versionCell.textContent = `v${saved.version}`;
+
+        const actionCell = document.createElement("td");
+        actionCell.className = "strategy-table-actions";
+        actionCell.append(
+            createStrategyActionButton(
+                "Research",
+                "",
+                () => useSavedStrategyInExperiment(saved)
+            ),
+            createStrategyActionButton(
+                "Edit",
+                "secondary-button",
+                () => openStrategyBuilder(saved)
+            )
+        );
+
+        row.append(nameCell, directionCell, entryCell, versionCell, actionCell);
+        savedStrategyTableBody.append(row);
     }
 
     strategiesStatus.textContent = savedStrategies.length
         ? `${savedStrategies.length} saved strateg${savedStrategies.length === 1 ? "y" : "ies"}`
         : "";
+
+    setStrategyListView(strategyListView(), { persist: false });
 }
+
+strategyTableViewButton.addEventListener("click", () => setStrategyListView("table"));
+strategyCardViewButton.addEventListener("click", () => setStrategyListView("cards"));
 
 async function loadSavedStrategies() {
     const response = await fetch("/api/saved-strategies");
