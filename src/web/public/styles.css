@@ -2220,3 +2220,70 @@ html[data-ui-theme="terminal"] .strategy-table-summary {
         min-width: 220px;
     }
 }
+
+
+/* === STRATEGY LIST VIEW FIX / SOFTER ACCENTS === */
+.strategy-card-grid[hidden],
+.strategy-table-wrap[hidden] {
+    display: none !important;
+}
+
+/* Softer slate-blue primary treatment for the contemporary theme. */
+html:not([data-ui-theme="terminal"]) button {
+    background: #2f5f95;
+}
+
+html:not([data-ui-theme="terminal"]) button:hover:not(:disabled) {
+    background: #284f7b;
+    opacity: 1;
+}
+
+html:not([data-ui-theme="terminal"]) .secondary-button,
+html:not([data-ui-theme="terminal"]) .view-switch-button {
+    background: #ffffff;
+    color: #344158;
+}
+
+html:not([data-ui-theme="terminal"]) .secondary-button:hover:not(:disabled),
+html:not([data-ui-theme="terminal"]) .view-switch-button:hover:not(:disabled) {
+    background: #f3f6fb;
+}
+
+html:not([data-ui-theme="terminal"]) .view-switch-button.is-active {
+    background: #dbe8f6;
+    color: #234b77;
+    box-shadow: inset 0 0 0 1px #9fbbd8;
+}
+
+html:not([data-ui-theme="terminal"]) .workspace-nav-button {
+    background: transparent;
+}
+
+html:not([data-ui-theme="terminal"]) .workspace-nav-button:hover:not(:disabled) {
+    background: transparent;
+}
+
+html:not([data-ui-theme="terminal"]) .workspace-nav-button.is-active {
+    border-bottom-color: #2f5f95;
+    color: #234b77;
+}
+
+html:not([data-ui-theme="terminal"]) .strategy-table-actions button:first-child {
+    background: #eaf2fb;
+    color: #234b77;
+    box-shadow: inset 0 0 0 1px #b8cde3;
+}
+
+html:not([data-ui-theme="terminal"]) .strategy-table-actions button:first-child:hover:not(:disabled) {
+    background: #dceaf8;
+}
+
+html:not([data-ui-theme="terminal"]) .strategy-card .actions button:first-child {
+    background: #eaf2fb;
+    color: #234b77;
+    box-shadow: inset 0 0 0 1px #b8cde3;
+}
+
+html:not([data-ui-theme="terminal"]) .strategy-card .actions button:first-child:hover:not(:disabled) {
+    background: #dceaf8;
+}
