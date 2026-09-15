@@ -886,37 +886,122 @@ function formatConditionSummary(condition, parameters = {}) {
     return condition.type;
 }
 
+function currentBuilderDirection() {
+    return builderDirectionControls.find((control) => control.checked)?.value ?? "LONG_ONLY";
+}
+
+function currentBuilderShortMode() {
+    return builderShortModeControls.find((control) => control.checked)?.value ?? "MIRRORED";
+}
+
+function setBuilderRadio(name, value) {
+    for (const control of document.querySelectorAll(`input[name="${name}"]`)) {
+        control.checked = control.value === value;
+    }
+}
+
+function builderScope(scope) {
+    const scopes = {
+        entry: {
+            container: builderEntryConditions,
+            logic: builderEntryLogic,
+            side: currentBuilderDirection() === "SHORT_ONLY" ? "short" : "long",
+            phase: "entry",
+        },
+        exit: {
+            container: builderExitConditions,
+            logic: builderExitLogic,
+            side: currentBuilderDirection() === "SHORT_ONLY" ? "short" : "long",
+            phase: "exit",
+        },
+        "short-entry": {
+            container: builderShortEntryConditions,
+            logic: builderShortEntryLogic,
+            side: "short",
+            phase: "entry",
+        },
+        "short-exit": {
+            container: builderShortExitConditions,
+            logic: builderShortExitLogic,
+            side: "short",
+            phase: "exit",
+        },
+    };
+
+    return scopes[scope];
+}
+
+function mirrorCondition(condition) {
+    const mirrored = structuredClone(condition);
+
+    if (mirrored.type === "RSI_THRESHOLD") {
+        mirrored.operator = mirrored.operator === "ABOVE" ? "BELOW" : "ABOVE";
+    } else if (mirrored.type === "EMA_CROSS") {
+        mirrored.direction = mirrored.direction === "ABOVE" ? "BELOW" : "ABOVE";
+    }
+
+    return mirrored;
+}
+
+function mirrorGroup(group) {
+    if (!group) return undefined;
+
+    return {
+        logic: group.logic,
+        conditions: group.conditions.map(mirrorCondition),
+    };
+}
+
+function builderParameterId(side, phase, index, fieldId) {
+    return `${side}_${phase}${index + 1}_${fieldId}`;
+}
+
+function describeBuilderPosition(side, position, parameters) {
+    if (!position) return [];
+
+    const sideLabel = side === "long" ? "LONG" : "SHORT";
+    const lines = [`<strong>${sideLabel}</strong>`];
+
+    position.entry.conditions.forEach((condition, index) => {
+        lines.push(
+            `<div>• ${index > 0 ? position.entry.logic + " " : ""}${formatConditionSummary(condition, parameters)}</div>`
+        );
+    });
+
+    if (position.exit?.conditions?.length) {
+        lines.push("<div class=\"strategy-summary-subtle\">Exit:</div>");
+        position.exit.conditions.forEach((condition, index) => {
+            lines.push(
+                `<div>• ${index > 0 ? position.exit.logic + " " : ""}${formatConditionSummary(condition, parameters)}</div>`
+            );
+        });
+    }
+
+    return lines;
+}
+
 function updateBuilderSummary() {
     try {
         const { spec } = collectBuilderStrategy();
-        const entry = spec.entry.conditions.map((condition) =>
-            formatConditionSummary(condition, spec.parameters)
-        );
-        const exit = spec.exit?.conditions?.map((condition) =>
-            formatConditionSummary(condition, spec.parameters)
-        ) ?? [];
+        const lines = [];
 
-        const lines = [
-            `<strong>${spec.side}</strong> when:`,
-            ...entry.map((line, index) =>
-                `<div>• ${index > 0 ? spec.entry.logic + " " : ""}${line}</div>`
-            ),
-        ];
-
-        if (exit.length > 0) {
-            lines.push("<br><strong>Exit when:</strong>");
-            lines.push(...exit.map((line, index) =>
-                `<div>• ${index > 0 ? spec.exit.logic + " " : ""}${line}</div>`
-            ));
+        if (spec.positions.long) {
+            lines.push(...describeBuilderPosition("long", spec.positions.long, spec.parameters));
         }
 
-        if (spec.risk?.stopLossPips !== undefined || spec.risk?.takeProfitPips !== undefined) {
-            lines.push("<br><strong>Risk:</strong>");
-            if (spec.risk.stopLossPips !== undefined) {
-                lines.push(`<div>• Stop loss: ${spec.risk.stopLossPips} pips</div>`);
+        if (spec.positions.short) {
+            if (lines.length) lines.push("<br>");
+            lines.push(...describeBuilderPosition("short", spec.positions.short, spec.parameters));
+        }
+
+        const risk = spec.positions.long?.risk ?? spec.positions.short?.risk;
+        if (risk?.stopLossPips !== undefined || risk?.takeProfitPips !== undefined) {
+            lines.push("<br><strong>Risk on each trade</strong>");
+            if (risk.stopLossPips !== undefined) {
+                lines.push(`<div>• Stop loss: ${risk.stopLossPips} pips</div>`);
             }
-            if (spec.risk.takeProfitPips !== undefined) {
-                lines.push(`<div>• Take profit: ${spec.risk.takeProfitPips} pips</div>`);
+            if (risk.takeProfitPips !== undefined) {
+                lines.push(`<div>• Take profit: ${risk.takeProfitPips} pips</div>`);
             }
         }
 
@@ -926,12 +1011,8 @@ function updateBuilderSummary() {
     }
 }
 
-function builderParameterId(section, index, fieldId) {
-    return `${section}${index + 1}_${fieldId}`;
-}
-
 function renderBuilderConditionFields(card, type, {
-    section,
+    scope,
     index,
     condition = {},
     parameters = {},
@@ -940,9 +1021,7 @@ function renderBuilderConditionFields(card, type, {
     const fields = card.querySelector(".builder-condition-fields");
     fields.replaceChildren();
 
-    if (!metadata) {
-        return;
-    }
+    if (!metadata) return;
 
     for (const field of metadata.fields) {
         const wrap = document.createElement("label");
@@ -990,10 +1069,7 @@ function renderBuilderConditionFields(card, type, {
         }
 
         const initialValue = displayValue ?? field.default;
-        if (initialValue !== undefined) {
-            control.value = String(initialValue);
-        }
-
+        if (initialValue !== undefined) control.value = String(initialValue);
         wrap.append(control);
 
         if (field.parameterizable) {
@@ -1004,7 +1080,7 @@ function renderBuilderConditionFields(card, type, {
             checkbox.dataset.builderParameter = field.id;
             checkbox.checked = Boolean(parameterName);
             const text = document.createElement("span");
-            text.textContent = "Make this value researchable";
+            text.textContent = "Research this value";
             researchWrap.append(checkbox, text);
             wrap.append(researchWrap);
         }
@@ -1012,19 +1088,17 @@ function renderBuilderConditionFields(card, type, {
         fields.append(wrap);
     }
 
-    const description = card.querySelector(".builder-condition-description");
-    description.textContent = metadata.description ?? "";
+    card.querySelector(".builder-condition-description").textContent =
+        metadata.description ?? "";
     updateBuilderSummary();
 }
 
-function createBuilderConditionCard(section, condition = null, parameters = {}) {
-    const container = section === "entry"
-        ? builderEntryConditions
-        : builderExitConditions;
-    const index = container.children.length;
+function createBuilderConditionCard(scope, condition = null, parameters = {}) {
+    const target = builderScope(scope);
+    const container = target.container;
     const card = document.createElement("div");
     card.className = "builder-condition-card";
-    card.dataset.builderSection = section;
+    card.dataset.builderScope = scope;
 
     const head = document.createElement("div");
     head.className = "builder-condition-head";
@@ -1038,9 +1112,7 @@ function createBuilderConditionCard(section, condition = null, parameters = {}) 
         select.append(option);
     }
 
-    if (condition?.type) {
-        select.value = condition.type;
-    }
+    if (condition?.type) select.value = condition.type;
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -1055,15 +1127,13 @@ function createBuilderConditionCard(section, condition = null, parameters = {}) 
 
     const description = document.createElement("p");
     description.className = "builder-condition-description estimate-note";
-
     const fields = document.createElement("div");
     fields.className = "builder-condition-fields grid grid-3";
-
     card.append(head, description, fields);
     container.append(card);
 
     const render = () => renderBuilderConditionFields(card, select.value, {
-        section,
+        scope,
         index: [...container.children].indexOf(card),
         condition: select.value === condition?.type ? condition : {},
         parameters,
@@ -1081,19 +1151,16 @@ function createBuilderConditionCard(section, condition = null, parameters = {}) 
 }
 
 function readBuilderFieldValue(control, fieldMetadata) {
-    if (fieldMetadata.type === "integer") {
-        return Number.parseInt(control.value, 10);
-    }
-    if (fieldMetadata.type === "number") {
-        return Number(control.value);
-    }
+    if (fieldMetadata.type === "integer") return Number.parseInt(control.value, 10);
+    if (fieldMetadata.type === "number") return Number(control.value);
     return control.value;
 }
 
-function collectBuilderGroup(container, logic, section, parameters) {
+function collectBuilderGroup(scope, parameters) {
+    const target = builderScope(scope);
     const conditions = [];
 
-    [...container.children].forEach((card, index) => {
+    [...target.container.children].forEach((card, index) => {
         const type = card.querySelector(".builder-condition-type").value;
         const metadata = conditionMetadata(type);
         const condition = { type };
@@ -1108,10 +1175,15 @@ function collectBuilderGroup(container, logic, section, parameters) {
             );
 
             if (parameterToggle?.checked) {
-                const parameterId = builderParameterId(section, index, field.id);
+                const parameterId = builderParameterId(
+                    target.side,
+                    target.phase,
+                    index,
+                    field.id
+                );
                 parameters[parameterId] = {
                     type: field.type,
-                    label: `${section === "entry" ? "Entry" : "Exit"} ${index + 1} · ${field.label}`,
+                    label: `${target.side === "long" ? "Long" : "Short"} ${target.phase} ${index + 1} · ${field.label}`,
                     default: value,
                     min: field.min,
                     max: field.max,
@@ -1127,71 +1199,119 @@ function collectBuilderGroup(container, logic, section, parameters) {
         conditions.push(condition);
     });
 
-    if (conditions.length === 0) {
-        return null;
-    }
+    if (conditions.length === 0) return null;
 
     return {
-        logic,
+        logic: target.logic.value,
         conditions,
     };
+}
+
+function sharedBuilderRisk() {
+    const risk = {};
+
+    if (builderStopLoss.value !== "") {
+        risk.stopLossPips = Number(builderStopLoss.value);
+    }
+
+    if (builderTakeProfit.value !== "") {
+        risk.takeProfitPips = Number(builderTakeProfit.value);
+    }
+
+    return Object.keys(risk).length ? risk : undefined;
 }
 
 function collectBuilderStrategy() {
     const name = builderName.value.trim();
 
-    if (!name) {
-        throw new Error("Strategy name is required");
-    }
+    if (!name) throw new Error("Strategy name is required");
 
+    const direction = currentBuilderDirection();
     const parameters = {};
-    const entry = collectBuilderGroup(
-        builderEntryConditions,
-        builderEntryLogic.value,
-        "entry",
-        parameters
-    );
+    const primaryEntry = collectBuilderGroup("entry", parameters);
 
-    if (!entry) {
+    if (!primaryEntry) {
         throw new Error("Add at least one entry condition");
     }
 
-    const exit = collectBuilderGroup(
-        builderExitConditions,
-        builderExitLogic.value,
-        "exit",
-        parameters
-    );
-
-    const risk = {};
-    if (builderStopLoss.value !== "") {
-        risk.stopLossPips = Number(builderStopLoss.value);
-    }
-    if (builderTakeProfit.value !== "") {
-        risk.takeProfitPips = Number(builderTakeProfit.value);
-    }
-
-    const spec = {
-        version: 1,
-        name,
-        side: builderSide.value,
-        parameters,
-        entry,
+    const primaryExit = collectBuilderGroup("exit", parameters);
+    const risk = sharedBuilderRisk();
+    const primaryPosition = {
+        entry: primaryEntry,
+        ...(primaryExit ? { exit: primaryExit } : {}),
+        ...(risk ? { risk } : {}),
     };
+    const positions = {};
+    let builderMode;
 
-    if (exit) {
-        spec.exit = exit;
-    }
+    if (direction === "LONG_ONLY") {
+        positions.long = primaryPosition;
+        builderMode = "LONG_ONLY";
+    } else if (direction === "SHORT_ONLY") {
+        positions.short = primaryPosition;
+        builderMode = "SHORT_ONLY";
+    } else if (currentBuilderShortMode() === "MIRRORED") {
+        positions.long = primaryPosition;
+        positions.short = {
+            entry: mirrorGroup(primaryEntry),
+            ...(primaryExit ? { exit: mirrorGroup(primaryExit) } : {}),
+            ...(risk ? { risk: structuredClone(risk) } : {}),
+        };
+        builderMode = "BOTH_MIRRORED";
+    } else {
+        const shortEntry = collectBuilderGroup("short-entry", parameters);
 
-    if (Object.keys(risk).length > 0) {
-        spec.risk = risk;
+        if (!shortEntry) {
+            throw new Error("Add at least one short entry condition");
+        }
+
+        const shortExit = collectBuilderGroup("short-exit", parameters);
+        positions.long = primaryPosition;
+        positions.short = {
+            entry: shortEntry,
+            ...(shortExit ? { exit: shortExit } : {}),
+            ...(risk ? { risk: structuredClone(risk) } : {}),
+        };
+        builderMode = "BOTH_INDEPENDENT";
     }
 
     return {
         name,
         description: builderDescription.value.trim() || undefined,
-        spec,
+        spec: {
+            version: 2,
+            name,
+            builderMode,
+            parameters,
+            positions,
+        },
     };
+}
+
+function updateBuilderDirectionUi() {
+    const direction = currentBuilderDirection();
+    const both = direction === "BOTH";
+    const independent = both && currentBuilderShortMode() === "INDEPENDENT";
+
+    builderBothOptions.hidden = !both;
+    builderShortRulesPanel.hidden = !independent;
+
+    const primarySide = direction === "SHORT_ONLY" ? "Short" : "Long";
+    builderPrimaryEntryTitle.textContent = primarySide + " entry";
+    builderPrimaryExitTitle.textContent = primarySide + " exit";
+
+    if (independent && builderShortEntryConditions.children.length === 0) {
+        createBuilderConditionCard("short-entry");
+    }
+
+    updateBuilderSummary();
+}
+
+function clearBuilderConditions() {
+    builderEntryConditions.replaceChildren();
+    builderExitConditions.replaceChildren();
+    builderShortEntryConditions.replaceChildren();
+    builderShortExitConditions.replaceChildren();
 }
 
 function resetStrategyBuilder() {
@@ -1199,18 +1319,39 @@ function resetStrategyBuilder() {
     strategyBuilderTitle.textContent = "Build a strategy";
     builderName.value = "";
     builderDescription.value = "";
-    builderSide.value = "LONG";
+    setBuilderRadio("builder-direction", "LONG_ONLY");
+    setBuilderRadio("builder-short-mode", "MIRRORED");
     builderEntryLogic.value = "AND";
     builderExitLogic.value = "AND";
+    builderShortEntryLogic.value = "AND";
+    builderShortExitLogic.value = "AND";
     builderStopLoss.value = "";
     builderTakeProfit.value = "";
-    builderEntryConditions.replaceChildren();
-    builderExitConditions.replaceChildren();
+    clearBuilderConditions();
     duplicateStrategyButton.hidden = true;
     deleteStrategyButton.hidden = true;
     strategyBuilderStatus.textContent = "";
     createBuilderConditionCard("entry");
-    updateBuilderSummary();
+    updateBuilderDirectionUi();
+}
+
+function normalizedBuilderSpec(spec) {
+    if (spec.version === 2) return spec;
+
+    const side = spec.side ?? "LONG";
+    return {
+        version: 2,
+        name: spec.name,
+        parameters: spec.parameters ?? {},
+        builderMode: side === "SHORT" ? "SHORT_ONLY" : "LONG_ONLY",
+        positions: {
+            [side.toLowerCase()]: {
+                entry: spec.entry,
+                ...(spec.exit ? { exit: spec.exit } : {}),
+                ...(spec.risk ? { risk: spec.risk } : {}),
+            },
+        },
+    };
 }
 
 function openStrategyBuilder(saved = null) {
@@ -1222,32 +1363,61 @@ function openStrategyBuilder(saved = null) {
         return;
     }
 
+    const spec = normalizedBuilderSpec(saved.spec);
+    const mode = spec.builderMode
+        ?? (spec.positions.long && spec.positions.short ? "BOTH_INDEPENDENT"
+            : spec.positions.short ? "SHORT_ONLY" : "LONG_ONLY");
+    const direction = mode.startsWith("BOTH") ? "BOTH" : mode;
+
     editingSavedStrategyId = saved.id;
     strategyBuilderTitle.textContent = "Edit strategy";
     builderName.value = saved.name;
     builderDescription.value = saved.description ?? "";
-    builderSide.value = saved.spec.side ?? "LONG";
-    builderEntryLogic.value = saved.spec.entry?.logic ?? "AND";
-    builderExitLogic.value = saved.spec.exit?.logic ?? "AND";
-    builderStopLoss.value = saved.spec.risk?.stopLossPips ?? "";
-    builderTakeProfit.value = saved.spec.risk?.takeProfitPips ?? "";
-    builderEntryConditions.replaceChildren();
-    builderExitConditions.replaceChildren();
+    setBuilderRadio("builder-direction", direction);
+    setBuilderRadio(
+        "builder-short-mode",
+        mode === "BOTH_INDEPENDENT" ? "INDEPENDENT" : "MIRRORED"
+    );
 
-    for (const condition of saved.spec.entry?.conditions ?? []) {
-        createBuilderConditionCard("entry", condition, saved.spec.parameters ?? {});
+    const primary = direction === "SHORT_ONLY"
+        ? spec.positions.short
+        : spec.positions.long;
+    const short = spec.positions.short;
+
+    builderEntryLogic.value = primary?.entry?.logic ?? "AND";
+    builderExitLogic.value = primary?.exit?.logic ?? "AND";
+    builderShortEntryLogic.value = short?.entry?.logic ?? "AND";
+    builderShortExitLogic.value = short?.exit?.logic ?? "AND";
+
+    const risk = primary?.risk ?? short?.risk ?? {};
+    builderStopLoss.value = risk.stopLossPips ?? "";
+    builderTakeProfit.value = risk.takeProfitPips ?? "";
+
+    clearBuilderConditions();
+
+    for (const condition of primary?.entry?.conditions ?? []) {
+        createBuilderConditionCard("entry", condition, spec.parameters ?? {});
     }
 
-    for (const condition of saved.spec.exit?.conditions ?? []) {
-        createBuilderConditionCard("exit", condition, saved.spec.parameters ?? {});
+    for (const condition of primary?.exit?.conditions ?? []) {
+        createBuilderConditionCard("exit", condition, spec.parameters ?? {});
+    }
+
+    if (mode === "BOTH_INDEPENDENT") {
+        for (const condition of short?.entry?.conditions ?? []) {
+            createBuilderConditionCard("short-entry", condition, spec.parameters ?? {});
+        }
+
+        for (const condition of short?.exit?.conditions ?? []) {
+            createBuilderConditionCard("short-exit", condition, spec.parameters ?? {});
+        }
     }
 
     duplicateStrategyButton.hidden = false;
     deleteStrategyButton.hidden = false;
     strategyBuilderStatus.textContent = `Saved strategy v${saved.version}`;
-    updateBuilderSummary();
+    updateBuilderDirectionUi();
 }
-
 function showStrategyList() {
     strategyBuilderPanel.hidden = true;
     strategiesListPanel.hidden = false;
