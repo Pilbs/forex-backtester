@@ -4,3 +4,8 @@ node_modules/
 .wrangler/
 dist/
 output/
+
+# Python quant research
+quant-research/.venv/
+quant-research/**/__pycache__/
+quant-research/outputs/
