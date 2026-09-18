@@ -174,3 +174,35 @@ python quant-research\intraday_outcome_discovery.py quant-research\outputs\intra
 ```
 
 2026 remains untouched.
+
+
+## Execution-scale diagnostic
+
+`intraday_execution_scale_scan.py` checks whether the original 3-5 pip objective is simply too small relative to EUR/USD spread and short-horizon noise.
+
+It samples the same liquid sessions on a fixed 5-minute grid and tests:
+
+- targets: 3, 5, 8, 10, 12, 15 pips
+- stops: 3, 5, 8, 10 pips
+- maximum holds: 15, 30, 60, 120 minutes
+
+This is **not** a strategy search. Every sample is tested in both directions so the output measures execution scale rather than signal quality.
+
+For every combination it reports:
+
+- how often TP or SL resolves within the hold window
+- observed decisive win rate
+- theoretical decisive breakeven win rate
+- conservative expectancy including timed exits
+- average entry spread
+- spread as a percentage of the target
+
+Same-M1-candle TP+SL cases are treated as a stop.
+
+Run:
+
+```powershell
+python quant-research\intraday_execution_scale_scan.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_execution_scale_scan.csv
+```
+
+The console prints a representative scale ladder. The CSV contains the full target/stop/horizon grid split by session and direction.
