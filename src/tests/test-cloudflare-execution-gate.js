@@ -66,15 +66,36 @@ function createSimpleSmaConfig() {
     return config;
 }
 
+function createStructuralIntradayConfig() {
+    const config = createOrbConfig();
+    config.strategy = "structural-intraday";
+    config.market.strategyTimeframe = "M1";
+    config.market.executionTimeframe = "M1";
+    config.market.from = "2026-08-03T00:00:00Z";
+    config.market.to = "2026-08-05T00:00:00Z";
+    config.strategyConfig = {
+        longEnabled: true,
+        shortEnabled: true,
+    };
+    config.parameterGrid = {
+        momentumAtrMultiple: [1.0, 1.25],
+    };
+    return config;
+}
+
 function assess(config, accountRole = "OWNER") {
     const plan = planResearch(config);
     const usageEstimate = estimateResearchUsage(config, plan);
     return assessResearchExecution(config, plan, usageEstimate, accountRole);
 }
 
-assert.deepEqual(COMMISSIONING_LIMITS.strategies, ["simple-sma", "orb", "generic"]);
+assert.deepEqual(
+    COMMISSIONING_LIMITS.strategies,
+    ["simple-sma", "orb", "generic", "structural-intraday"]
+);
 assert.equal(assess(createOrbConfig()).allowed, true);
 assert.equal(assess(createSimpleSmaConfig()).allowed, true);
+assert.equal(assess(createStructuralIntradayConfig()).allowed, true);
 const genericConfig = {
     ...createOrbConfig(),
     strategy: "generic",
@@ -127,6 +148,15 @@ assert.equal(assess(tooManyRuns).allowed, false);
 assert.ok(
     assess(tooManyRuns).reasons.some((reason) =>
         reason.includes(String(COMMISSIONING_LIMITS.maximumRuns))
+    )
+);
+
+const structuralWrongTimeframe = createStructuralIntradayConfig();
+structuralWrongTimeframe.market.strategyTimeframe = "M5";
+assert.equal(assess(structuralWrongTimeframe).allowed, false);
+assert.ok(
+    assess(structuralWrongTimeframe).reasons.some((reason) =>
+        reason.includes("M1")
     )
 );
 
