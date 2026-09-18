@@ -189,6 +189,150 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+
+def add_structure_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add time-safe price-location and closed-H1 structure features."""
+    out = df.copy()
+    close = out["mid_close"]
+
+    # FX trading day aligned to 17:00 New York. Shifting local New York time
+    # by 17 hours means each row is labelled by the session start date.
+    ny_time = out["time_utc"].dt.tz_convert("America/New_York")
+    trading_day = (ny_time - pd.Timedelta(hours=17)).dt.date
+    out["trading_day"] = trading_day
+
+    day_open = out.groupby("trading_day", sort=False)["mid_open"].transform("first")
+    day_high_so_far = out.groupby("trading_day", sort=False)["mid_high"].cummax()
+    day_low_so_far = out.groupby("trading_day", sort=False)["mid_low"].cummin()
+    day_width = day_high_so_far - day_low_so_far
+
+    out["distance_from_day_open_pips"] = (close - day_open) / PIP
+    out["trading_day_range_position"] = (
+        (close - day_low_so_far) / day_width.replace(0, np.nan)
+    )
+
+    day_summary = (
+        out.groupby("trading_day", sort=False)
+        .agg(
+            trading_day_high=("mid_high", "max"),
+            trading_day_low=("mid_low", "min"),
+        )
+    )
+    day_summary["prev_day_high"] = day_summary["trading_day_high"].shift(1)
+    day_summary["prev_day_low"] = day_summary["trading_day_low"].shift(1)
+
+    out["prev_day_high"] = out["trading_day"].map(day_summary["prev_day_high"])
+    out["prev_day_low"] = out["trading_day"].map(day_summary["prev_day_low"])
+    out["distance_to_prev_day_high_pips"] = (
+        out["prev_day_high"] - close
+    ) / PIP
+    out["distance_from_prev_day_low_pips"] = (
+        close - out["prev_day_low"]
+    ) / PIP
+    prev_day_width = out["prev_day_high"] - out["prev_day_low"]
+    out["prev_day_range_position"] = (
+        (close - out["prev_day_low"]) / prev_day_width.replace(0, np.nan)
+    )
+
+    # London session context uses local clock time, so DST is handled by
+    # timezone conversion rather than fixed UTC hours.
+    london_time = out["time_utc"].dt.tz_convert("Europe/London")
+    out["london_date"] = london_time.dt.date
+    london_active = (
+        (london_time.dt.hour >= 8)
+        & (london_time.dt.hour < 17)
+    )
+
+    out["london_open"] = np.nan
+    out.loc[london_active, "london_open"] = (
+        out.loc[london_active]
+        .groupby("london_date", sort=False)["mid_open"]
+        .transform("first")
+    )
+
+    london_high = pd.Series(np.nan, index=out.index, dtype=float)
+    london_low = pd.Series(np.nan, index=out.index, dtype=float)
+    london_high.loc[london_active] = (
+        out.loc[london_active]
+        .groupby("london_date", sort=False)["mid_high"]
+        .cummax()
+    )
+    london_low.loc[london_active] = (
+        out.loc[london_active]
+        .groupby("london_date", sort=False)["mid_low"]
+        .cummin()
+    )
+    london_width = london_high - london_low
+
+    out["distance_from_london_open_pips"] = (
+        close - out["london_open"]
+    ) / PIP
+    out["london_range_position"] = (
+        (close - london_low) / london_width.replace(0, np.nan)
+    )
+
+    # Build H1 candles from M1 and label each bar at its completion time.
+    # M1 rows then receive only the latest completed H1 information.
+    h1 = (
+        out.set_index("time_utc")
+        .resample("1h", label="right", closed="left")
+        .agg(
+            h1_open=("mid_open", "first"),
+            h1_high=("mid_high", "max"),
+            h1_low=("mid_low", "min"),
+            h1_close=("mid_close", "last"),
+        )
+        .dropna(subset=["h1_close"])
+    )
+
+    h1_prev_close = h1["h1_close"].shift(1)
+    h1_true_range = pd.concat(
+        [
+            h1["h1_high"] - h1["h1_low"],
+            (h1["h1_high"] - h1_prev_close).abs(),
+            (h1["h1_low"] - h1_prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    h1_atr14_pips = h1_true_range.rolling(14).mean() / PIP
+
+    h1["h1_ret_3h_atr"] = (
+        ((h1["h1_close"] - h1["h1_close"].shift(3)) / PIP)
+        / h1_atr14_pips
+    )
+    h1["h1_ret_6h_atr"] = (
+        ((h1["h1_close"] - h1["h1_close"].shift(6)) / PIP)
+        / h1_atr14_pips
+    )
+
+    h1_high12 = h1["h1_high"].rolling(12).max()
+    h1_low12 = h1["h1_low"].rolling(12).min()
+    h1_width12 = h1_high12 - h1_low12
+    h1["h1_range_position_12h"] = (
+        (h1["h1_close"] - h1_low12) / h1_width12.replace(0, np.nan)
+    )
+
+    h1_features = (
+        h1[
+            [
+                "h1_ret_3h_atr",
+                "h1_ret_6h_atr",
+                "h1_range_position_12h",
+            ]
+        ]
+        .reset_index()
+        .sort_values("time_utc")
+    )
+
+    out = pd.merge_asof(
+        out.sort_values("time_utc"),
+        h1_features,
+        on="time_utc",
+        direction="backward",
+    )
+
+    return out.reset_index(drop=True)
+
 def directional_context(df: pd.DataFrame, direction: str) -> pd.Series:
     sign = 1.0 if direction == "LONG" else -1.0
     signed_move = sign * df["ret_15m_pips"]
