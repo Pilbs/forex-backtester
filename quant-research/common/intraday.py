@@ -101,6 +101,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["ret_3m_pips"] = (close - close.shift(3)) / PIP
     out["ret_5m_pips"] = (close - close.shift(5)) / PIP
     out["ret_15m_pips"] = (close - close.shift(15)) / PIP
+    out["ret_30m_pips"] = (close - close.shift(30)) / PIP
 
     prev_close = close.shift(1)
     true_range = pd.concat(
@@ -129,6 +130,20 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     ).astype("object")
 
     out["session_context"] = _session_bucket(out["time_utc"])
+
+    range_high30 = high.rolling(30).max()
+    range_low30 = low.rolling(30).min()
+    range_width30 = range_high30 - range_low30
+    out["range_position_30"] = (
+        (close - range_low30) / range_width30.replace(0, np.nan)
+    )
+
+    out["ret_5m_atr"] = out["ret_5m_pips"] / out["atr14_pips"]
+    out["ret_15m_atr"] = out["ret_15m_pips"] / out["atr14_pips"]
+    out["ret_30m_atr"] = out["ret_30m_pips"] / out["atr14_pips"]
+    out["ema9_30_atr"] = ((ema9 - ema30) / PIP) / out["atr14_pips"]
+    out["body_atr"] = ((close - out["mid_open"]) / PIP) / out["atr14_pips"]
+    out["spread_pips"] = (out["ask_close"] - out["bid_close"]) / PIP
 
     prior_high15 = high.rolling(15).max().shift(1)
     prior_low15 = low.rolling(15).min().shift(1)
@@ -240,6 +255,7 @@ def evaluate_path(
     arrays: dict[str, np.ndarray],
     signal_idx: int,
     direction: str,
+    lookahead_minutes: int = LOOKAHEAD_MINUTES,
 ) -> dict | None:
     entry_idx = signal_idx + 1
     total = len(arrays["time_ns"])
@@ -252,12 +268,12 @@ def evaluate_path(
     if entry_ns - signal_ns > 120 * 1_000_000_000:
         return None
 
-    stop_idx = min(entry_idx + LOOKAHEAD_MINUTES + 1, total)
+    stop_idx = min(entry_idx + lookahead_minutes + 1, total)
     future_times = arrays["time_ns"][entry_idx:stop_idx]
-    end_ns = entry_ns + LOOKAHEAD_MINUTES * 60 * 1_000_000_000
+    end_ns = entry_ns + lookahead_minutes * 60 * 1_000_000_000
     valid_count = int(np.searchsorted(future_times, end_ns, side="right"))
 
-    if valid_count < LOOKAHEAD_MINUTES - 5:
+    if valid_count < max(1, lookahead_minutes - 5):
         return None
 
     window_end = entry_idx + valid_count
@@ -286,8 +302,8 @@ def evaluate_path(
         "year": int(arrays["year"][entry_idx]),
         "date": arrays["date"][entry_idx],
         "hour_utc": int(arrays["hour_utc"][entry_idx]),
-        "mfe_60m_pips": float(np.max(favourable)),
-        "mae_60m_pips": float(np.max(adverse)),
+        "mfe_pips": float(np.max(favourable)),
+        "mae_pips": float(np.max(adverse)),
     }
 
     for target, stop in TARGET_STOP_PAIRS:
@@ -312,6 +328,48 @@ def evaluate_path(
 
     return result
 
+
+
+def evaluate_forward_returns(
+    arrays: dict[str, np.ndarray],
+    signal_idx: int,
+    direction: str,
+    horizons: tuple[int, ...] = (5, 10, 15, 30),
+) -> dict[str, float] | None:
+    entry_idx = signal_idx + 1
+    total = len(arrays["time_ns"])
+    if entry_idx >= total:
+        return None
+
+    signal_ns = int(arrays["time_ns"][signal_idx])
+    entry_ns = int(arrays["time_ns"][entry_idx])
+    if entry_ns - signal_ns > 120 * 1_000_000_000:
+        return None
+
+    result: dict[str, float] = {}
+
+    for minutes in horizons:
+        exit_idx = entry_idx + minutes
+        if exit_idx >= total:
+            return None
+
+        exit_ns = int(arrays["time_ns"][exit_idx])
+        elapsed_minutes = (exit_ns - entry_ns) / 60_000_000_000
+        if elapsed_minutes > minutes + 2:
+            return None
+
+        if direction == "LONG":
+            entry = float(arrays["ask_open"][entry_idx])
+            exit_price = float(arrays["bid_open"][exit_idx])
+            move = (exit_price - entry) / PIP
+        else:
+            entry = float(arrays["bid_open"][entry_idx])
+            exit_price = float(arrays["ask_open"][exit_idx])
+            move = (entry - exit_price) / PIP
+
+        result[f"net_{minutes}m_pips"] = float(move)
+
+    return result
 
 def finalize_trade_frame(records: list[dict]) -> pd.DataFrame:
     trades = pd.DataFrame(records)
