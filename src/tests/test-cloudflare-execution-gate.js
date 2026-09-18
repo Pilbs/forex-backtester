@@ -134,10 +134,18 @@ assert.equal(assess(memberSmall, "MEMBER").allowed, true);
 assert.equal(assess(memberSmall, "MEMBER").accountRole, "MEMBER");
 
 const tooLong = createOrbConfig();
-tooLong.market.to = "2027-08-02T00:00:00Z";
-assert.equal(assess(tooLong).allowed, false);
+const tooLongPlan = planResearch(tooLong);
+const tooLongUsage = estimateResearchUsage(tooLong, tooLongPlan);
+tooLongUsage.dateRangeDays = COMMISSIONING_LIMITS.maximumDateRangeDays + 1;
+const tooLongAssessment = assessResearchExecution(
+    tooLong,
+    tooLongPlan,
+    tooLongUsage,
+    "OWNER"
+);
+assert.equal(tooLongAssessment.allowed, false);
 assert.ok(
-    assess(tooLong).reasons.some((reason) =>
+    tooLongAssessment.reasons.some((reason) =>
         reason.includes(`${COMMISSIONING_LIMITS.maximumDateRangeDays} days`)
     )
 );
