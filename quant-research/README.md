@@ -107,3 +107,43 @@ python quant-research\intraday_behaviour_map.py quant-research\outputs\eurusd_m1
 ```
 
 The console shortlist only includes development states occurring roughly 3-12 times per weekday, keeping the search relevant to the intended 5-10 trade/day bot.
+
+
+## Interpretable rule discovery
+
+`intraday_rule_discovery.py` uses shallow decision trees as a **rule-discovery tool**, not as a production model.
+
+The trees are trained separately for:
+
+- London morning LONG
+- London morning SHORT
+- London / New York overlap LONG
+- London / New York overlap SHORT
+
+Inputs are the behaviour-map state features. The prediction target is 15-minute net movement after bid/ask spread, clipped to +/-10 pips during training so rare extreme moves cannot dominate the splits.
+
+Constraints are intentionally strict:
+
+- maximum tree depth: 3
+- minimum development samples per leaf: 2500
+- 2022-2024 only for fitting
+- 2025 only for applying the frozen rules
+- 2026 untouched
+
+The goal is to extract a small readable rule such as:
+
+> ret_15m_atr <= X AND range_position_30 <= Y AND atr_relative > Z
+
+Any surviving rule is then implemented as a normal configurable strategy in StratTest. The tree itself is not deployed.
+
+Install the added dependency once:
+
+```powershell
+pip install -r quant-research\requirements.txt
+```
+
+Run using the behaviour-map audit already produced:
+
+```powershell
+python quant-research\intraday_rule_discovery.py quant-research\outputs\intraday_behaviour_audit.csv quant-research\outputs\intraday_rule_discovery.csv
+```
