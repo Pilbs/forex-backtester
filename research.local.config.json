@@ -4,8 +4,8 @@
     "instrument": "EUR_USD",
     "strategyTimeframe": "M1",
     "executionTimeframe": "M1",
-    "from": "2022-01-01T00:00:00.000Z",
-    "to": "2024-01-01T00:00:00.000Z"
+    "from": "2026-01-01T00:00:00.000Z",
+    "to": "2026-09-01T00:00:00.000Z"
   },
   "account": {
     "initialCapital": 1000,
