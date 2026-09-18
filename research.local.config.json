@@ -1,0 +1,65 @@
+{
+  "strategy": "structural-intraday",
+  "market": {
+    "instrument": "EUR_USD",
+    "strategyTimeframe": "M1",
+    "executionTimeframe": "M1",
+    "from": "2025-07-31T23:00:00.000Z",
+    "to": "2025-11-01T00:00:00.000Z"
+  },
+  "account": {
+    "initialCapital": 1000,
+    "currency": "USD",
+    "leverage": 30,
+    "positionMode": "HEDGING",
+    "defaultSizing": {
+      "type": "UNITS",
+      "value": 10000
+    }
+  },
+  "execution": {
+    "sameCandleConflict": "STOP_FIRST",
+    "slippagePips": 0,
+    "commission": {
+      "type": "NONE",
+      "value": 0
+    },
+    "closeOpenTradesAtEnd": true
+  },
+  "strategyConfig": {
+    "longEnabled": true,
+    "shortEnabled": false,
+    "h1AtrLength": 14,
+    "longH1RangeLookbackHours": 12,
+    "longRangePositionMin": 0,
+    "longRangePositionMax": 0.16,
+    "longTriggerType": "MICRO_BREAKOUT_15M",
+    "shortH1ReturnLookbackHours": 6,
+    "shortReturnAtrMin": -0.083102,
+    "shortReturnAtrMax": 0.484133,
+    "shortTriggerType": "MOMENTUM_BURST_5M",
+    "momentumReturnLookback": 5,
+    "momentumAtrLength": 14,
+    "momentumAtrMultiple": 1.25,
+    "momentumFastEma": 30,
+    "momentumSlowEma": 60,
+    "cooldownMinutes": 15,
+    "maxHoldMinutes": 60,
+    "stopLossEnabled": false,
+    "stopLossPips": 10,
+    "takeProfitEnabled": false,
+    "takeProfitPips": 15
+  },
+  "parameterGrid": {
+    "longRangePositionMax": [
+      0.16,
+      0.25,
+      0.35,
+      0.5
+    ]
+  },
+  "policy": {
+    "warningRunCount": 100,
+    "maximumRunCount": 5000
+  }
+}
