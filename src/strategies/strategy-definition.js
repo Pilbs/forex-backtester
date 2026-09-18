@@ -75,6 +75,25 @@ export function validateStrategyDefinition(strategyDefinition) {
         throw new Error("strategyDefinition.createStrategy must be a function");
     }
 
+    if (strategyDefinition.marketRequirements !== undefined) {
+        if (!isPlainObject(strategyDefinition.marketRequirements)) {
+            throw new Error("strategyDefinition.marketRequirements must be an object");
+        }
+
+        for (const name of ["strategyTimeframe", "executionTimeframe"]) {
+            const value = strategyDefinition.marketRequirements[name];
+
+            if (
+                value !== undefined
+                && (typeof value !== "string" || !value.trim())
+            ) {
+                throw new Error(
+                    `strategyDefinition.marketRequirements.${name} must be a non-empty string`
+                );
+            }
+        }
+    }
+
     if (!isPlainObject(strategyDefinition.parameters)) {
         throw new Error("strategyDefinition.parameters must be an object");
     }
@@ -243,6 +262,12 @@ export function getStrategyDefinitionMetadata(strategyDefinition) {
 
     if (strategyDefinition.description !== undefined) {
         metadata.description = strategyDefinition.description;
+    }
+
+    if (strategyDefinition.marketRequirements !== undefined) {
+        metadata.marketRequirements = {
+            ...strategyDefinition.marketRequirements,
+        };
     }
 
     return metadata;
