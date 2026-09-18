@@ -257,6 +257,7 @@ function parameterMetadataFromSpec(spec) {
         type: definition.type,
         label: definition.label ?? id,
         description: definition.description,
+        group: definition.group,
         required: definition.required === true,
         sweepable: definition.sweepable !== false,
         default: definition.default,
@@ -347,7 +348,19 @@ function updateParameterDependencies(strategy = selectedStrategy()) {
 function renderParameters(strategy) {
     parameterContainer.replaceChildren();
 
+    let lastGroup = null;
+
     for (const parameter of strategy.parameters) {
+        if (parameter.group && parameter.group !== lastGroup) {
+            const heading = document.createElement("div");
+            heading.className = "parameter-group-heading";
+            heading.textContent = parameter.group;
+            parameterContainer.append(heading);
+            lastGroup = parameter.group;
+        } else if (!parameter.group) {
+            lastGroup = null;
+        }
+
         const row = document.createElement("div");
         row.className = "parameter-row";
         row.dataset.parameterId = parameter.id;
