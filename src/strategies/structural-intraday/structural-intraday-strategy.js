@@ -148,7 +148,10 @@ export function createStructuralIntradayStrategy({
         if (activeTrade) {
             if (
                 Number.isFinite(activeTrade.entryTime)
-                && candle.time - activeTrade.entryTime >= maxHoldMinutes * MINUTE_MS
+                && (
+                    candle.time + MINUTE_MS - activeTrade.entryTime
+                    >= maxHoldMinutes * MINUTE_MS
+                )
             ) {
                 return {
                     action: "EXIT",
