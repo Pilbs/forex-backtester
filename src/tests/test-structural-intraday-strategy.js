@@ -94,8 +94,13 @@ const openTrade = [{
     entryPrice: 1.1010,
 }];
 
+const beforeExit = strategy.onCandle(
+    context(candle(at(14, 14)), openTrade)
+);
+assert.equal(beforeExit, null);
+
 const exit = strategy.onCandle(
-    context(candle(at(14, 16)), openTrade)
+    context(candle(at(14, 15)), openTrade)
 );
 
 assert.equal(exit?.action, "EXIT");
