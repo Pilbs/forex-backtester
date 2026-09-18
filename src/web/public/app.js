@@ -277,6 +277,10 @@ function savedStrategyAsResearchStrategy(saved) {
         parameters: parameterMetadataFromSpec(saved.spec),
         strategySpec: saved.spec,
         source: "saved",
+        marketRequirements: {
+            strategyTimeframe: "M5",
+            executionTimeframe: "M5",
+        },
     };
 }
 
@@ -592,6 +596,41 @@ function resetSavedDefaults() {
 
 function selectedStrategy() {
     return strategies.find((strategy) => strategy.id === strategySelect.value);
+}
+
+function applyStrategyMarketRequirements(strategy) {
+    const controls = [
+        ["#strategy-timeframe", "strategyTimeframe"],
+        ["#execution-timeframe", "executionTimeframe"],
+    ];
+
+    for (const [selector, requirementName] of controls) {
+        const control = document.querySelector(selector);
+        const requiredValue = strategy?.marketRequirements?.[requirementName];
+
+        if (!control) {
+            continue;
+        }
+
+        control.disabled = false;
+
+        if (!requiredValue) {
+            continue;
+        }
+
+        if (
+            ![...control.options].some((option) => option.value === requiredValue)
+        ) {
+            const option = document.createElement("option");
+            option.value = requiredValue;
+            option.textContent = requiredValue;
+            control.append(option);
+        }
+
+        control.value = requiredValue;
+        control.disabled = true;
+        control.title = `${strategy.name} requires ${requiredValue}`;
+    }
 }
 
 function buildConfig() {
@@ -1675,6 +1714,7 @@ function useSavedStrategyInExperiment(saved) {
         control.checked = control.value === "single";
     });
     renderParameters(uiStrategy);
+    applyStrategyMarketRequirements(uiStrategy);
     applyStrategyDefaults(uiStrategy.id);
     updateTestModeVisibility();
     document.querySelector("#experiment-name").value = `${saved.name} test`;
@@ -1879,6 +1919,7 @@ async function loadStrategies(selectedValue) {
     if (selected) {
         strategySelect.value = selected.id;
         renderParameters(selected);
+        applyStrategyMarketRequirements(selected);
         applyStrategyDefaults(selected.id);
     }
 
@@ -1888,6 +1929,7 @@ async function loadStrategies(selectedValue) {
 strategySelect.addEventListener("change", () => {
     const strategy = selectedStrategy();
     renderParameters(strategy);
+    applyStrategyMarketRequirements(strategy);
     applyStrategyDefaults(strategy.id);
     defaultsStatus.textContent = "";
 });
@@ -3563,6 +3605,7 @@ function loadRunIntoExperimentForm(run) {
     setControlValue("#instrument", market.instrument);
     setControlValue("#strategy-timeframe", market.strategyTimeframe);
     setControlValue("#execution-timeframe", market.executionTimeframe);
+    applyStrategyMarketRequirements(strategy);
     setControlValue("#from", toLocalInputValue(market.from));
     setControlValue("#to", toLocalInputValue(market.to));
     setControlValue("#initial-capital", account.initialCapital);
