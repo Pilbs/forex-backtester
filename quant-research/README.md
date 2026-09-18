@@ -77,3 +77,33 @@ python quant-research\intraday_context_scan.py quant-research\outputs\eurusd_m1_
 ```
 
 The console prints a compact shortlist discovered from 2022-2024 and shows the matching 2025 result beside it. The full independent context results are written to CSV.
+
+
+## Intraday behaviour map
+
+`intraday_behaviour_map.py` stops assuming a named strategy and instead samples the market on a fixed 5-minute grid during:
+
+- London morning
+- London / New York overlap
+
+It measures development-only deciles for:
+
+- 5, 15 and 30-minute movement relative to ATR
+- position inside the recent 30-minute range
+- short-term z-score / stretch
+- EMA9 vs EMA30 separation
+- current candle body size/direction
+- relative volatility
+- current spread
+
+For every state it measures cost-aware LONG and SHORT outcomes over the next 5/10/15/30 minutes plus 3/3 and 5/3 target-stop behaviour.
+
+The decile boundaries are fitted using **2022-2024 only**. The exact same boundaries are then applied to 2025. 2026 remains untouched.
+
+Run:
+
+```powershell
+python quant-research\intraday_behaviour_map.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_behaviour_map.csv --audit-output quant-research\outputs\intraday_behaviour_audit.csv
+```
+
+The console shortlist only includes development states occurring roughly 3-12 times per weekday, keeping the search relevant to the intended 5-10 trade/day bot.
