@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -160,7 +161,7 @@ def event_indices(
 
     accepted: list[int] = []
     next_allowed: pd.Timestamp | None = None
-    cooldown = pd.Timedelta(minutes=cooldown_minutes)
+    cooldown = timedelta(minutes=cooldown_minutes)
 
     for idx in df.index[transition]:
         ts = df.at[idx, "time_utc"]
@@ -181,14 +182,14 @@ def evaluate_path(
     if entry_idx >= len(df):
         return None
 
-    signal_time = df.at[signal_idx, "time_utc"]
-    entry_time = df.at[entry_idx, "time_utc"]
+    signal_time = pd.Timestamp(df.at[signal_idx, "time_utc"])
+    entry_time = pd.Timestamp(df.at[entry_idx, "time_utc"])
 
     # The next M1 bar must actually be the next minute.
     if (entry_time - signal_time).total_seconds() > 120:
         return None
 
-    end_time = entry_time + pd.Timedelta(minutes=LOOKAHEAD_MINUTES)
+    end_time = entry_time + timedelta(minutes=LOOKAHEAD_MINUTES)
 
     # Performance-critical: only inspect the next ~60 positional rows.
     # The previous implementation applied a full-dataframe boolean time
