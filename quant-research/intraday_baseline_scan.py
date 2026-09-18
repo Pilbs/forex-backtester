@@ -4,6 +4,7 @@ import argparse
 from datetime import timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -173,80 +174,104 @@ def event_indices(
     return accepted
 
 
+def build_market_arrays(df: pd.DataFrame) -> dict[str, np.ndarray]:
+    return {
+        "time_ns": df["time_utc"].astype("int64").to_numpy(),
+        "year": df["year"].to_numpy(),
+        "date": df["date"].to_numpy(),
+        "hour_utc": df["hour_utc"].to_numpy(),
+        "bid_open": df["bid_open"].to_numpy(dtype=float),
+        "bid_high": df["bid_high"].to_numpy(dtype=float),
+        "bid_low": df["bid_low"].to_numpy(dtype=float),
+        "ask_open": df["ask_open"].to_numpy(dtype=float),
+        "ask_high": df["ask_high"].to_numpy(dtype=float),
+        "ask_low": df["ask_low"].to_numpy(dtype=float),
+    }
+
+
+def first_hit_index(values: np.ndarray, threshold: float) -> int | None:
+    hits = np.flatnonzero(values >= threshold)
+    return int(hits[0]) if hits.size else None
+
+
 def evaluate_path(
-    df: pd.DataFrame,
+    arrays: dict[str, np.ndarray],
     signal_idx: int,
     direction: str,
 ) -> dict | None:
     entry_idx = signal_idx + 1
-    if entry_idx >= len(df):
+    total = len(arrays["time_ns"])
+    if entry_idx >= total:
         return None
 
-    signal_time = pd.Timestamp(df.at[signal_idx, "time_utc"])
-    entry_time = pd.Timestamp(df.at[entry_idx, "time_utc"])
+    signal_ns = int(arrays["time_ns"][signal_idx])
+    entry_ns = int(arrays["time_ns"][entry_idx])
 
     # The next M1 bar must actually be the next minute.
-    if (entry_time - signal_time).total_seconds() > 120:
+    if entry_ns - signal_ns > 120 * 1_000_000_000:
         return None
 
-    end_time = entry_time + timedelta(minutes=LOOKAHEAD_MINUTES)
+    # Only the next 60 minutes can affect this study. Work directly on NumPy
+    # arrays rather than constructing pandas objects for every signal.
+    stop_idx = min(entry_idx + LOOKAHEAD_MINUTES + 1, total)
+    future_times = arrays["time_ns"][entry_idx:stop_idx]
+    end_ns = entry_ns + LOOKAHEAD_MINUTES * 60 * 1_000_000_000
+    valid_count = int(np.searchsorted(future_times, end_ns, side="right"))
 
-    # Performance-critical: only inspect the next ~60 positional rows.
-    # The previous implementation applied a full-dataframe boolean time
-    # filter for every signal, which becomes extremely slow on multi-year M1 data.
-    stop_idx = min(entry_idx + LOOKAHEAD_MINUTES + 1, len(df))
-    future = df.iloc[entry_idx:stop_idx]
-    future = future[future["time_utc"] <= end_time]
-
-    if len(future) < LOOKAHEAD_MINUTES - 5:
+    if valid_count < LOOKAHEAD_MINUTES - 5:
         return None
+
+    window_end = entry_idx + valid_count
 
     if direction == "LONG":
-        entry = float(df.at[entry_idx, "ask_open"])
-        mfe = (float(future["bid_high"].max()) - entry) / PIP
-        mae = (entry - float(future["bid_low"].min())) / PIP
+        entry = float(arrays["ask_open"][entry_idx])
+        favourable = (
+            arrays["bid_high"][entry_idx:window_end] - entry
+        ) / PIP
+        adverse = (
+            entry - arrays["bid_low"][entry_idx:window_end]
+        ) / PIP
     else:
-        entry = float(df.at[entry_idx, "bid_open"])
-        mfe = (entry - float(future["ask_low"].min())) / PIP
-        mae = (float(future["ask_high"].max()) - entry) / PIP
+        entry = float(arrays["bid_open"][entry_idx])
+        favourable = (
+            entry - arrays["ask_low"][entry_idx:window_end]
+        ) / PIP
+        adverse = (
+            arrays["ask_high"][entry_idx:window_end] - entry
+        ) / PIP
 
     result = {
-        "signal_time_utc": signal_time,
-        "entry_time_utc": entry_time,
+        "signal_time_ns": signal_ns,
+        "entry_time_ns": entry_ns,
         "direction": direction,
-        "year": entry_time.year,
-        "date": entry_time.date(),
-        "hour_utc": entry_time.hour,
-        "mfe_60m_pips": mfe,
-        "mae_60m_pips": mae,
+        "year": int(arrays["year"][entry_idx]),
+        "date": arrays["date"][entry_idx],
+        "hour_utc": int(arrays["hour_utc"][entry_idx]),
+        "mfe_60m_pips": float(np.max(favourable)),
+        "mae_60m_pips": float(np.max(adverse)),
     }
 
     for target, stop in TARGET_STOP_PAIRS:
-        outcome = "NEITHER"
+        target_idx = first_hit_index(favourable, target)
+        stop_idx_hit = first_hit_index(adverse, stop)
 
-        for _, bar in future.iterrows():
-            if direction == "LONG":
-                target_hit = (float(bar["bid_high"]) - entry) / PIP >= target
-                stop_hit = (entry - float(bar["bid_low"])) / PIP >= stop
-            else:
-                target_hit = (entry - float(bar["ask_low"])) / PIP >= target
-                stop_hit = (float(bar["ask_high"]) - entry) / PIP >= stop
-
-            if target_hit and stop_hit:
-                outcome = "AMBIGUOUS"
-                break
-            if target_hit:
-                outcome = "TARGET"
-                break
-            if stop_hit:
-                outcome = "STOP"
-                break
+        if target_idx is None and stop_idx_hit is None:
+            outcome = "NEITHER"
+        elif target_idx is None:
+            outcome = "STOP"
+        elif stop_idx_hit is None:
+            outcome = "TARGET"
+        elif target_idx < stop_idx_hit:
+            outcome = "TARGET"
+        elif stop_idx_hit < target_idx:
+            outcome = "STOP"
+        else:
+            outcome = "AMBIGUOUS"
 
         key = f"tp{int(target)}_sl{int(stop)}"
         result[f"{key}_outcome"] = outcome
 
     return result
-
 
 def summarize(setup: str, direction: str, trades: pd.DataFrame) -> list[dict]:
     rows: list[dict] = []
@@ -306,6 +331,7 @@ def summarize(setup: str, direction: str, trades: pd.DataFrame) -> list[dict]:
 def main() -> None:
     args = parse_args()
     df = add_features(load_candles(args.input_csv))
+    arrays = build_market_arrays(df)
 
     summaries: list[dict] = []
     audits: list[pd.DataFrame] = []
@@ -323,7 +349,7 @@ def main() -> None:
 
         records: list[dict] = []
         for idx in indices:
-            result = evaluate_path(df, idx, direction)
+            result = evaluate_path(arrays, idx, direction)
             if result is None:
                 continue
             result["setup"] = setup
@@ -333,6 +359,12 @@ def main() -> None:
             continue
 
         trades = pd.DataFrame(records)
+        trades["signal_time_utc"] = pd.to_datetime(
+            trades.pop("signal_time_ns"), unit="ns", utc=True
+        )
+        trades["entry_time_utc"] = pd.to_datetime(
+            trades.pop("entry_time_ns"), unit="ns", utc=True
+        )
         audits.append(trades)
         summaries.extend(summarize(setup, direction, trades))
 
