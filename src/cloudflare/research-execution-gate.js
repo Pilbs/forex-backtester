@@ -1,8 +1,15 @@
 const SHARED_LIMITS = Object.freeze({
-    strategies: Object.freeze(["simple-sma", "orb", "generic"]),
+    strategies: Object.freeze(["simple-sma", "orb", "generic", "structural-intraday"]),
     instrument: "EUR_USD",
     strategyTimeframe: "M5",
     executionTimeframe: "M5",
+});
+
+const STRATEGY_TIMEFRAME_REQUIREMENTS = Object.freeze({
+    "structural-intraday": Object.freeze({
+        strategyTimeframe: "M1",
+        executionTimeframe: "M1",
+    }),
 });
 
 export const ACCOUNT_USAGE_LIMITS = Object.freeze({
@@ -57,12 +64,21 @@ export function assessResearchExecution(
         reasons.push(`Only instrument ${limits.instrument} is enabled for cloud commissioning`);
     }
 
-    if (market.strategyTimeframe !== limits.strategyTimeframe) {
-        reasons.push(`Strategy timeframe must be ${limits.strategyTimeframe}`);
+    const timeframeRequirements = (
+        STRATEGY_TIMEFRAME_REQUIREMENTS[config?.strategy]
+        ?? limits
+    );
+
+    if (market.strategyTimeframe !== timeframeRequirements.strategyTimeframe) {
+        reasons.push(
+            `Strategy timeframe must be ${timeframeRequirements.strategyTimeframe}`
+        );
     }
 
-    if (market.executionTimeframe !== limits.executionTimeframe) {
-        reasons.push(`Execution timeframe must be ${limits.executionTimeframe}`);
+    if (market.executionTimeframe !== timeframeRequirements.executionTimeframe) {
+        reasons.push(
+            `Execution timeframe must be ${timeframeRequirements.executionTimeframe}`
+        );
     }
 
     if (usageEstimate?.dateRangeDays > limits.maximumDateRangeDays) {
