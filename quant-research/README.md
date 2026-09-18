@@ -202,3 +202,30 @@ python quant-research\intraday_structure_map.py quant-research\outputs\eurusd_m1
 ```
 
 State buckets are fitted on 2022-2024 and then applied unchanged to 2025. 2026 remains untouched.
+
+
+## Structural state + fixed M1 trigger scan
+
+`intraday_structural_trigger_scan.py` takes the two structural states that retained the same 60-minute directional sign in development and 2025, freezes those state boundaries, and then tests the existing M1 trigger families inside them.
+
+Frozen structural states:
+
+- London/NY overlap SHORT when closed-H1 6-hour movement is near-neutral/slightly positive
+- London/NY overlap LONG when closed-H1 price is in the lower part of its completed 12-hour range
+
+M1 triggers are the existing fixed definitions:
+
+- 15-minute micro breakout
+- trend pullback/reclaim
+- 5-minute momentum burst
+- mean-reversion reclaim
+
+No trigger thresholds, structural thresholds, TP/SL values, or hold times are optimized in this stage. It only measures cost-aware 15/30/60-minute forward returns and event frequency.
+
+Run:
+
+```powershell
+python quant-research\intraday_structural_trigger_scan.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_structural_trigger_scan.csv --audit-output quant-research\outputs\intraday_structural_trigger_audit.csv
+```
+
+2026 remains untouched.
