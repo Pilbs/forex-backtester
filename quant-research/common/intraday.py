@@ -295,6 +295,9 @@ def evaluate_path(
             arrays["ask_high"][entry_idx:window_end] - entry
         ) / PIP
 
+    mfe = float(np.max(favourable))
+    mae = float(np.max(adverse))
+
     result = {
         "signal_time_ns": signal_ns,
         "entry_time_ns": entry_ns,
@@ -302,8 +305,10 @@ def evaluate_path(
         "year": int(arrays["year"][entry_idx]),
         "date": arrays["date"][entry_idx],
         "hour_utc": int(arrays["hour_utc"][entry_idx]),
-        "mfe_pips": float(np.max(favourable)),
-        "mae_pips": float(np.max(adverse)),
+        "mfe_pips": mfe,
+        "mae_pips": mae,
+        f"mfe_{lookahead_minutes}m_pips": mfe,
+        f"mae_{lookahead_minutes}m_pips": mae,
     }
 
     for target, stop in TARGET_STOP_PAIRS:
