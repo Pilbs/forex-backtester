@@ -8,6 +8,11 @@ export const orbDefinition = {
 
     createStrategy: createOrbStrategy,
 
+    marketRequirements: {
+        strategyTimeframe: "M5",
+        executionTimeframe: "M5",
+    },
+
     parameters: {
         orbStartHour: {
             type: "integer",
