@@ -109,6 +109,18 @@ const orbMetadata = strategies.strategies.find((strategy) => strategy.id === "or
 assert.ok(orbMetadata.parameters.some((parameter) => parameter.id === "breakoutCondition"));
 assert.ok(!orbMetadata.parameters.some((parameter) => parameter.id === "entryMode"));
 
+const structuralMetadata = strategies.strategies.find(
+    (strategy) => strategy.id === "structural-intraday"
+);
+assert.ok(structuralMetadata);
+assert.equal(structuralMetadata.marketRequirements.strategyTimeframe, "M1");
+assert.equal(structuralMetadata.marketRequirements.executionTimeframe, "M1");
+assert.ok(
+    structuralMetadata.parameters.some(
+        (parameter) => parameter.id === "momentumAtrMultiple"
+    )
+);
+
 assert.equal(strategies.genericBuilder.id, "generic");
 assert.equal(strategies.genericBuilder.kind, "GENERIC_BUILDER");
 assert.deepEqual(strategies.genericBuilder.directionModes, ["LONG_ONLY", "SHORT_ONLY", "BOTH_MIRRORED", "BOTH_INDEPENDENT"]);
