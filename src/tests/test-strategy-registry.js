@@ -6,6 +6,7 @@ import {
 
 const simpleSmaDefinition = getStrategyDefinition("simple-sma");
 const orbDefinition = getStrategyDefinition("orb");
+const structuralIntradayDefinition = getStrategyDefinition("structural-intraday");
 
 if (
     simpleSmaDefinition.id !== "simple-sma" ||
@@ -18,20 +19,28 @@ if (orbDefinition.id !== "orb" || orbDefinition.name !== "Opening Range Breakout
     throw new Error("ORB was not resolved from the strategy registry");
 }
 
+if (
+    structuralIntradayDefinition.id !== "structural-intraday"
+    || structuralIntradayDefinition.name !== "Structural Intraday"
+) {
+    throw new Error("Structural Intraday was not resolved from the strategy registry");
+}
+
 const definitions = listStrategyDefinitions();
 
 if (
-    definitions.length !== 2 ||
+    definitions.length !== 3 ||
     definitions[0] !== simpleSmaDefinition ||
-    definitions[1] !== orbDefinition
+    definitions[1] !== orbDefinition ||
+    definitions[2] !== structuralIntradayDefinition
 ) {
-    throw new Error("Strategy registry did not list Simple SMA first and ORB second");
+    throw new Error("Strategy registry order is not Simple SMA, ORB, Structural Intraday");
 }
 
 const metadata = listStrategyMetadata();
 
-if (metadata.length !== 2) {
-    throw new Error("Strategy metadata did not contain both registered strategies");
+if (metadata.length !== 3) {
+    throw new Error("Strategy metadata did not contain all registered strategies");
 }
 
 const simpleSmaMetadata = metadata.find((strategy) => strategy.id === "simple-sma");
@@ -96,6 +105,28 @@ if (
     || tpProgressTarget.enabledWhen.length !== 2
 ) {
     throw new Error("ORB chained TP-progression dependencies were not exposed");
+}
+
+const structuralMetadata = metadata.find(
+    (strategy) => strategy.id === "structural-intraday"
+);
+const structuralLongMin = structuralMetadata?.parameters.find(
+    (parameter) => parameter.id === "longRangePositionMin"
+);
+const structuralStopLoss = structuralMetadata?.parameters.find(
+    (parameter) => parameter.id === "stopLossPips"
+);
+
+if (
+    !structuralLongMin
+    || structuralLongMin.default !== 0.080119
+    || structuralLongMin.enabledWhen?.parameter !== "longEnabled"
+) {
+    throw new Error("Structural Intraday long-regime metadata was not exposed correctly");
+}
+
+if (structuralStopLoss?.enabledWhen?.parameter !== "stopLossEnabled") {
+    throw new Error("Structural Intraday stop-loss dependency metadata was not exposed");
 }
 
 const serialized = JSON.stringify(metadata);
