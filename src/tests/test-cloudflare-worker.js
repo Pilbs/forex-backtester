@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
 import { handleRequest } from "../cloudflare/worker.js";
+import { ACCOUNT_USAGE_LIMITS } from "../cloudflare/research-execution-gate.js";
 
 const identity = {
     provider: "CLOUDFLARE_ACCESS",
@@ -662,8 +663,14 @@ const me = await readJson(meResponse);
 assert.equal(meResponse.status, 200);
 assert.equal(me.user.id, "user-1");
 assert.equal(me.workspace.id, "workspace-1");
-assert.equal(me.usageLimits.maximumDateRangeDays, 365);
-assert.equal(me.usageLimits.maximumRuns, 20);
+assert.equal(
+    me.usageLimits.maximumDateRangeDays,
+    ACCOUNT_USAGE_LIMITS.OWNER.maximumDateRangeDays
+);
+assert.equal(
+    me.usageLimits.maximumRuns,
+    ACCOUNT_USAGE_LIMITS.OWNER.maximumRuns
+);
 
 const adminResponse = await handleRequest(
     apiRequest("/api/admin/users"),
