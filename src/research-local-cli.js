@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -8,13 +9,14 @@ import {
     printBacktestExperimentResult,
 } from "./reporting/console-reporter.js";
 import { writeExperimentResult } from "./reporting/json-result-writer.js";
+import { writeExperimentCsv } from "./reporting/csv-result-writer.js";
 import { createLocalCsvDatasetLoader } from "./local/local-csv-dataset-loader.js";
 import { planResearch, runResearch } from "./research/run-research.js";
 
 function parseArgs(argv) {
     const args = {
         csv: null,
-        config: "research.local.config.js",
+        config: "research.local.config.json",
         granularity: "M1",
     };
 
@@ -44,12 +46,25 @@ function parseArgs(argv) {
 function printUsage() {
     console.log(
         "Usage: npm run research:local -- --csv <candles.csv> "
-        + "[--config research.local.config.js] [--granularity M1]"
+        + "[--config research.local.config.json] [--granularity M1]"
     );
 }
 
 async function loadConfig(configPath) {
     const absolutePath = path.resolve(configPath);
+    const extension = path.extname(absolutePath).toLowerCase();
+
+    if (extension === ".json") {
+        const raw = await fs.readFile(absolutePath, "utf8");
+        const config = JSON.parse(raw);
+
+        if (!config || typeof config !== "object" || Array.isArray(config)) {
+            throw new Error(`${configPath} must contain a JSON object`);
+        }
+
+        return config;
+    }
+
     const module = await import(pathToFileURL(absolutePath).href);
 
     if (!module.default || typeof module.default !== "object") {
@@ -134,12 +149,18 @@ async function main() {
         evaluationsPerSecond,
     }]);
 
-    const filePath = await writeExperimentResult(result, {
-        directory: "output/local-experiments",
+    const outputDirectory = "output/local-experiments";
+    const jsonPath = await writeExperimentResult(result, {
+        directory: outputDirectory,
+    });
+    const csvPath = await writeExperimentCsv(result, {
+        directory: outputDirectory,
     });
 
     console.log("");
-    console.log(`Local experiment JSON written to ${filePath}`);
+    console.log(`Local experiment CSV written to ${csvPath}`);
+    console.log(`Local experiment JSON written to ${jsonPath}`);
+    console.log("Send the CSV back for sweep analysis; keep the JSON as the full audit record.");
 }
 
 main().catch((error) => {
