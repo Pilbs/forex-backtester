@@ -147,3 +147,30 @@ Run using the behaviour-map audit already produced:
 ```powershell
 python quant-research\intraday_rule_discovery.py quant-research\outputs\intraday_behaviour_audit.csv quant-research\outputs\intraday_rule_discovery.csv
 ```
+
+
+## Direct TP-before-SL rule discovery
+
+`intraday_outcome_discovery.py` trains shallow classifiers on the actual trade outcome rather than a future close:
+
+- +3 pips before -3 pips
+- +5 pips before -3 pips
+
+The tree is trained only on decisive TARGET/STOP outcomes from 2022-2024. The frozen rule is then applied to **all** observations, including unresolved and same-candle ambiguous cases.
+
+For strategy-level evaluation the script reports a conservative expectancy:
+
+- TARGET = full target
+- STOP = full stop
+- TP and SL inside the same M1 candle = treated as STOP
+- neither hit within 30 minutes = close at the cost-aware 30-minute return
+
+This avoids making a rule look profitable merely because unresolved trades were discarded.
+
+Run:
+
+```powershell
+python quant-research\intraday_outcome_discovery.py quant-research\outputs\intraday_behaviour_audit.csv quant-research\outputs\intraday_outcome_discovery.csv
+```
+
+2026 remains untouched.
