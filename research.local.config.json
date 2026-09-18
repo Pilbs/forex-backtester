@@ -4,8 +4,8 @@
     "instrument": "EUR_USD",
     "strategyTimeframe": "M1",
     "executionTimeframe": "M1",
-    "from": "2024-01-01T00:00:00.000Z",
-    "to": "2025-01-01T00:00:00.000Z"
+    "from": "2025-01-01T00:00:00.000Z",
+    "to": "2026-01-01T00:00:00.000Z"
   },
   "account": {
     "initialCapital": 1000,
@@ -32,7 +32,7 @@
     "h1AtrLength": 14,
     "longH1RangeLookbackHours": 12,
     "longRangePositionMin": 0.080119,
-    "longRangePositionMax": 0.16144,
+    "longRangePositionMax": 0.25,
     "longTriggerType": "MICRO_BREAKOUT_15M",
     "shortH1ReturnLookbackHours": 6,
     "shortReturnAtrMin": -0.083102,
@@ -51,15 +51,7 @@
     "takeProfitPips": 15
   },
   "parameterGrid": {
-    "longRangePositionMax": [
-      0.12,
-      0.16,
-      0.2,
-      0.25,
-      0.3,
-      0.35,
-      0.5
-    ]
+    "longRangePositionMax": [0.16, 0.25, 0.30, 0.35]
   },
   "policy": {
     "warningRunCount": 100,
