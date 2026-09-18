@@ -1,55 +1,54 @@
 # Quant Research
 
-This folder is for **exploratory market research in Python**.
+This folder is the exploratory research layer for the trading system.
 
-Its job is to answer questions such as:
+## Current brief
 
-- Does a market behaviour actually exist?
-- Under what conditions does it become stronger or weaker?
-- Is the behaviour stable across different periods?
-- Is an apparent edge likely to be noise?
+The current research target is an **intraday EUR/USD bot** that can plausibly produce **5-10 trades on an active trading day**, with relatively small gains per trade.
 
-This is deliberately separate from the existing JavaScript strategy/backtesting system.
+Frequency is a design constraint because later production rules will remove opportunities around news, abnormal market conditions and other no-trade periods.
 
-## Mental model
+That frequency target is **not** permission to manufacture trades. A setup still has to survive real bid/ask execution costs and show repeatable behaviour across multiple years.
 
-```text
-historical market data
-        |
-        v
-quant-research/      discover and measure behaviour
-        |
-        v
-src/strategies/      define precise trading rules
-        |
-        v
-src/research/        sweep and compare strategy configurations
-        |
-        v
-src/backtest/        simulate the defined strategy
-        |
-        v
-paper/live trading   only after validation
+## Research rules
+
+1. Use actual bid/ask candles for execution tests.
+2. Measure signal frequency before spending time optimising a setup.
+3. Treat repeated adjacent candles as one event, not many independent signals.
+4. Inspect years separately; do not trust a pooled backtest alone.
+5. Keep 2026 untouched until a candidate is frozen for final validation.
+6. News-event exclusions will be added later as a shared filter.
+7. Research scripts discover behaviour. Finished strategy logic belongs in `src/strategies/`.
+
+## Data
+
+Candle data is exported from the existing D1 store:
+
+```powershell
+node quant-research\export-candles.js EUR_USD M1 2022-01-01 2025-12-31 quant-research\outputs\eurusd_m1_research.csv
 ```
 
-## Structure
+The exporter includes bid, ask and mid OHLC data.
 
-```text
-quant-research/
-├─ common/            reusable Python research helpers
-├─ studies/           one folder per research question
-│  └─ orb/            opening-range-breakout research
-├─ outputs/           generated CSVs/charts; not committed
-├─ requirements.txt
-└─ README.md
+## First frequency scan
+
+`intraday_baseline_scan.py` compares a small set of common intraday setup families:
+
+- 15-minute micro breakout
+- trend pullback/reclaim
+- 5-minute momentum burst
+- short-term mean-reversion reclaim
+
+This is deliberately a baseline scan, not a strategy generator. It answers two questions first:
+
+> Does the setup occur often enough?
+
+> After spread, is there enough short-horizon asymmetry to investigate further?
+
+Run:
+
+```powershell
+python quant-research\intraday_baseline_scan.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_baseline_scan.csv --audit-output quant-research\outputs\intraday_baseline_audit.csv
 ```
 
-## Rule
-
-A study should begin with a **market hypothesis**, not a profitable-strategy target.
-
-For example:
-
-> After a New York opening range is broken, does EUR/USD show measurable directional continuation?
-
-Only after the behaviour survives analysis should it be turned into strategy rules and tested in the main backtester.
+The study uses 2022-2025 as research data. It does not evaluate 2026.
