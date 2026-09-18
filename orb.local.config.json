@@ -1,0 +1,72 @@
+{
+  "strategy": "orb",
+  "market": {
+    "instrument": "EUR_USD",
+    "strategyTimeframe": "M5",
+    "executionTimeframe": "M5",
+    "from": "2022-01-01T00:00:00.000Z",
+    "to": "2026-01-01T00:00:00.000Z"
+  },
+  "account": {
+    "initialCapital": 1000,
+    "currency": "USD",
+    "leverage": 30,
+    "positionMode": "HEDGING",
+    "defaultSizing": {
+      "type": "CASH",
+      "value": 10000
+    }
+  },
+  "execution": {
+    "sameCandleConflict": "STOP_FIRST",
+    "slippagePips": 0,
+    "commission": {
+      "type": "NONE",
+      "value": 0
+    },
+    "closeOpenTradesAtEnd": true
+  },
+  "strategyConfig": {
+    "orbStartHour": 8,
+    "orbStartMinute": 15,
+    "orbDurationMinutes": 60,
+    "timezoneMode": "NEW_YORK",
+    "breakoutCondition": "CLOSE",
+    "requiredRetests": 1,
+    "breakoutDistanceEntryEnabled": true,
+    "breakoutDistanceMode": "ATR",
+    "breakoutDistanceValue": 0.25,
+    "maxOrbRangeEnabled": false,
+    "maxOrbRangeMode": "PIPS",
+    "maxOrbRangeValue": 30,
+    "atrLength": 12,
+    "stopLossMode": "PIPS",
+    "stopLossValue": 15,
+    "takeProfitMode": "PIPS",
+    "takeProfitValue": 25,
+    "tpProgressEnabled": true,
+    "tpProgressTriggerPct": 75,
+    "tpProgressStopPct": 60,
+    "tpProgressExtendTarget": true,
+    "tpProgressTargetPct": 105,
+    "tpProgressRepeat": true,
+    "tpProgressStepPct": 5,
+    "closeAtNextORB": true,
+    "latestEntryEnabled": true,
+    "latestEntryHour": 14,
+    "latestEntryMinute": 15,
+    "skipFridayEntries": true,
+    "profitExitWindowEnabled": false,
+    "profitExitStartHour": 17,
+    "profitExitStartMinute": 0,
+    "profitExitEndHour": 18,
+    "profitExitEndMinute": 0
+  },
+  "parameterGrid": {
+    "orbDurationMinutes": [60]
+  },
+  "policy": {
+    "warningRunCount": 100,
+    "maximumRunCount": 5000
+  }
+}
