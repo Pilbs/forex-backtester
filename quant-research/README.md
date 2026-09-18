@@ -52,3 +52,28 @@ python quant-research\intraday_baseline_scan.py quant-research\outputs\eurusd_m1
 ```
 
 The study uses 2022-2025 as research data. It does not evaluate 2026.
+
+
+## Context scan
+
+`intraday_context_scan.py` takes the same four raw setup families and measures three predefined context factors independently:
+
+- market session / time-of-day
+- current volatility relative to the recent 4-hour baseline
+- whether the previous 15-minute move is aligned with, neutral to, or opposed to the proposed trade direction
+
+This is still discovery, not strategy optimisation. Context combinations are deliberately **not** brute-forced yet.
+
+Research split:
+
+- 2022-2024: development
+- 2025: validation check
+- 2026: untouched holdout
+
+Run:
+
+```powershell
+python quant-research\intraday_context_scan.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_context_scan.csv --audit-output quant-research\outputs\intraday_context_audit.csv
+```
+
+The console prints a compact shortlist discovered from 2022-2024 and shows the matching 2025 result beside it. The full independent context results are written to CSV.
