@@ -8,6 +8,11 @@ export const simpleSmaDefinition = {
 
     createStrategy: createSimpleSmaStrategy,
 
+    marketRequirements: {
+        strategyTimeframe: "M5",
+        executionTimeframe: "M5",
+    },
+
     parameters: {
         smaLength: {
             type: "integer",
