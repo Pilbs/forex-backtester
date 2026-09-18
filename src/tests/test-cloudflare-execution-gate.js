@@ -151,10 +151,21 @@ assert.ok(
 );
 
 const tooManyRuns = createOrbConfig();
-tooManyRuns.parameterGrid.stopLossValue = [10,11,12,13,14,15,16,17,18];
-assert.equal(assess(tooManyRuns).allowed, false);
+const tooManyRunsPlan = planResearch(tooManyRuns);
+tooManyRunsPlan.research.requestedCombinations =
+    COMMISSIONING_LIMITS.maximumRuns + 1;
+tooManyRunsPlan.research.validCombinations =
+    COMMISSIONING_LIMITS.maximumRuns + 1;
+const tooManyRunsUsage = estimateResearchUsage(tooManyRuns, tooManyRunsPlan);
+const tooManyRunsAssessment = assessResearchExecution(
+    tooManyRuns,
+    tooManyRunsPlan,
+    tooManyRunsUsage,
+    "OWNER"
+);
+assert.equal(tooManyRunsAssessment.allowed, false);
 assert.ok(
-    assess(tooManyRuns).reasons.some((reason) =>
+    tooManyRunsAssessment.reasons.some((reason) =>
         reason.includes(String(COMMISSIONING_LIMITS.maximumRuns))
     )
 );
