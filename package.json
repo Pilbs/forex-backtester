@@ -23,7 +23,7 @@
         "research:orb:atr-entry": "node src/experiments/orb-atr-entry-sweep.js",
         "test:structural": "node src/tests/test-structural-intraday-strategy.js",
         "research:local": "node src/research-local-cli.js",
-        "test:local": "node src/tests/test-local-csv-dataset-loader.js"
+        "test:local": "node src/tests/test-local-csv-dataset-loader.js && node src/tests/test-local-csv-result-writer.js"
     },
     "license": "ISC",
     "dependencies": {
