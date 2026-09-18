@@ -174,3 +174,31 @@ python quant-research\intraday_outcome_discovery.py quant-research\outputs\intra
 ```
 
 2026 remains untouched.
+
+
+## Structural context map
+
+`intraday_structure_map.py` changes the information set rather than tuning the previous OHLC-state features.
+
+It adds time-safe structural context:
+
+- distance to previous FX trading-day high and low
+- position inside the previous trading-day range
+- distance from the current FX trading-day open
+- current trading-day range position so far
+- distance from the London open
+- current London-session range position so far
+- closed-H1 3-hour and 6-hour movement relative to H1 ATR
+- position inside the last 12 completed H1 bars
+
+The FX trading day is aligned to 17:00 New York. London features use Europe/London local time, so DST is handled automatically. H1 context uses completed H1 bars only.
+
+This stage is descriptive only. It samples the liquid sessions every 5 minutes and measures cost-aware 15/30/60-minute forward returns. It does not sweep TP/SL values or optimize a strategy.
+
+Run:
+
+```powershell
+python quant-research\intraday_structure_map.py quant-research\outputs\eurusd_m1_research.csv quant-research\outputs\intraday_structure_map.csv --audit-output quant-research\outputs\intraday_structure_audit.csv
+```
+
+State buckets are fitted on 2022-2024 and then applied unchanged to 2025. 2026 remains untouched.
