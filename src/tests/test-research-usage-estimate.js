@@ -84,4 +84,20 @@ function makePlan(validCombinations = 1) {
     assert.equal(usage.estimatedStrategyRows, 1440);
 }
 
+// Date-range reporting remains calendar duration even though candle rows use
+// market-open time. The execution gate relies on this independent limit.
+{
+    const usage = estimateResearchUsage(
+        makeConfig({
+            from: "2026-08-01T00:00:00.000Z",
+            to: "2027-08-02T00:00:00.000Z",
+            strategyTimeframe: "M5",
+            executionTimeframe: "M5",
+        }),
+        makePlan(1)
+    );
+
+    assert.equal(usage.dateRangeDays, 366);
+}
+
 console.log("Research usage estimate tests passed.");
