@@ -12,6 +12,11 @@ export const structuralIntradayDefinition = {
 
     createStrategy: createStructuralIntradayStrategy,
 
+    marketRequirements: {
+        strategyTimeframe: "M1",
+        executionTimeframe: "M1",
+    },
+
     parameters: {
         // --- Direction switches ---
         longEnabled: {
