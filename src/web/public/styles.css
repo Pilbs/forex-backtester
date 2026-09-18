@@ -488,6 +488,17 @@ select:focus {
     background: #fff3f3;
 }
 
+.parameter-group-heading {
+    margin-top: 18px;
+    padding: 10px 0 6px;
+    border-bottom: 1px solid #dfe4ec;
+    color: #42506a;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 .parameter-row {
     display: grid;
     grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 1fr) minmax(220px, 1.2fr);
@@ -1046,6 +1057,11 @@ html[data-ui-theme="terminal"] input:focus,
 html[data-ui-theme="terminal"] select:focus {
     outline: 1px solid #77ffad;
     border-color: #77ffad;
+}
+
+html[data-ui-theme="terminal"] .parameter-group-heading {
+    border-bottom-color: var(--border);
+    color: var(--text-muted);
 }
 
 html[data-ui-theme="terminal"] .parameter-row {
