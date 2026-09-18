@@ -1,5 +1,6 @@
 import { orbDefinition } from "./orb/orb-definition.js";
 import { simpleSmaDefinition } from "./simple-sma/simple-sma-definition.js";
+import { structuralIntradayDefinition } from "./structural-intraday/structural-intraday-definition.js";
 import {
     getStrategyDefinitionMetadata,
     validateStrategyDefinition,
@@ -8,6 +9,7 @@ import {
 const strategyDefinitions = [
     simpleSmaDefinition,
     orbDefinition,
+    structuralIntradayDefinition,
 ];
 
 const strategyDefinitionsById = new Map();
