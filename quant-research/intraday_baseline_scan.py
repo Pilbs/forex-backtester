@@ -189,10 +189,13 @@ def evaluate_path(
         return None
 
     end_time = entry_time + pd.Timedelta(minutes=LOOKAHEAD_MINUTES)
-    future = df[
-        (df["time_utc"] >= entry_time)
-        & (df["time_utc"] <= end_time)
-    ]
+
+    # Performance-critical: only inspect the next ~60 positional rows.
+    # The previous implementation applied a full-dataframe boolean time
+    # filter for every signal, which becomes extremely slow on multi-year M1 data.
+    stop_idx = min(entry_idx + LOOKAHEAD_MINUTES + 1, len(df))
+    future = df.iloc[entry_idx:stop_idx]
+    future = future[future["time_utc"] <= end_time]
 
     if len(future) < LOOKAHEAD_MINUTES - 5:
         return None
@@ -311,6 +314,10 @@ def main() -> None:
             df,
             df[column],
             cooldown_minutes=args.cooldown_minutes,
+        )
+
+        print(
+            f"Scanning {setup} {direction}: {len(indices)} candidate events..."
         )
 
         records: list[dict] = []
