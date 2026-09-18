@@ -109,6 +109,7 @@ export function validateStrategyDefinition(strategyDefinition) {
 
         validateOptionalText(definition.label, `Parameter ${name}.label`);
         validateOptionalText(definition.description, `Parameter ${name}.description`);
+        validateOptionalText(definition.group, `Parameter ${name}.group`);
 
         if (definition.required !== undefined && typeof definition.required !== "boolean") {
             throw new Error(`Parameter ${name}.required must be a boolean`);
@@ -222,6 +223,10 @@ export function getStrategyDefinitionMetadata(strategyDefinition) {
 
         if (definition.description !== undefined) {
             metadata.description = definition.description;
+        }
+
+        if (definition.group !== undefined) {
+            metadata.group = definition.group;
         }
 
         if (Object.hasOwn(definition, "default")) {
