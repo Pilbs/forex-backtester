@@ -129,6 +129,20 @@ if (structuralStopLoss?.enabledWhen?.parameter !== "stopLossEnabled") {
     throw new Error("Structural Intraday stop-loss dependency metadata was not exposed");
 }
 
+if (
+    structuralMetadata?.marketRequirements?.strategyTimeframe !== "M1"
+    || structuralMetadata?.marketRequirements?.executionTimeframe !== "M1"
+) {
+    throw new Error("Structural Intraday M1 requirements were not exposed");
+}
+
+if (
+    orbMetadata?.marketRequirements?.strategyTimeframe !== "M5"
+    || orbMetadata?.marketRequirements?.executionTimeframe !== "M5"
+) {
+    throw new Error("ORB commissioning timeframe requirements were not exposed");
+}
+
 const serialized = JSON.stringify(metadata);
 
 if (serialized.includes("createStrategy")) {
