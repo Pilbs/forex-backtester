@@ -63,7 +63,18 @@
     "profitExitEndMinute": 0
   },
   "parameterGrid": {
-    "orbDurationMinutes": [60]
+    "breakoutCondition": [
+      "CLOSE",
+      "WICK"
+    ],
+    "requiredRetests": [
+      0,
+      1
+    ],
+    "breakoutDistanceEntryEnabled": [
+      false,
+      true
+    ]
   },
   "policy": {
     "warningRunCount": 100,
