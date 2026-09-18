@@ -22,6 +22,7 @@ export const structuralIntradayDefinition = {
         longEnabled: {
             type: "boolean",
             label: "Enable long side",
+            group: "Directions",
             description: "Allow entries from the lower-H1-range long regime.",
             default: true,
         },
@@ -29,6 +30,7 @@ export const structuralIntradayDefinition = {
         shortEnabled: {
             type: "boolean",
             label: "Enable short side",
+            group: "Directions",
             description: "Allow entries from the H1 6-hour return short regime.",
             default: true,
         },
@@ -37,6 +39,7 @@ export const structuralIntradayDefinition = {
         h1AtrLength: {
             type: "integer",
             label: "H1 ATR length",
+            group: "H1 structure",
             description: "Completed H1 bars used for the H1 ATR reference.",
             default: 14,
             min: 2,
@@ -46,6 +49,7 @@ export const structuralIntradayDefinition = {
         longH1RangeLookbackHours: {
             type: "integer",
             label: "Long regime: H1 range lookback",
+            group: "Long structural regime",
             description: "Completed H1 bars used to define the rolling structural range.",
             default: 12,
             min: 2,
@@ -55,6 +59,7 @@ export const structuralIntradayDefinition = {
         longRangePositionMin: {
             type: "number",
             label: "Long regime: minimum range position",
+            group: "Long structural regime",
             description: "Lower bound for the completed-H1 close position inside the rolling H1 range.",
             default: 0.080119,
             min: 0,
@@ -65,6 +70,7 @@ export const structuralIntradayDefinition = {
         longRangePositionMax: {
             type: "number",
             label: "Long regime: maximum range position",
+            group: "Long structural regime",
             description: "Upper bound for the completed-H1 close position inside the rolling H1 range.",
             default: 0.161440,
             min: 0,
@@ -76,6 +82,7 @@ export const structuralIntradayDefinition = {
         shortH1ReturnLookbackHours: {
             type: "integer",
             label: "Short regime: H1 return lookback",
+            group: "Short structural regime",
             description: "Completed H1 bars separating the current close from the return reference close.",
             default: 6,
             min: 1,
@@ -85,6 +92,7 @@ export const structuralIntradayDefinition = {
         shortReturnAtrMin: {
             type: "number",
             label: "Short regime: minimum H1 return / ATR",
+            group: "Short structural regime",
             description: "Lower bound for the completed-H1 return normalized by H1 ATR.",
             default: -0.083102,
             enabledWhen: { parameter: "shortEnabled", equals: true },
@@ -93,6 +101,7 @@ export const structuralIntradayDefinition = {
         shortReturnAtrMax: {
             type: "number",
             label: "Short regime: maximum H1 return / ATR",
+            group: "Short structural regime",
             description: "Upper bound for the completed-H1 return normalized by H1 ATR.",
             default: 0.484133,
             enabledWhen: { parameter: "shortEnabled", equals: true },
@@ -102,6 +111,7 @@ export const structuralIntradayDefinition = {
         longTriggerType: {
             type: "string",
             label: "Long M1 trigger",
+            group: "M1 trigger selection",
             description: "M1 event required while the long H1 regime is active.",
             default: "MOMENTUM_BURST_5M",
             options: [...M1_TRIGGER_TYPES],
@@ -111,6 +121,7 @@ export const structuralIntradayDefinition = {
         shortTriggerType: {
             type: "string",
             label: "Short M1 trigger",
+            group: "M1 trigger selection",
             description: "M1 event required while the short H1 regime is active.",
             default: "MOMENTUM_BURST_5M",
             options: [...M1_TRIGGER_TYPES],
@@ -123,6 +134,7 @@ export const structuralIntradayDefinition = {
         momentumReturnLookback: {
             type: "integer",
             label: "Momentum: return lookback",
+            group: "Momentum trigger",
             description: "M1 bars used for the momentum price move when a momentum trigger is selected.",
             default: 5,
             min: 1,
@@ -131,6 +143,7 @@ export const structuralIntradayDefinition = {
         momentumAtrLength: {
             type: "integer",
             label: "Momentum: ATR length",
+            group: "Momentum trigger",
             description: "M1 true-range observations used by the momentum threshold.",
             default: 14,
             min: 2,
@@ -139,6 +152,7 @@ export const structuralIntradayDefinition = {
         momentumAtrMultiple: {
             type: "number",
             label: "Momentum: ATR multiple",
+            group: "Momentum trigger",
             description: "Required absolute M1 move as a multiple of current M1 ATR.",
             default: 1.25,
             min: 0.05,
@@ -147,6 +161,7 @@ export const structuralIntradayDefinition = {
         momentumFastEma: {
             type: "integer",
             label: "Momentum: fast EMA",
+            group: "Momentum trigger",
             description: "Fast M1 EMA used as the momentum trend filter.",
             default: 30,
             min: 2,
@@ -155,6 +170,7 @@ export const structuralIntradayDefinition = {
         momentumSlowEma: {
             type: "integer",
             label: "Momentum: slow EMA",
+            group: "Momentum trigger",
             description: "Slow M1 EMA used as the momentum trend filter.",
             default: 60,
             min: 3,
@@ -164,6 +180,7 @@ export const structuralIntradayDefinition = {
         cooldownMinutes: {
             type: "integer",
             label: "Entry cooldown minutes",
+            group: "Trade management",
             description: "Minimum time between strategy entry signals.",
             default: 15,
             min: 0,
@@ -172,6 +189,7 @@ export const structuralIntradayDefinition = {
         maxHoldMinutes: {
             type: "integer",
             label: "Maximum hold minutes",
+            group: "Trade management",
             description: "Time-based exit measured from the actual trade entry time.",
             default: 60,
             min: 1,
@@ -180,6 +198,7 @@ export const structuralIntradayDefinition = {
         stopLossEnabled: {
             type: "boolean",
             label: "Enable stop loss",
+            group: "Trade management",
             description: "Attach a fixed-pip protective stop to new entries.",
             default: false,
         },
@@ -187,6 +206,7 @@ export const structuralIntradayDefinition = {
         stopLossPips: {
             type: "number",
             label: "Stop loss pips",
+            group: "Trade management",
             description: "Fixed protective stop distance.",
             default: 10,
             min: 0.1,
@@ -196,6 +216,7 @@ export const structuralIntradayDefinition = {
         takeProfitEnabled: {
             type: "boolean",
             label: "Enable take profit",
+            group: "Trade management",
             description: "Attach a fixed-pip take-profit target to new entries.",
             default: false,
         },
@@ -203,6 +224,7 @@ export const structuralIntradayDefinition = {
         takeProfitPips: {
             type: "number",
             label: "Take profit pips",
+            group: "Trade management",
             description: "Fixed take-profit distance.",
             default: 15,
             min: 0.1,
