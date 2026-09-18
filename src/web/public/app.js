@@ -626,6 +626,7 @@ function applyStrategyMarketRequirements(strategy) {
         }
 
         control.disabled = false;
+        control.removeAttribute("title");
 
         if (!requiredValue) {
             continue;
